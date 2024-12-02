@@ -7,26 +7,78 @@ from systemrdl.node import Node, AddrmapNode
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
 
-def get_indexed_path(top_node: Node, target_node: Node) -> str:
+class IndexedPath:
+    def __init__(self, top_node: Node, target_node: Node):
+        self.top_node = top_node
+        self.target_node = target_node
+        self.index = []
+        self.array_dimensions = self.target_node.parent.array_dimensions
+
+        try:
+            self.width = self.target_node.width
+        except AttributeError:
+            self.width = None
+        
+        
+        self.path = self.target_node.get_rel_path(self.top_node, empty_array_suffix="[!]", hier_separator="_")
+        def kw_filter_repl(m: Match) -> str:
+            return kwf(m.group(0))
+        self.path = re.sub(r'\w+', kw_filter_repl, self.path).lower()
+        
+        
+        for i, g in enumerate(re.findall(r'\[!\]', self.path)):
+            self.index.append(f'i{i}')
+        self.path = re.sub(r'\[!\]', "", self.path)
+    
+    @property
+    def index_str(self) -> str:
+        v = ""
+        for i in self.index:
+            v += f"[{i}]"
+        return v
+    
+    @property
+    def array_instances(self) -> str:
+        s = ""
+        if not self.array_dimensions is None:
+            for i in self.array_dimensions:
+                s += f"[{i}]"
+        return s
+
+
+def get_indexed_path(top_node: Node, target_node: Node, index=True) -> str:
     """
     TODO: Add words about indexing and why i'm doing this. Copy from logbook
     """
+    p = IndexedPath(top_node, target_node)
+    raise
     path = target_node.get_rel_path(top_node, empty_array_suffix="[!]")
+
 
     # replace unknown indexes with incrementing iterators i0, i1, ...
     class ReplaceUnknown:
         def __init__(self) -> None:
             self.i = 0
-        def __call__(self, match: Match) -> str:
+        def __call__(self) -> str:
             s = f'i{self.i}'
             self.i += 1
             return s
-    path = re.sub(r'!', ReplaceUnknown(), path)
-
+    
+    r = ReplaceUnknown()
+    index = ""
+    if g := re.search(r'!', path):
+        index = f"[{r.__call__()}]"
+        path = re.sub(r'\[!\]', "", path)
+        
     # Sanitize any SV keywords
     def kw_filter_repl(m: Match) -> str:
         return kwf(m.group(0))
     path = re.sub(r'\w+', kw_filter_repl, path)
+
+    path = re.sub(r'\.', '_', path).lower()
+#     print(path)
+    
+    path += index
 
     return path
 

@@ -22,7 +22,7 @@ module {{ds.module_name}}
         {%- endif %}
 
         {{cpuif.port_declaration|indent(8)}}
-        {%- if hwif.has_input_struct or hwif.has_output_struct %},{% endif %}
+        {%- if hwif.has_hwif_ports  %},{% endif %}
 
         {{hwif.port_declaration|indent(8)}}
     );
@@ -122,8 +122,7 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Address Decode
     //--------------------------------------------------------------------------
-    {{address_decode.get_strobe_struct()|indent}}
-    decoded_reg_strb_t decoded_reg_strb;
+    {{address_decode.get_strobe_logic()|indent}}
 {%- if ds.has_external_addressable %}
     logic decoded_strb_is_external;
 {% endif %}
@@ -135,9 +134,11 @@ module {{ds.module_name}}
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
 
-    always_comb begin
+//     always_comb begin
+    always @(*) begin 
+        integer next_cpuif_addr;
     {%- if ds.has_external_addressable %}
-        automatic logic is_external;
+        logic is_external;
         is_external = '0;
     {%- endif %}
         {{address_decode.get_implementation()|indent(8)}}
@@ -168,17 +169,11 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Write double-buffers
     //--------------------------------------------------------------------------
-    {{write_buffering.get_storage_struct()|indent}}
-
     {{write_buffering.get_implementation()|indent}}
 {%- endif %}
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
-    {{field_logic.get_combo_struct()|indent}}
-
-    {{field_logic.get_storage_struct()|indent}}
-
     {{field_logic.get_implementation()|indent}}
 
 {%- if ds.has_paritycheck %}
@@ -190,7 +185,7 @@ module {{ds.module_name}}
         if({{get_resetsignal(cpuif.reset)}}) begin
             parity_error <= '0;
         end else begin
-            automatic logic err;
+            logic err;
             err = '0;
             {{parity.get_implementation()|indent(12)}}
             parity_error <= err;
@@ -212,7 +207,8 @@ module {{ds.module_name}}
     // Write response
     //--------------------------------------------------------------------------
 {%- if ds.has_external_addressable %}
-    always_comb begin
+//     always_comb begin
+    always @(*) begin 
         automatic logic wr_ack;
         wr_ack = '0;
         {{ext_write_acks.get_implementation()|indent(8)}}
@@ -230,7 +226,8 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
 {%- if ds.has_external_addressable %}
     logic readback_external_rd_ack_c;
-    always_comb begin
+//     always_comb begin
+    always @(*) begin 
         automatic logic rd_ack;
         rd_ack = '0;
         {{ext_read_acks.get_implementation()|indent(8)}}

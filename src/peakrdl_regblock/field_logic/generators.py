@@ -109,6 +109,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.field_storage_template = self.exp.jj_env.get_template(
             "field_logic/templates/field_storage.sv"
         )
+        self.field_storage_sig_template = self.exp.jj_env.get_template(
+            "field_logic/templates/field_storage_sig.sv"
+        )
         self.external_reg_template = self.exp.jj_env.get_template(
             "field_logic/templates/external_reg.sv"
         )
@@ -249,6 +252,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             'get_input_identifier': self.exp.hwif.get_input_identifier,
             'ds': self.ds,
         }
+        self.push_top(self.field_storage_sig_template.render(context))
         self.add_content(self.field_storage_template.render(context))
 
 
@@ -257,10 +261,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if self.exp.hwif.has_value_output(node):
             output_identifier = self.exp.hwif.get_output_identifier(node)
             value = self.exp.dereferencer.get_value(node)
+            width = node.width
             self.add_content(
                 f"assign {output_identifier} = {value};"
             )
-
         # Inferred logical reduction outputs
         if node.get_property('anded'):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(node, "anded")
@@ -337,7 +341,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
 
     def assign_external_reg_outputs(self, node: 'RegNode') -> None:
-        prefix = "hwif_out." + get_indexed_path(self.exp.ds.top_node, node)
+        prefix = "hwif_out_" + get_indexed_path(self.exp.ds.top_node, node)
         strb = self.exp.dereferencer.get_access_strobe(node)
 
         width = min(self.exp.cpuif.data_width, node.get_property('regwidth'))
@@ -360,7 +364,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.add_content(self.external_reg_template.render(context))
 
     def assign_external_block_outputs(self, node: 'AddressableNode') -> None:
-        prefix = "hwif_out." + get_indexed_path(self.exp.ds.top_node, node)
+        prefix = "hwif_out_" + get_indexed_path(self.exp.ds.top_node, node)
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
         addr_width = node.size.bit_length()
 

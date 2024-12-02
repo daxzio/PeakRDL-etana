@@ -27,14 +27,14 @@ class _OnWrite(NextStateConditional):
             return wstrb
         else:
             # is regular register
-            strb = self.exp.dereferencer.get_access_strobe(field)
+            p = self.exp.dereferencer.get_access_strobe(field)
 
             if field.get_property('swwe') or field.get_property('swwel'):
                 # dereferencer will wrap swwel complement if necessary
                 qualifier = self.exp.dereferencer.get_field_propref_value(field, 'swwe')
-                return f"{strb} && decoded_req_is_wr && {qualifier}"
+                return f"{p.path} && decoded_req_is_wr && {qualifier}"
 
-            return f"{strb} && decoded_req_is_wr"
+            return f"{p.path}{p.index_str} && decoded_req_is_wr"
 
     def _wbus_bitslice(self, field: 'FieldNode', subword_idx: int = 0) -> str:
         # Get the source bitslice range from the internal cpuif's data bus

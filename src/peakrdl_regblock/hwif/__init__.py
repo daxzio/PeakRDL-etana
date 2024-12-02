@@ -1,15 +1,17 @@
+import re
 from typing import TYPE_CHECKING, Union, Optional, TextIO
 
 from systemrdl.node import AddrmapNode, SignalNode, FieldNode, RegNode, AddressableNode
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import get_indexed_path
+from ..utils import IndexedPath, get_indexed_path
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 
 from .generators import InputStructGenerator_Hier, OutputStructGenerator_Hier
 from .generators import InputStructGenerator_TypeScope, OutputStructGenerator_TypeScope
 from .generators import EnumGenerator
+from .generators import InputLogicGenerator
 
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter, DesignState
@@ -28,17 +30,9 @@ class Hwif:
     ):
         self.exp = exp
 
-        self.has_input_struct = False
-        self.has_output_struct = False
+        self.has_hwif_ports = False
 
         self.hwif_report_file = hwif_report_file
-
-        if self.ds.reuse_hwif_typedefs:
-            self._gen_in_cls = InputStructGenerator_TypeScope
-            self._gen_out_cls = OutputStructGenerator_TypeScope
-        else:
-            self._gen_in_cls = InputStructGenerator_Hier
-            self._gen_out_cls = OutputStructGenerator_Hier
 
     @property
     def ds(self) -> 'DesignState':
@@ -49,61 +43,18 @@ class Hwif:
         return self.exp.ds.top_node
 
 
-    def get_package_contents(self) -> str:
-        """
-        If this hwif requires a package, generate the string
-        """
-        lines = []
-
-        gen_in = self._gen_in_cls(self)
-        structs_in = gen_in.get_struct(
-            self.top_node,
-            f"{self.top_node.inst_name}__in_t"
-        )
-        if structs_in is not None:
-            self.has_input_struct = True
-            lines.append(structs_in)
-        else:
-            self.has_input_struct = False
-
-        gen_out = self._gen_out_cls(self)
-        structs_out = gen_out.get_struct(
-            self.top_node,
-            f"{self.top_node.inst_name}__out_t"
-        )
-        if structs_out is not None:
-            self.has_output_struct = True
-            lines.append(structs_out)
-        else:
-            self.has_output_struct = False
-
-        gen_enum = EnumGenerator()
-        enums = gen_enum.get_enums(self.ds.user_enums)
-        if enums is not None:
-            lines.append(enums)
-
-        return "\n\n".join(lines)
-
-
     @property
     def port_declaration(self) -> str:
         """
         Returns the declaration string for all I/O ports in the hwif group
         """
 
-        # Assume get_package_declaration() is always called prior to this
-        assert self.has_input_struct is not None
-        assert self.has_output_struct is not None
+        assert self.has_hwif_ports is not None
 
-        lines = []
-        if self.has_input_struct:
-            type_name = f"{self.top_node.inst_name}__in_t"
-            lines.append(f"input {self.ds.package_name}::{type_name} hwif_in")
-        if self.has_output_struct:
-            type_name = f"{self.top_node.inst_name}__out_t"
-            lines.append(f"output {self.ds.package_name}::{type_name} hwif_out")
+        hwif_in = InputLogicGenerator(self.exp.hwif)
+        logic = hwif_in.get_logic(self.top_node)
 
-        return ",\n".join(lines)
+        return ",\n".join(logic)
 
     #---------------------------------------------------------------------------
     # hwif utility functions
@@ -113,9 +64,11 @@ class Hwif:
         Returns True if the object infers an input wire in the hwif
         """
         if isinstance(obj, FieldNode):
+            self.has_hwif_ports = True
             return obj.is_hw_writable
         elif isinstance(obj, SignalNode):
             # Signals are implicitly always inputs
+            self.has_hwif_ports = True
             return True
         else:
             raise RuntimeError
@@ -125,6 +78,7 @@ class Hwif:
         """
         Returns True if the object infers an output wire in the hwif
         """
+        self.has_hwif_ports = True
         return obj.is_hw_readable
 
 
@@ -132,6 +86,7 @@ class Hwif:
         self,
         obj: Union[FieldNode, SignalNode, PropertyReference],
         width: Optional[int] = None,
+        index: Optional[bool]=True
     ) -> Union[SVInt, str]:
         """
         Returns the identifier string that best represents the input object.
@@ -150,13 +105,15 @@ class Hwif:
                 # 'next' property replaces the inferred input signal
                 return self.exp.dereferencer.get_value(next_value, width)
             # Otherwise, use inferred
-            path = get_indexed_path(self.top_node, obj)
-            return "hwif_in." + path + ".next"
+            p = IndexedPath(self.top_node, obj)
+#             path = get_indexed_path(self.top_node, obj)
+            return f"hwif_in_{p.path}_next"
         elif isinstance(obj, SignalNode):
             if obj.get_path() in self.ds.out_of_hier_signals:
                 return kwf(obj.inst_name)
-            path = get_indexed_path(self.top_node, obj)
-            return "hwif_in." + path
+            p = IndexedPath(self.top_node, obj)
+#             path = get_indexed_path(self.top_node, obj)
+            return f"hwif_in_{p.path}"
         elif isinstance(obj, PropertyReference):
             return self.get_implied_prop_input_identifier(obj.node, obj.name)
 
@@ -167,21 +124,21 @@ class Hwif:
         Returns the identifier string for an external component's rd_data signal
         """
         path = get_indexed_path(self.top_node, node)
-        return "hwif_in." + path + ".rd_data"
+        return "hwif_in_" + path + "_rd_data"
 
     def get_external_rd_ack(self, node: AddressableNode) -> str:
         """
         Returns the identifier string for an external component's rd_ack signal
         """
         path = get_indexed_path(self.top_node, node)
-        return "hwif_in." + path + ".rd_ack"
+        return "hwif_in_" + path + "_rd_ack"
 
     def get_external_wr_ack(self, node: AddressableNode) -> str:
         """
         Returns the identifier string for an external component's wr_ack signal
         """
         path = get_indexed_path(self.top_node, node)
-        return "hwif_in." + path + ".wr_ack"
+        return "hwif_in_" + path + "_wr_ack"
 
     def get_implied_prop_input_identifier(self, field: FieldNode, prop: str) -> str:
         assert prop in {
@@ -189,10 +146,10 @@ class Hwif:
             'incr', 'decr', 'incrvalue', 'decrvalue'
         }
         path = get_indexed_path(self.top_node, field)
-        return "hwif_in." + path + "." + prop
+        return "hwif_in_" + path + "_" + prop
 
 
-    def get_output_identifier(self, obj: Union[FieldNode, PropertyReference]) -> str:
+    def get_output_identifier(self, obj: Union[FieldNode, PropertyReference], index: Optional[bool]=True) -> str:
         """
         Returns the identifier string that best represents the output object.
 
@@ -203,8 +160,16 @@ class Hwif:
         raises an exception if obj is invalid
         """
         if isinstance(obj, FieldNode):
-            path = get_indexed_path(self.top_node, obj)
-            return "hwif_out." + path + ".value"
+            p = IndexedPath(self.top_node, obj)
+            hwif_out = f"hwif_out_{p.path}_value"
+            if not 0 == len(p.index) and index:
+                hwif_out += f"[({p.width}*("
+                for i in range(len(p.array_dimensions)-1, -1, -1):
+                    if not i == len(p.array_dimensions)-1:
+                        hwif_out += f"+{p.array_dimensions[i-1]}*"
+                    hwif_out += f"{p.index[i]}"
+                hwif_out += f"))+:{p.width}]"
+            return hwif_out
         elif isinstance(obj, PropertyReference):
             # TODO: this might be dead code.
             # not sure when anything would call this function with a prop ref
@@ -227,4 +192,4 @@ class Hwif:
                 "intr", "halt",
             }
         path = get_indexed_path(self.top_node, node)
-        return "hwif_out." + path + "." + prop
+        return "hwif_out_" + path + "_" + prop

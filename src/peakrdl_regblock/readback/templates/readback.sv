@@ -9,7 +9,8 @@ logic [{{cpuif.data_width-1}}:0] readback_array[{{array_size}}];
 // fanin stage
 logic [{{cpuif.data_width-1}}:0] readback_array_c[{{fanin_array_size}}];
 for(genvar g=0; g<{{fanin_loop_iter}}; g++) begin
-    always_comb begin
+    // always_comb begin
+    always @(*) begin 
         automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
         readback_data_var = '0;
         for(int i=g*{{fanin_stride}}; i<((g+1)*{{fanin_stride}}); i++) readback_data_var |= readback_array[i];
@@ -19,8 +20,9 @@ end
 {%- if fanin_residual_stride == 1 %}
 assign readback_array_c[{{fanin_array_size-1}}] = readback_array[{{array_size-1}}];
 {%- elif fanin_residual_stride > 1 %}
-always_comb begin
-    automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
+// always_comb begin
+always @(*) begin 
+    logic [{{cpuif.data_width-1}}:0] readback_data_var;
     readback_data_var = '0;
     for(int i={{(fanin_array_size-1) * fanin_stride}}; i<{{array_size}}; i++) readback_data_var |= readback_array[i];
     readback_array_c[{{fanin_array_size-1}}] = readback_data_var;
@@ -44,8 +46,9 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
 end
 
 // Reduce the array
-always_comb begin
-    automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
+// always_comb begin
+always @(*) begin 
+    logic [{{cpuif.data_width-1}}:0] readback_data_var;
     readback_done = readback_done_r;
     readback_err = '0;
     readback_data_var = '0;
@@ -56,8 +59,9 @@ end
 {%- else %}
 
 // Reduce the array
-always_comb begin
-    automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
+// always_comb begin
+always @(*) begin 
+    logic [{{cpuif.data_width-1}}:0] readback_data_var;
     {%- if ds.has_external_addressable %}
     readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_strb_is_external;
     {%- else %}

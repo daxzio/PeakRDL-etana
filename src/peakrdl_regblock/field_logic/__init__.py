@@ -10,7 +10,7 @@ from . import hw_write
 from . import hw_set_clr
 from . import hw_interrupts
 
-from ..utils import get_indexed_path
+from ..utils import IndexedPath
 from ..sv_int import SVInt
 
 from .generators import CombinationalStructGenerator, FieldStorageStructGenerator, FieldLogicGenerator
@@ -67,32 +67,47 @@ class FieldLogic:
     #---------------------------------------------------------------------------
     # Field utility functions
     #---------------------------------------------------------------------------
-    def get_storage_identifier(self, field: 'FieldNode') -> str:
+    def get_storage_identifier(self, field: 'FieldNode', declare: bool=False) -> str:
         """
         Returns the Verilog string that represents the storage register element
         for the referenced field
         """
         assert field.implements_storage
-        path = get_indexed_path(self.top_node, field)
-        return f"field_storage.{path}.value"
+        p = IndexedPath(self.top_node, field)
+        s = f"field_storage_{p.path}_value"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+        return s
 
-    def get_next_q_identifier(self, field: 'FieldNode') -> str:
+    def get_next_q_identifier(self, field: 'FieldNode', declare: bool=False) -> str:
         """
         Returns the Verilog string that represents the storage register element
         for the delayed 'next' input value
         """
         assert field.implements_storage
-        path = get_indexed_path(self.top_node, field)
-        return f"field_storage.{path}.next_q"
+        p = IndexedPath(self.top_node, field)
+        s = f"field_storage_{p.path}_next_q"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+        return s
 
-    def get_field_combo_identifier(self, field: 'FieldNode', name: str) -> str:
+    def get_field_combo_identifier(self, field: 'FieldNode', name: str, declare: bool=False) -> str:
         """
         Returns a Verilog string that represents a field's internal combinational
         signal.
         """
         assert field.implements_storage
-        path = get_indexed_path(self.top_node, field)
-        return f"field_combo.{path}.{name}"
+        p = IndexedPath(self.top_node, field)
+        s = f"field_combo_{p.path}_{name}"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+        return s
 
     def get_counter_incr_strobe(self, field: 'FieldNode') -> str:
         """
@@ -187,16 +202,16 @@ class FieldLogic:
             wstrb = self.exp.write_buffering.get_write_strobe(field)
             return f"{rstrb} || {wstrb}"
         elif buffer_reads and not buffer_writes:
-            strb = self.exp.dereferencer.get_access_strobe(field)
+            p = self.exp.dereferencer.get_access_strobe(field)
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
-            return f"{rstrb} || ({strb} && decoded_req_is_wr)"
+            return f"{rstrb} || ({p.path} && decoded_req_is_wr)"
         elif not buffer_reads and buffer_writes:
-            strb = self.exp.dereferencer.get_access_strobe(field)
+            p = self.exp.dereferencer.get_access_strobe(field)
             wstrb = self.exp.write_buffering.get_write_strobe(field)
-            return f"{wstrb} || ({strb} && !decoded_req_is_wr)"
+            return f"{wstrb} || ({p.path} && !decoded_req_is_wr)"
         else:
-            strb = self.exp.dereferencer.get_access_strobe(field)
-            return strb
+            p = self.exp.dereferencer.get_access_strobe(field)
+            return p
 
     def get_rd_swacc_identifier(self, field: 'FieldNode') -> str:
         """
@@ -207,8 +222,8 @@ class FieldLogic:
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
             return rstrb
         else:
-            strb = self.exp.dereferencer.get_access_strobe(field)
-            return f"{strb} && !decoded_req_is_wr"
+            p = self.exp.dereferencer.get_access_strobe(field)
+            return f"{p.path} && !decoded_req_is_wr"
 
     def get_wr_swacc_identifier(self, field: 'FieldNode') -> str:
         """
@@ -219,8 +234,8 @@ class FieldLogic:
             wstrb = self.exp.write_buffering.get_write_strobe(field)
             return wstrb
         else:
-            strb = self.exp.dereferencer.get_access_strobe(field)
-            return f"{strb} && decoded_req_is_wr"
+            p = self.exp.dereferencer.get_access_strobe(field)
+            return f"{p.path} && decoded_req_is_wr"
 
     def get_swmod_identifier(self, field: 'FieldNode') -> str:
         """
@@ -240,54 +255,66 @@ class FieldLogic:
                 return wstrb
             else:
                 # Unbuffered. Use decoder strobe directly
-                astrb = self.exp.dereferencer.get_access_strobe(field)
-                return f"{astrb} && decoded_req_is_wr"
+                p = self.exp.dereferencer.get_access_strobe(field)
+                return f"{p.path} && decoded_req_is_wr"
 
         if w_modifiable and r_modifiable:
             # assert swmod on both sw read and write
-            astrb = self.exp.dereferencer.get_access_strobe(field)
+            p = self.exp.dereferencer.get_access_strobe(field)
             if buffer_writes or buffer_reads:
                 if buffer_reads:
                     rstrb = self.exp.read_buffering.get_trigger(field.parent)
                 else:
-                    rstrb = f"{astrb} && !decoded_req_is_wr"
+                    rstrb = f"{p.path} && !decoded_req_is_wr"
 
                 if buffer_writes:
                     wstrb = self.exp.write_buffering.get_write_strobe(field)
                 else:
-                    wstrb = f"{astrb} && decoded_req_is_wr"
+                    wstrb = f"{p.path} && decoded_req_is_wr"
 
                 return f"{wstrb} || {rstrb}"
             else:
                 # Unbuffered. Use decoder strobe directly
-                astrb = self.exp.dereferencer.get_access_strobe(field)
-                return astrb
+                p = self.exp.dereferencer.get_access_strobe(field)
+                return p
 
         if not w_modifiable and r_modifiable:
             # assert swmod only on sw read
-            astrb = self.exp.dereferencer.get_access_strobe(field)
+            p = self.exp.dereferencer.get_access_strobe(field)
             if buffer_reads:
                 rstrb = self.exp.read_buffering.get_trigger(field.parent)
             else:
-                rstrb = f"{astrb} && !decoded_req_is_wr"
+                rstrb = f"{p.path} && !decoded_req_is_wr"
             return rstrb
 
         # Not sw modifiable
         return "1'b0"
 
-    def get_parity_identifier(self, field: 'FieldNode') -> str:
+    def get_parity_identifier(self, field: 'FieldNode', declare: bool=False) -> str:
         """
         Returns the identifier for the stored 'golden' parity value of the field
         """
-        path = get_indexed_path(self.top_node, field)
-        return f"field_storage.{path}.parity"
+        p = IndexedPath(self.top_node, field)
+        s = f"field_storage_{p.path}_parity"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+#         print(s)
+        return s
 
-    def get_parity_error_identifier(self, field: 'FieldNode') -> str:
+    def get_parity_error_identifier(self, field: 'FieldNode', declare: bool=False) -> str:
         """
         Returns the identifier for whether the field currently has a parity error
         """
-        path = get_indexed_path(self.top_node, field)
-        return f"field_combo.{path}.parity_error"
+        p = IndexedPath(self.top_node, field)
+        s = f"field_combo_{p.path}_parity_error"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+#         print(s)
+        return s
 
     def has_next_q(self, field: 'FieldNode') -> bool:
         """

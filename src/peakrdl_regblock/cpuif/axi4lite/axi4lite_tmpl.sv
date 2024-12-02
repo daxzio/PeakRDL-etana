@@ -67,7 +67,8 @@ always_comb begin
 end
 
 // Request dispatch
-always_comb begin
+// always_comb begin
+always @(*) begin 
     cpuif_wr_data = axil_wdata;
     for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
         cpuif_wr_biten[i*8 +: 8] = {8{axil_wstrb[i]}};
@@ -152,11 +153,6 @@ always_comb begin
 end
 
 {%- else %}
-struct {
-    logic is_wr;
-    logic err;
-    logic [{{cpuif.data_width-1}}:0] rdata;
-} axil_resp_buffer[{{roundup_pow2(cpuif.resp_buffer_size)}}];
 {%- if not is_pow2(cpuif.resp_buffer_size) %}
 // axil_resp_buffer is intentionally padded to the next power of two despite
 // only requiring {{cpuif.resp_buffer_size}} entries.
@@ -166,13 +162,16 @@ struct {
 
 logic [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_wptr;
 logic [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_rptr;
+logic [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_is_wr;
+logic [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_err;
+logic [{{cpuif.data_width-1}}:0] axil_resp_buffer_rdata [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0];
 
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
         for(int i=0; i<{{cpuif.resp_buffer_size}}; i++) begin
-            axil_resp_buffer[i].is_wr <= '0;
-            axil_resp_buffer[i].err <= '0;
-            axil_resp_buffer[i].rdata <= '0;
+            axil_resp_buffer_is_wr[i] <= '0;
+            axil_resp_buffer_err  [i] <= '0;
+            axil_resp_buffer_rdata[i] <= '0;
         end
         axil_resp_wptr <= '0;
         axil_resp_rptr <= '0;
@@ -180,13 +179,13 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
         // Store responses in buffer until AXI response channel accepts them
         if(cpuif_rd_ack || cpuif_wr_ack) begin
             if(cpuif_rd_ack) begin
-                axil_resp_buffer[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].is_wr <= '0;
-                axil_resp_buffer[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].err <= cpuif_rd_err;
-                axil_resp_buffer[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].rdata <= cpuif_rd_data;
+                axil_resp_buffer_is_wr[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]] <= '0;
+                axil_resp_buffer_err  [axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]] <= cpuif_rd_err;
+                axil_resp_buffer_rdata[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]] <= cpuif_rd_data;
 
             end else if(cpuif_wr_ack) begin
-                axil_resp_buffer[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].is_wr <= '1;
-                axil_resp_buffer[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].err <= cpuif_wr_err;
+                axil_resp_buffer_is_wr[axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]] <= '1;
+                axil_resp_buffer_err  [axil_resp_wptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]] <= cpuif_wr_err;
             end
             {%- if is_pow2(cpuif.resp_buffer_size) %}
             axil_resp_wptr <= axil_resp_wptr + 1'b1;
@@ -216,12 +215,13 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-always_comb begin
+// always_comb begin
+always @(*) begin 
     axil_resp_acked = '0;
     {{cpuif.signal("bvalid")}} = '0;
     {{cpuif.signal("rvalid")}} = '0;
     if(axil_resp_rptr != axil_resp_wptr) begin
-        if(axil_resp_buffer[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].is_wr) begin
+        if(axil_resp_buffer_is_wr[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]]) begin
             {{cpuif.signal("bvalid")}} = '1;
             if({{cpuif.signal("bready")}}) axil_resp_acked = '1;
         end else begin
@@ -230,8 +230,8 @@ always_comb begin
         end
     end
 
-    {{cpuif.signal("rdata")}} = axil_resp_buffer[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].rdata;
-    if(axil_resp_buffer[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]].err) begin
+    {{cpuif.signal("rdata")}} = axil_resp_buffer_rdata[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]];
+    if(axil_resp_buffer_err[axil_resp_rptr[{{clog2(cpuif.resp_buffer_size)-1}}:0]]) begin
         {{cpuif.signal("bresp")}} = 2'b10;
         {{cpuif.signal("rresp")}} = 2'b10;
     end else begin

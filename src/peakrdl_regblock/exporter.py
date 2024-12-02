@@ -183,10 +183,6 @@ class RegblockExporter:
 
         # Write out design
         os.makedirs(output_dir, exist_ok=True)
-        package_file_path = os.path.join(output_dir, self.ds.package_name + ".sv")
-        template = self.jj_env.get_template("package_tmpl.sv")
-        stream = template.stream(context)
-        stream.dump(package_file_path)
 
         module_file_path = os.path.join(output_dir, self.ds.module_name + ".sv")
         template = self.jj_env.get_template("module_tmpl.sv")
@@ -242,6 +238,7 @@ class DesignState:
 
         self.has_external_block = False
         self.has_external_addressable = False
+        self.has_array_signals = False
 
         self.has_paritycheck = False
 

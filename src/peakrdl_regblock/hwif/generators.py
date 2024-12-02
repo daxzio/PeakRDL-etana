@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Optional, List, Type
 
 from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode
 from systemrdl.walker import WalkerAction
+from systemrdl.walker import RDLListener, RDLWalker
 
 from ..struct_generator import RDLFlatStructGenerator
 from ..identifier_filter import kw_filter as kwf
@@ -47,6 +48,48 @@ class HWIFStructGenerator(RDLFlatStructGenerator):
             self.hwif.hwif_report_file.write(f"{path}.{name}{suffix}\n")
 
 #-------------------------------------------------------------------------------
+
+class InputLogicGenerator(RDLListener):
+
+    def __init__(self, hwif: 'Hwif') -> None:
+        self.hwif = hwif
+        self.hwif_in = []
+        self.hwif_out = []
+        super().__init__()
+
+    def get_logic(self, node: 'Node') -> Optional[str]:
+
+        walker = RDLWalker()
+        walker.walk(node, self, skip_top=True)
+
+        return self.finish()
+    
+    def finish(self) -> Optional[str]:
+        self.lines = []
+        self.lines.extend(self.hwif_in)
+        self.lines.extend(self.hwif_out)
+        return self.lines
+
+    def enter_Field(self, node: 'FieldNode') -> None:
+        
+        if self.hwif.has_value_input(node):
+            input_identifier = self.hwif.get_input_identifier(node)
+            width = node.width
+            s = f"input wire [{width-1}:0] {input_identifier}"
+            self.hwif_in.append(s)
+#             print(s)
+
+        if self.hwif.has_value_output(node):
+            output_identifier = self.hwif.get_output_identifier(node, index=False)
+            width = node.width
+            if node.parent.is_array:
+                for w in node.parent.array_dimensions:
+                    width *= w
+            s = f"output logic [{width-1}:0] {output_identifier}"
+            self.hwif_out.append(s)
+ 
+#     def exit_Field(self, node: 'FieldNode') -> None:
+#         self.pop_struct()
 
 class InputStructGenerator_Hier(HWIFStructGenerator):
     def __init__(self, hwif: 'Hwif') -> None:

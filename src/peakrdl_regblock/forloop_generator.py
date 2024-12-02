@@ -21,14 +21,16 @@ class LoopBody(Body):
         self.dim = dim
         self.iterator = iterator
         self.i_type = i_type
+        self.pre_loop = ""
 
     def __str__(self) -> str:
         s = super().__str__()
-        return (
-            f"for({self.i_type} {self.iterator}=0; {self.iterator}<{self.dim}; {self.iterator}++) begin\n"
-            + textwrap.indent(s, "    ")
-            + "\nend"
-        )
+        val = ""
+        val = self.pre_loop
+        val += f"for({self.i_type} {self.iterator}=0; {self.iterator}<{self.dim}; {self.iterator}++) begin\n"
+        val += textwrap.indent(s, "    ")
+        val += "\nend"
+        return val
 
 
 class ForLoopGenerator:
@@ -38,6 +40,7 @@ class ForLoopGenerator:
     def __init__(self) -> None:
         self._loop_level = 0
         self._stack = [] # type: List[Body]
+        self.top = ""
 
     @property
     def current_loop(self) -> Body:
@@ -51,6 +54,10 @@ class ForLoopGenerator:
 
     def add_content(self, s: str) -> None:
         self.current_loop.children.append(s)
+
+    def add_top(self) -> None:
+        if not "" == self.top:
+            self.current_loop.children.insert(0, self.top)
 
     def pop_loop(self) -> None:
         b = self._stack.pop()
@@ -66,6 +73,7 @@ class ForLoopGenerator:
         self._stack.append(b)
 
     def finish(self) -> Optional[str]:
+        self.add_top()
         b = self._stack.pop()
         assert not self._stack
 
@@ -81,6 +89,10 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
         walker.walk(node, self, skip_top=True)
         return self.finish()
 
+    def push_top(self, s: str) -> None:
+        self.top += "\n"
+        self.top += s
+
     def enter_AddressableComponent(self, node: 'AddressableNode') -> None:
         if not node.is_array:
             return
@@ -94,3 +106,4 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
 
         for _ in node.array_dimensions:
             self.pop_loop()
+
