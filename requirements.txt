@@ -1,0 +1,8 @@
+cocotb
+peakrdl
+pytest 
+mypy
+black
+pyflakes
+cocotb_bus
+git+https://github.com/daxzio/cocotbext-apb.git
