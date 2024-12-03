@@ -1,5 +1,4 @@
-name: Test Cocotbext APB
-
+name: Test PeakRDL Etana
 on: 
   push: 
   pull_request:
