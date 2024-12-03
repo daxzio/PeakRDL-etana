@@ -87,7 +87,7 @@ jobs:
       - name: Run Tests
         run: |
           unset PYTHONHOME 
-#           make SIM=${CI_TARGET}
+          make SIM=${CI_TARGET}
     
   pypy_release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
