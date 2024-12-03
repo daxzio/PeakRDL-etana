@@ -15,6 +15,7 @@ endif
 include $(shell cocotb-config --makefiles)/Makefile.sim
 include ${WORK_BASE}/rtlflo/xilinx_helper.mak
 include ${WORK_BASE}/rtlflo/verible_helper.mak
+include ${WORK_BASE}/rtlflo/yosys_helper.mak
 include ${WORK_BASE}/rtlflo/git_helper.mak
 
 # DEFINES += COCOTB_RUNNING=1

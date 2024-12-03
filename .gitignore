@@ -22,3 +22,4 @@ etana-apb4/
 results.xml
 sim_build/
 *.vcd
+synth_yosys.v
