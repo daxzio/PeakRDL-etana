@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "peakrdl-regblock"
+name = "peakrdl-etana"
 dynamic = ["version"]
 requires-python = ">=3.6"
 dependencies = [
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 authors = [
-    {name="Alex Mykyta"},
+    {name="Dave Keeshan"},
 ]
 description = "Compile SystemRDL into a SystemVerilog control/status register (CSR) block"
 readme = "README.md"
@@ -27,13 +27,12 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
@@ -42,13 +41,13 @@ classifiers = [
 ]
 
 [project.urls]
-Source = "https://github.com/SystemRDL/PeakRDL-regblock"
-Tracker = "https://github.com/SystemRDL/PeakRDL-regblock/issues"
-Changelog = "https://github.com/SystemRDL/PeakRDL-regblock/releases"
-Documentation = "https://peakrdl-regblock.readthedocs.io/"
+Source = "https://github.com/daxzio/PeakRDL-etana"
+Tracker = "https://github.com/daxzio/PeakRDL-etana/issues"
+Changelog = "https://github.com/daxzio/PeakRDL-etana/releases"
+Documentation = "https://peakrdl-etana.readthedocs.io/"
 
 [tool.setuptools.dynamic]
-version = {attr = "peakrdl_regblock.__about__.__version__"}
+version = {attr = "peakrdl_etana.__about__.__version__"}
 
 [project.entry-points."peakrdl.exporters"]
-regblock = "peakrdl_regblock.__peakrdl__:Exporter"
+etana = "peakrdl_etana.__peakrdl__:Exporter"
