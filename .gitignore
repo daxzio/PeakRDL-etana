@@ -12,8 +12,13 @@
 **/*.pb
 **/.Xil
 **/.coverage.*
-
+**/combined_results.xml
+apb2/
 build/
 dist/
 *.egg-info/
 .eggs/
+etana-apb4/
+results.xml
+sim_build/
+*.vcd

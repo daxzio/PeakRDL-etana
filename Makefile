@@ -3,16 +3,19 @@ SIM?=icarus
 default:
 	cd cocotb/test_read_fanin ; make clean apb4 sim ; ../rtlflo/combine_results.py
 	cd cocotb/test_read_fanin ; make clean apb4 sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
+	cd cocotb/test_parity ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 
 
 lint:
-	pyflakes cocotbext
+	pyflakes src
+	pyflakes cocotb
 
 mypy:
-	mypy cocotbext
+	mypy src
 
 format:
-	black cocotbext
+# 	black src
+	black cocotb
 
 dist:
 	rm -rf MANIFEST 
