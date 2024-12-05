@@ -18,7 +18,41 @@ class IndexedPath:
             self.width = self.target_node.width
         except AttributeError:
             self.width = None
-        
+            
+        self.inst_name = []
+        self.regwidth = []
+        self.rd_elem = []
+        self.wr_elem = []
+        last_lsb_rd = 0
+        last_lsb_wr = 0
+        for c in self.target_node.children():
+            self.inst_name.append(c.inst_name)
+            self.regwidth.append(c.width)
+            if c.is_sw_readable:
+                if c.lsb > last_lsb_rd:
+                    d = c.lsb-last_lsb_rd
+#                     print(True, d, f"{d}'b0")
+                    self.rd_elem.append([None, d, f"{d}'b0"])
+#                 print(c.inst_name, c.is_sw_readable, c.width, f"[{c.msb}:{c.lsb}]")
+                self.rd_elem.append([c.inst_name, c.width, f"[{c.msb}:{c.lsb}]"])
+                last_lsb_rd = c.msb+1
+            if c.is_sw_writable:
+                if c.lsb > last_lsb_wr:
+                    d = c.lsb-last_lsb_wr
+#                     print(True, d, f"{d}'b0")
+                    self.wr_elem.append([None, d, f"{d}'b0"])
+#                 print(c.inst_name, c.is_sw_readable, c.width, f"[{c.msb}:{c.lsb}]")
+                self.wr_elem.append([c.inst_name, c.width, f"[{c.msb}:{c.lsb}]"])
+                last_lsb_wr = c.msb+1
+#         print(self.elem)
+
+#         for c in self.target_node.children():
+# #             print(dir(c))
+#             print(c.lsb, c.msb)
+#             
+#         if not self.width == self.regwidth and not self.width is None:
+#             raise Exception(self.width, self.regwidth)
+     
         
         self.path = self.target_node.get_rel_path(self.top_node, empty_array_suffix="[!]", hier_separator="_")
         def kw_filter_repl(m: Match) -> str:
@@ -35,6 +69,16 @@ class IndexedPath:
         v = ""
         for i in self.index:
             v += f"[{i}]"
+        return v
+    
+#     @property
+#     def index_vector(self) -> str:
+#         v = ""
+#         if not 0 == len(self.index): 
+#             v += "["
+#             for i in self.index:
+#                 v += f"({i}*{self.regwidth})+"
+#             v += f":{self.regwidth}]"
         return v
     
     @property

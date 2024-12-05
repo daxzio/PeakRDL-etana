@@ -7,7 +7,7 @@ from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 
 from ..struct_generator import RDLStructGenerator
 from ..forloop_generator import RDLForLoopGenerator
-from ..utils import get_indexed_path
+from ..utils import IndexedPath
 from ..identifier_filter import kw_filter as kwf
 
 if TYPE_CHECKING:
@@ -341,8 +341,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
 
     def assign_external_reg_outputs(self, node: 'RegNode') -> None:
-        prefix = "hwif_out_" + get_indexed_path(self.exp.ds.top_node, node)
+        p = IndexedPath(self.exp.ds.top_node, node)
+        prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_access_strobe(node)
+        index_str = strb.index_str
+        strb = f"{strb.path}"
 
         width = min(self.exp.cpuif.data_width, node.get_property('regwidth'))
         if width != self.exp.cpuif.data_width:
@@ -350,11 +353,22 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         else:
             bslice = ""
 
+#         print(p.wr_elem)
+        if 0 == len(p.wr_elem):
+            inst_names = ["", bslice]
+#             raise
+        else:
+            inst_names = []
+            for e in p.wr_elem:
+                if not e[0] is None:
+                    inst_names.append([f"_{e[0]}", e[2]])
         context = {
             "has_sw_writable": node.has_sw_writable,
             "has_sw_readable": node.has_sw_readable,
             "prefix": prefix,
             "strb": strb,
+            "index_str": index_str,
+            "inst_names": inst_names,
             "bslice": bslice,
             "retime": self.ds.retime_external_reg,
             'get_always_ff_event': self.exp.dereferencer.get_always_ff_event,
@@ -364,8 +378,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.add_content(self.external_reg_template.render(context))
 
     def assign_external_block_outputs(self, node: 'AddressableNode') -> None:
-        prefix = "hwif_out_" + get_indexed_path(self.exp.ds.top_node, node)
+        p = IndexedPath(self.exp.ds.top_node, node)
+        prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
+        index_str = strb.index_str
         addr_width = node.size.bit_length()
 
         retime = False
@@ -379,6 +395,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         context = {
             "prefix": prefix,
             "strb": strb,
+            "index_str": index_str,
             "addr_width": addr_width,
             "retime": retime,
             'get_always_ff_event': self.exp.dereferencer.get_always_ff_event,

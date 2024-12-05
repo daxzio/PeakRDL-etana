@@ -71,10 +71,10 @@ class AddressDecode:
         assert node.external
         assert not isinstance(node, RegNode)
 #         path = get_indexed_path(self.top_node, node)
-        raise
+#         raise
         p = IndexedPath(self.top_node, node)
         p.path = "decoded_reg_strb_" + p.path
-        return p
+        return p.path
 
 class DecodeStrbGenerator(RDLForLoopGenerator):
 

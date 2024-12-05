@@ -15,6 +15,11 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         super().__init__()
         self.exp = exp
 
+    def has_external_write(self) -> bool:
+        if self.get_content(self.exp.ds.top_node) is None:
+            return False
+        return True
+
     def get_implementation(self) -> str:
         content = self.get_content(self.exp.ds.top_node)
         if content is None:
@@ -36,6 +41,11 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
     def __init__(self, exp: 'RegblockExporter') -> None:
         super().__init__()
         self.exp = exp
+
+    def has_external_read(self) -> bool:
+        if self.get_content(self.exp.ds.top_node) is None:
+            return False
+        return True
 
     def get_implementation(self) -> str:
         content = self.get_content(self.exp.ds.top_node)

@@ -53,7 +53,8 @@ module {{ds.module_name}}
     logic external_pending;
     logic external_wr_ack;
     logic external_rd_ack;
-    always_ff {{get_always_ff_event(cpuif.reset)}} begin
+//     always_ff {{get_always_ff_event(cpuif.reset)}} begin
+    always {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
             external_pending <= '0;
         end else begin
@@ -206,16 +207,19 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Write response
     //--------------------------------------------------------------------------
-{%- if ds.has_external_addressable %}
+// %- if ds.has_external_addressable %
+{%- if ext_write_acks.has_external_write() %}
 //     always_comb begin
     always @(*) begin 
-        automatic logic wr_ack;
+//         automatic logic wr_ack;
+        logic wr_ack;
         wr_ack = '0;
         {{ext_write_acks.get_implementation()|indent(8)}}
         external_wr_ack = wr_ack;
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
 {%- else %}
+    assign external_wr_ack = 0;
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
     // Writes are always granted with no error response
@@ -224,11 +228,13 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Readback
     //--------------------------------------------------------------------------
-{%- if ds.has_external_addressable %}
+//%- if ds.has_external_addressable %
+{%- if ext_read_acks.has_external_read() %}
     logic readback_external_rd_ack_c;
 //     always_comb begin
     always @(*) begin 
-        automatic logic rd_ack;
+//         automatic logic rd_ack;
+        logic rd_ack;
         rd_ack = '0;
         {{ext_read_acks.get_implementation()|indent(8)}}
         readback_external_rd_ack_c = rd_ack;

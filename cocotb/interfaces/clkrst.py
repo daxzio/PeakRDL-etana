@@ -52,17 +52,20 @@ class ClkReset:
         else:
             self.period = period
         # print(f"clock period {self.period} {self.clk_freq}")
-        self.clk = Clk(dut, period=self.period, clkname=clkname)
+        self._clk = Clk(dut, period=self.period, clkname=clkname)
         self.reset = Reset(
             dut,
-            self.clk,
+            self._clk,
             reset_length=reset_length,
             reset_sense=reset_sense,
             resetname=resetname,
         )
+    @property
+    def clk(self):
+        return self._clk.clk
 
     async def wait_clkn(self, length=1):
-        await self.clk.wait_clkn(length)
+        await self._clk.wait_clkn(length)
 
     async def end_test(self, length=10):
         await self.wait_clkn(length)

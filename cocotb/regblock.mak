@@ -23,8 +23,8 @@ apbx:
 	mkdir -p ./regblock-apbx
 	peakrdl regblock ./regblock.rdl -o regblock-apbx/ --cpuif apb4-flat --hwif-report ${ELAB_ARGS}
 
-clean::
-	rm -rf ${BASE}-apb4
+# clean::
+# 	rm -rf ${BASE}-apb4 regblock-apbx regblock-axi4-lite
 
 # sim:: apb4 
 
