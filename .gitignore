@@ -25,3 +25,4 @@ sim_build/
 *.vcd
 synth_yosys.v
 cocotbext
+top_edit.sv
