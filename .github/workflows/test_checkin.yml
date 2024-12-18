@@ -19,11 +19,11 @@ jobs:
       - name: Run lint
         continue-on-error: true
         run: |
-          pyflakes cocotbext
+          make lint
       - name: Run Type check
         continue-on-error: true
         run: |
-          mypy cocotbext
+          make mypy
  
   build_icarus_linux:
     uses: ./.github/workflows/setup_icarus.yml
