@@ -1,10 +1,11 @@
 import re
 from typing import TYPE_CHECKING, Optional, List, Type
 
-from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode
+from systemrdl.node import FieldNode, RegNode, RegfileNode, AddrmapNode, MemNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLListener, RDLWalker
 
+from ..utils import IndexedPath
 from ..struct_generator import RDLFlatStructGenerator
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
@@ -71,73 +72,145 @@ class InputLogicGenerator(RDLListener):
         self.lines.extend(self.hwif_out)
         return self.lines
 
+#     def enter_Regfile(self, node: 'RegfileNode') -> None:
+#         print("Hello", node.inst_name, node)
+#         for c in node.children():
+#             print("Hello3", c.inst_name, c)
+
+    def enter_Addrmap(self, node: 'AddrmapNode') -> None:
+        in_port = []
+        out_port = []
+        ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
+        ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
+        width = node.total_size
+#         print(dir(node))
+#         print(node.total_size)
+        addr_width = node.size.bit_length()
+        in_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
+        in_port.append(f"input logic [0:0] {ext_in}_rd_ack")
+        in_port.append(f"input logic [0:0] {ext_in}_wr_ack")
+        out_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
+        out_port.append(f"output logic [0:0] {ext_out}_req")
+        out_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
+        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
+        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+        self.hwif_in.extend(in_port)
+        self.hwif_in.extend(out_port)
+   
+    def enter_Mem(self, node: 'MemNode') -> None:
+        in_port = []
+        out_port = []
+        ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
+        ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
+        width = node.total_size
+#         print(dir(node))
+#         print(node.total_size)
+        addr_width = node.size.bit_length()
+        in_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
+        in_port.append(f"input logic [0:0] {ext_in}_rd_ack")
+        in_port.append(f"input logic [0:0] {ext_in}_wr_ack")
+        out_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
+        out_port.append(f"output logic [0:0] {ext_out}_req")
+        out_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
+        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
+        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+        self.hwif_in.extend(in_port)
+        self.hwif_in.extend(out_port)
+   
     def enter_Reg(self, node: 'RegNode') -> None:
         in_port = []
         out_port = []
         first_read = True
         first_write = True
         
+        n_subwords=1
+        if isinstance(node, RegNode):
+            n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
+#             node.set_property("n_subwords", n_subwords)
+        regfile = False
+        if isinstance(node, MemNode):
+            raise
+        if isinstance(node, AddrmapNode):
+            raise
+        if isinstance(node.parent, RegfileNode):
+            regfile = True   
+            ext_in = self.hwif.get_external_in_prefix(node)
+            ext_out = self.hwif.get_external_out_prefix(node)
+#             print(f"xx {ext_out} {ext_in}")
+#             print(f"output logic [4:0] {p.path}_addr")
         
+        vector = 1
+        z = ""
+        if node.is_array:
+            for w in node.array_dimensions:
+                z = f"[{w-1}:0]" + z
+                vector *= w
+        
+        if regfile:
+            addr_width = node.parent.size.bit_length()
+            out_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
         for c in node.children():
-            print(self.hwif.has_value_input(c), self.hwif.has_value_output(c))
             if not self.hwif.has_value_input(c) and not self.hwif.has_value_output(c):
                 continue
             
-            width = c.width
-            vector = 1
-            x = f"[{width-1}:0]"
-            if node.is_array:
-                for w in node.array_dimensions:
-                    x = f"[{w-1}:0]" + x
-                    width *= w
-                    vector *= w
+            if 1 == n_subwords:
+                width = c.width
+            else:
+                width = node.get_property("accesswidth")
+            x = z + f"[{width-1}:0]"
+            width = width*vector
             if self.hwif.has_value_output(c):
                 output_identifier = self.hwif.get_output_identifier(c, index=False)
                 input_identifier = re.sub('_out_', '_in_', output_identifier)
             if self.hwif.has_value_input(c):
                 input_identifier = self.hwif.get_input_identifier(c)
-#             print(input_identifier, c.inst_name, c.is_sw_writable, c.is_hw_writable, )
-            in_id = re.sub(f'_{c.inst_name}.+', '', input_identifier)
-            out_id = re.sub('_in_', '_out_', in_id)
-       
+            if regfile:
+                in_id = ext_in
+                out_id = ext_out
+            else:
+                in_id = re.sub(f'_{c.inst_name}.+', '', input_identifier)
+                out_id = re.sub('_in_', '_out_', in_id)
+            
             if c.external:
+                for path in self.hwif.get_external_rd_data(node):
+                    if c.inst_name in path:
+                        in_port.append(f"input wire {x} {path}")
                 if first_read:
-                    out_port.append(f"output logic [{vector-1}:0] {out_id}_req")
+                    vector_extend = vector*n_subwords
+                    out_port.append(f"output logic [{vector_extend-1}:0] {out_id}_req")
                     out_port.append(f"output logic [{vector-1}:0] {out_id}_req_is_wr")
-                    if c.is_sw_readable:
-                        in_port.append(f"input wire [{vector-1}:0] {in_id}_rd_ack")
+                    if c.is_sw_readable or regfile:
+#                         in_port.append(f"input wire [{vector-1}:0] {in_id}_rd_ack")
+                        in_port.append(f"input wire [{vector-1}:0] {self.hwif.get_external_rd_ack(node)}")
                         first_read = False
                 if first_write:
-                    if c.is_sw_writable:
-#                         out_port.append(f"output logic [{width-1}:0] {out_id}_wr_data")
-#                         out_port.append(f"output logic [{width-1}:0] {out_id}_wr_biten")
-                        in_port.append(f"input wire [{vector-1}:0] {in_id}_wr_ack")
+                    if c.is_sw_writable or regfile:
+                        in_port.append(f"input wire [{vector-1}:0] {self.hwif.get_external_wr_ack(node)}")
                         first_write = False
-                if c.is_sw_writable:
+                if c.is_sw_writable or regfile:
                     out_port.append(f"output logic {x} {out_id}_{c.inst_name}_wr_data")
                     out_port.append(f"output logic {x} {out_id}_{c.inst_name}_wr_biten")
-                if c.is_sw_readable:
-                    in_port.append(f"input wire {x} {in_id}_{c.inst_name}_rd_data")
 
             if self.hwif.has_value_input(c):
                 if c.external:
                     pass
 #                       if c.is_hw_writable:
                 else:
-                    in_port.append(f"input wire [{width-1}:0] {input_identifier}")
+                    in_port.append(f"input wire {x} {input_identifier}")
+
 
             if self.hwif.has_value_output(c):
                   if c.external:
                       pass
                   else:
-                      out_port.append(f"output logic [{width-1}:0] {output_identifier}")
-                      print(c.external, in_port)
+                      out_port.append(f"output logic {x} {output_identifier}")
                     
 
         self.hwif_in.extend(in_port)
         self.hwif_in.extend(out_port)
 
 #     def enter_Field(self, node: 'FieldNode') -> None:
+#         raise
 #         in_port = []
 #         out_port = []
 #         if self.hwif.has_value_input(node) and self.hwif.has_value_output(node):

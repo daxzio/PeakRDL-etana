@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, List
 
-from systemrdl.node import RegNode, AddressableNode
+from systemrdl.node import RegNode, RegfileNode, MemNode, AddressableNode
 from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator, LoopBody
@@ -80,13 +80,42 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         self.current_offset = start_offset + n_regs * dim
 
 
-    def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
+#     def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
+#         super().enter_AddressableComponent(node)
+# 
+#         if node.external and not isinstance(node, RegNode):
+#             # External block
+#             if isinstance(node, RegfileNode):
+#                 for c in node.children():
+#                     x = self.exp.hwif.get_external_rd_ack(c, True)
+#             strb = x
+#             data = self.exp.hwif.get_external_rd_data(node, True)
+# 
+#             self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
+#             self.current_offset += 1
+#             return WalkerAction.SkipDescendants
+# 
+#         return WalkerAction.Continue
+
+    def enter_Mem(self, node: 'MemNode') -> WalkerAction:
+        super().enter_AddressableComponent(node)
+        if node.external:
+            strb = self.exp.hwif.get_external_rd_ack(node, True)
+            data = self.exp.hwif.get_external_rd_data(node, True)
+            self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
+            self.current_offset += 1
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Regfile(self, node: 'RegfileNode') -> WalkerAction:
         super().enter_AddressableComponent(node)
 
-        if node.external and not isinstance(node, RegNode):
-            # External block
-            strb = self.exp.hwif.get_external_rd_ack(node)
-            data = self.exp.hwif.get_external_rd_data(node)
+        if node.external:
+            for c in node.children():
+                x = self.exp.hwif.get_external_rd_ack(c, True)
+            strb = x
+            data = self.exp.hwif.get_external_rd_data(node, True)
+
             self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
             self.current_offset += 1
             return WalkerAction.SkipDescendants
@@ -123,8 +152,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         return WalkerAction.SkipDescendants
 
     def process_external_reg(self, node: RegNode) -> None:
-        strb = self.exp.hwif.get_external_rd_ack(node)
-        data = self.exp.hwif.get_external_rd_data(node)
+        strb = self.exp.hwif.get_external_rd_ack(node, True)
+        data = self.exp.hwif.get_external_rd_data(node, True)
         regwidth = node.get_property('regwidth')
         if regwidth < self.exp.cpuif.data_width:
             self.add_content(f"assign readback_array[{self.current_offset_str}][{self.exp.cpuif.data_width-1}:{regwidth}] = '0;")

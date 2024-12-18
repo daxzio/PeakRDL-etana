@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
-import time
-import datetime
-import re
-from glob import glob
-from pathlib import Path
-from parseProject import parseProject
 from fpga import Project
 
 

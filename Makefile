@@ -5,6 +5,7 @@ default:
 	cd cocotb/test_read_fanin ; make clean apb4 sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
 	cd cocotb/test_parity ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 	cd cocotb/test_onread_onwrite ; make clean apb4 sim  ; ../rtlflo/combine_results.py
+	cd cocotb/test_external ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 
 
 lint:
@@ -17,6 +18,8 @@ mypy:
 format:
 # 	black src
 	black cocotb
+
+black: format
 
 dist:
 	rm -rf MANIFEST 

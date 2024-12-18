@@ -5,14 +5,13 @@ import time
 import datetime
 import re
 from glob import glob
-from pathlib import Path
 from parseProject import parseProject
 
 
 class vivado_runner:
 
     def __init__(self):
-        cwd = os.getcwd().split(os.sep)[-1]
+        #         cwd = os.getcwd().split(os.sep)[-1]
         self.project = parseProject()
         self.project.parseSetup()
         # self.name = f"{self.project.synth_top}_{cwd}"
@@ -50,13 +49,13 @@ class vivado_runner:
             f"create_project -force {self.name} {self.dir} -part {self.project.part}"
         )
         # self.lines.append(f"set_property target_language VHDL [current_project]")
-        self.lines.append(f"set_property target_language Verilog [current_project]")
+        self.lines.append("set_property target_language Verilog [current_project]")
 
     def open_project(self):
         self.lines.append(f'open_project "{self.xpr}"')
 
     def close_project(self):
-        self.lines.append(f"close_project")
+        self.lines.append("close_project")
 
     def add_files(self):
         files = []

@@ -49,7 +49,7 @@ class dkTest(baseTest):
                 long_version = True
         if short_version and long_version:
             raise Exception(
-                f"Short version and long version of axi file names used, pick one!"
+                "Short version and long version of axi file names used, pick one!"
             )
 
         for i, file in enumerate(files):

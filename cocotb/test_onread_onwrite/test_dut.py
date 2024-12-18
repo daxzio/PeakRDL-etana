@@ -1,7 +1,9 @@
 from cocotb import test
 
 from interfaces.clkrst import ClkReset
-from interfaces.apb_driver import ApbDriver
+
+from cocotbext.apb import ApbMaster
+from cocotbext.apb import ApbBus
 
 
 class testbench:
@@ -10,7 +12,10 @@ class testbench:
         self.cr = ClkReset(dut, period, reset_sense=reset_sense, resetname="rst")
         self.dut = dut
 
-        self.intf = ApbDriver(dut)
+        apb_prefix = "s_apb"
+        self.bus = ApbBus.from_prefix(dut, apb_prefix)
+        clk_name = "clk"
+        self.intf = ApbMaster(self.bus, getattr(dut, clk_name))
 
 
 @test()

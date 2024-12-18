@@ -1,6 +1,6 @@
 from cocotb.clock import Clock
 from cocotb import start_soon
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
 
 
 class Clk:
@@ -51,7 +51,7 @@ class ClkReset:
             self.period = 1000 / self.clk_freq
         else:
             self.period = period
-        # print(f"clock period {self.period} {self.clk_freq}")
+        print(f"clock period {self.period} {self.clk_freq}")
         self._clk = Clk(dut, period=self.period, clkname=clkname)
         self.reset = Reset(
             dut,
@@ -60,6 +60,7 @@ class ClkReset:
             reset_sense=reset_sense,
             resetname=resetname,
         )
+
     @property
     def clk(self):
         return self._clk.clk

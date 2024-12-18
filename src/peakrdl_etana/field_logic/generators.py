@@ -362,6 +362,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             for e in p.wr_elem:
                 if not e[0] is None:
                     inst_names.append([f"_{e[0]}", e[2]])
+#         print(p.wr_elem)
         context = {
             "has_sw_writable": node.has_sw_writable,
             "has_sw_readable": node.has_sw_readable,
@@ -379,11 +380,18 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def assign_external_block_outputs(self, node: 'AddressableNode') -> None:
         p = IndexedPath(self.exp.ds.top_node, node)
+#         print(self.exp.ds.hwif.hwif_out_str)
         prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
-        index_str = strb.index_str
+        index_str = p.index_str
         addr_width = node.size.bit_length()
-
+        inst_names = []
+        if 0 == len(p.inst_names):
+            inst_names.append("")
+        else:
+            for inst in p.inst_names:
+                inst_names.append(f"_{inst}")
+            
         retime = False
         if isinstance(node, RegfileNode):
             retime = self.ds.retime_external_regfile
@@ -394,6 +402,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
         context = {
             "prefix": prefix,
+            "inst_names": inst_names,
             "strb": strb,
             "index_str": index_str,
             "addr_width": addr_width,

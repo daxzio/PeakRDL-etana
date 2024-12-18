@@ -10,14 +10,14 @@ class ApbDriver:
     def __init__(
         self, dut, apb_prefix="s_apb", clk_name="clk", reset_name=None, seednum=None
     ):
-        self.log = logging.getLogger(f"cocotb.ApbDriver")
+        self.log = logging.getLogger("cocotb.ApbDriver")
         self.enable_logging()
         self.bus = ApbBus.from_prefix(dut, apb_prefix)
         if reset_name is None:
-            self.intf = ApbMaster(dut, self.bus, getattr(dut, clk_name))
+            self.intf = ApbMaster(self.bus, getattr(dut, clk_name))
         else:
             self.intf = ApbMaster(
-                dut, self.bus, getattr(dut, clk_name), getattr(dut, reset_name)
+                self.bus, getattr(dut, clk_name), getattr(dut, reset_name)
             )
         self.intf.log.setLevel(logging.WARNING)
         if seednum is not None:

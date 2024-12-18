@@ -19,7 +19,9 @@ dist/
 *.egg-info/
 .eggs/
 etana-apb4/
+regblock-apbx/
 results.xml
 sim_build/
 *.vcd
 synth_yosys.v
+cocotbext

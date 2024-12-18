@@ -60,10 +60,12 @@ module {{ds.module_name}}
         end else begin
             if(external_req & ~external_wr_ack & ~external_rd_ack) external_pending <= '1;
             else if(external_wr_ack | external_rd_ack) external_pending <= '0;
-            assert(!external_wr_ack || (external_pending | external_req))
-                else $error("An external wr_ack strobe was asserted when no external request was active");
-            assert(!external_rd_ack || (external_pending | external_req))
-                else $error("An external rd_ack strobe was asserted when no external request was active");
+            `ifndef SYNTHESIS
+                assert(!external_wr_ack || (external_pending | external_req))
+                    else $error("An external wr_ack strobe was asserted when no external request was active");
+                assert(!external_rd_ack || (external_pending | external_req))
+                    else $error("An external rd_ack strobe was asserted when no external request was active");
+            `endif
         end
     end
 {%- endif %}
@@ -219,7 +221,6 @@ module {{ds.module_name}}
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
 {%- else %}
-    assign external_wr_ack = 0;
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
     // Writes are always granted with no error response

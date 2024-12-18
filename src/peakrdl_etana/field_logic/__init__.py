@@ -37,25 +37,25 @@ class FieldLogic:
     def top_node(self) -> 'AddrmapNode':
         return self.exp.ds.top_node
 
-    def get_storage_struct(self) -> str:
-        struct_gen = FieldStorageStructGenerator(self)
-        s = struct_gen.get_struct(self.top_node, "field_storage_t")
-
-        # Only declare the storage struct if it exists
-        if s is None:
-            return ""
-
-        return s + "\nfield_storage_t field_storage;"
-
-    def get_combo_struct(self) -> str:
-        struct_gen = CombinationalStructGenerator(self)
-        s = struct_gen.get_struct(self.top_node, "field_combo_t")
-
-        # Only declare the storage struct if it exists
-        if s is None:
-            return ""
-
-        return s + "\nfield_combo_t field_combo;"
+#     def get_storage_struct(self) -> str:
+#         struct_gen = FieldStorageStructGenerator(self)
+#         s = struct_gen.get_struct(self.top_node, "field_storage_t")
+# 
+#         # Only declare the storage struct if it exists
+#         if s is None:
+#             return ""
+# 
+#         return s + "\nfield_storage_t field_storage;"
+# 
+#     def get_combo_struct(self) -> str:
+#         struct_gen = CombinationalStructGenerator(self)
+#         s = struct_gen.get_struct(self.top_node, "field_combo_t")
+# 
+#         # Only declare the storage struct if it exists
+#         if s is None:
+#             return ""
+# 
+#         return s + "\nfield_combo_t field_combo;"
 
     def get_implementation(self) -> str:
         gen = FieldLogicGenerator(self)
