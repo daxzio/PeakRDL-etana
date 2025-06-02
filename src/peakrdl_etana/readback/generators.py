@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, List
 
-from systemrdl.node import RegNode, RegfileNode, MemNode, AddressableNode
+from systemrdl.node import FieldNode, RegNode, RegfileNode, MemNode, AddressableNode
 from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator, LoopBody
@@ -80,8 +80,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         self.current_offset = start_offset + n_regs * dim
 
 
-#     def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
-#         super().enter_AddressableComponent(node)
+    def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
+        super().enter_AddressableComponent(node)
+        self.strb = self.exp.hwif.get_external_rd_ack(node, True)
 # 
 #         if node.external and not isinstance(node, RegNode):
 #             # External block
@@ -98,37 +99,45 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 #         return WalkerAction.Continue
 
     def enter_Mem(self, node: 'MemNode') -> WalkerAction:
-        super().enter_AddressableComponent(node)
+#         super().enter_AddressableComponent(node)
         if node.external:
             strb = self.exp.hwif.get_external_rd_ack(node, True)
-            data = self.exp.hwif.get_external_rd_data(node, True)
+            data = self.exp.hwif.get_external_rd_data2(node, True)
+            print('gy', data)
             self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
             self.current_offset += 1
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
-    def enter_Regfile(self, node: 'RegfileNode') -> WalkerAction:
-        super().enter_AddressableComponent(node)
+#     def enter_Regfile(self, node: 'RegfileNode') -> WalkerAction:
+#         super().enter_AddressableComponent(node)
+#         self.regfile = True
+# 
+#         print(self.fields)
+            #return WalkerAction.SkipDescendants
 
-        if node.external:
-            for c in node.children():
-                x = self.exp.hwif.get_external_rd_ack(c, True)
-            strb = x
-            data = self.exp.hwif.get_external_rd_data(node, True)
+#         return WalkerAction.Continue
+    
+    def exit_Regfile(self, node: 'RegfileNode') -> WalkerAction:
+#         if node.external:
+#             self.add_content(f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;")
+#             self.current_offset += 1
+        self.regfile = False
 
-            self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
-            self.current_offset += 1
-            return WalkerAction.SkipDescendants
-
-        return WalkerAction.Continue
-
+    def enter_Field(self, node: FieldNode) -> WalkerAction:
+        if node.is_sw_readable and node.external:
+            x = self.exp.hwif.get_external_rd_data2(node, True)
+            self.fields.append({'name': x, 'msb': node.msb, 'lsb': node.lsb})
+    
     def enter_Reg(self, node: RegNode) -> WalkerAction:
+        self.fields = []
         if not node.has_sw_readable:
             return WalkerAction.SkipDescendants
 
         if node.external:
-            self.process_external_reg(node)
-            return WalkerAction.SkipDescendants
+            return
+#             self.process_external_reg(node)
+#             #return WalkerAction.SkipDescendants
 
         accesswidth = node.get_property('accesswidth')
         regwidth = node.get_property('regwidth')
@@ -149,17 +158,36 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         else:
             self.process_reg(node)
 
-        return WalkerAction.SkipDescendants
+        #return WalkerAction.SkipDescendants
+    
+    def exit_Reg(self, node: RegNode) -> WalkerAction:
+        if not node.has_sw_readable:
+            return WalkerAction.SkipDescendants
+
+        vec = []
+        for i, f in enumerate(self.fields):
+            if 0 == i and not f['lsb'] == 0:
+                vec.insert(0, f"{f['lsb']}'b0")
+            elif not 0 == i and not f['lsb'] == self.fields[i-1]['msb']-1:
+                vec.insert(0, f"{f['lsb']-self.fields[i-1]['msb']-1}'b0")
+            vec.insert(0, f['name'])
+#         y = f"{{{', '.join(vec)}}}"
+        if 1 == len(vec):
+            self.data = vec[0]
+        else:
+            self.data = f"{{{', '.join(vec)}}}"
+        self.strb = self.exp.hwif.get_external_rd_ack(node, True)
+        
+        if node.external:
+            self.process_external_reg(node)
 
     def process_external_reg(self, node: RegNode) -> None:
-        strb = self.exp.hwif.get_external_rd_ack(node, True)
-        data = self.exp.hwif.get_external_rd_data(node, True)
         regwidth = node.get_property('regwidth')
         if regwidth < self.exp.cpuif.data_width:
             self.add_content(f"assign readback_array[{self.current_offset_str}][{self.exp.cpuif.data_width-1}:{regwidth}] = '0;")
-            self.add_content(f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {strb} ? {data} : '0;")
+            self.add_content(f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {self.strb} ? {self.data} : '0;")
         else:
-            self.add_content(f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;")
+            self.add_content(f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;")
 
         self.current_offset += 1
 
@@ -190,6 +218,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         if current_bit < bus_width:
             self.add_content(f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{current_bit}] = '0;")
 
+#         print(2, True)
+#         if not self.regfile:
         self.current_offset += 1
 
 

@@ -67,17 +67,11 @@ class AddressDecode:
             print("yy", node)
         elif isinstance(node.parent, RegfileNode):
             p = IndexedPath(self.top_node, node.parent)
-            if not node.external:
-                raise
+#             if not node.external:
+#                 raise
         else:
             p = IndexedPath(self.top_node, node)
         
-#         array = ""
-#         if isinstance(node, RegNode):
-#             n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
-#             print(n_subwords, node.get_property("regwidth"))
-#             array = f"[{n_subwords-1}:0] "
-#         
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
@@ -107,11 +101,14 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def build_logic(self, node: 'RegNode', active=1) -> None:
         p = self.addr_decode.get_access_strobe(node)
         array_dimensions = node.array_dimensions
-        index = active
-        if not array_dimensions is None:
-            for i in array_dimensions:
-                index *= i
-        s = f"logic [{index-1}:0] {p.path};"
+#         index = active
+#         if not array_dimensions is None:
+#             for i in array_dimensions:
+#                 index *= i
+        if array_dimensions is None:
+            s = f"logic [{active-1}:0] {p.path};"
+        else:
+            s = f"logic [{active-1}:0] {p.path} {array_dimensions};"
 
         self._logic_stack.append(s)
 
@@ -213,7 +210,13 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             for i in range(n_subwords):
                 p = self.addr_decode.get_access_strobe(node)
                 rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"
-                s = f"{p.path}[{i}] = {rhs};"
+                if 0 == len(p.index):
+                    s = f"{p.path}[{i}] = {rhs};"
+                else:
+                    for y in p.index:
+                        print(y)
+                    #x = f"({n_subwords}*{p.index[0]})"
+                    s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
                 if node.external:
                     readable = node.has_sw_readable

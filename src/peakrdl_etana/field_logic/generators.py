@@ -1,3 +1,4 @@
+import re
 from typing import TYPE_CHECKING, List, Optional
 
 from collections import OrderedDict
@@ -137,16 +138,14 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def enter_Reg(self, node: 'RegNode') -> Optional[WalkerAction]:
         self.intr_fields = []
         self.halt_fields = []
-
-        if node.external:
-            self.assign_external_reg_outputs(node)
-            # Do not recurse to fields
-            return WalkerAction.SkipDescendants
-
-        return WalkerAction.Continue
+        self.fields = []
 
 
     def enter_Field(self, node: 'FieldNode') -> None:
+        if node.external:
+            if node.is_hw_readable:
+                self.fields.append(node)
+            return
         if node.implements_storage:
             self.generate_field_storage(node)
 
@@ -159,6 +158,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
 
     def exit_Reg(self, node: 'RegNode') -> None:
+        if node.external:
+            self.assign_external_reg_outputs(node)
+            return
         # Assign register's intr output
         if self.intr_fields:
             strs = []
@@ -341,6 +343,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
 
     def assign_external_reg_outputs(self, node: 'RegNode') -> None:
+#         print(self.fields)
         p = IndexedPath(self.exp.ds.top_node, node)
         prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_access_strobe(node)
@@ -353,15 +356,31 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         else:
             bslice = ""
 
-#         print(p.wr_elem)
-        if 0 == len(p.wr_elem):
-            inst_names = ["", bslice]
-#             raise
-        else:
-            inst_names = []
-            for e in p.wr_elem:
-                if not e[0] is None:
-                    inst_names.append([f"_{e[0]}", e[2]])
+# #         print(p.wr_elem)
+#         if 0 == len(p.wr_elem):
+#             inst_names = ["", bslice]
+# #             raise
+#         else:
+#             inst_names = []
+#             for e in p.wr_elem:
+#                 if not e[0] is None:
+#                     inst_names.append([f"_{e[0]}", e[2]])
+        
+        n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
+        inst_names = []
+        for field in self.fields:
+            #print(f"[{field.msb}:{field.lsb}]")
+            x = IndexedPath(self.exp.ds.top_node, field)
+#             print('p', p.path, n_subwords)
+#             print('x', x.path, f"[{field.msb}:{field.lsb}]", bslice, width, self.exp.cpuif.data_width)
+            path = re.sub(p.path, "", x.path)
+            if 1 == n_subwords:
+                vslice = f"[{field.msb}:{field.lsb}]"
+            else:
+                vslice = f"[{node.get_property('accesswidth')-1}:0]"
+            inst_names.append([path, vslice])
+        
+#         print(prefix, inst_names)
 #         print(p.wr_elem)
         context = {
             "has_sw_writable": node.has_sw_writable,
