@@ -1,0 +1,251 @@
+// enum {
+// 	IO_PRINT_CHAR  = 0x000,
+// 	IO_PRINT_U32   = 0x004,
+// 	IO_EXIT        = 0x008,
+// 	IO_SET_SOFTIRQ = 0x010,
+// 	IO_CLR_SOFTIRQ = 0x014,
+// 	IO_GLOBMON_EN  = 0x018,
+// 	IO_SET_IRQ     = 0x020,
+// 	IO_CLR_IRQ     = 0x030,
+// 	IO_MTIME       = 0x100,
+// 	IO_MTIMEH      = 0x104,
+// 	IO_MTIMECMP0   = 0x108,
+// 	IO_MTIMECMP0H  = 0x10c,
+// 	IO_MTIMECMP1   = 0x110,
+// 	IO_MTIMECMP1H  = 0x114
+// };
+
+addrmap dmi {
+// haltreq Writing 0 clears the halt request bit for all currently selected harts. This may cancel outstanding halt requests for those harts.
+// Writing 1 sets the halt request bit for all currently
+// selected harts. Running harts will halt whenever
+// their halt request bit is set.
+// Writes apply to the new value of hartsel and hasel.
+// W -
+// resumereq Writing 1 causes the currently selected harts to
+// resume once, if they are halted when the write
+// occurs. It also clears the resume ack bit for those
+// harts.
+// resumereq is ignored if haltreq is set.
+// Writes apply to the new value of hartsel and hasel.
+// W1 -
+// hartreset This optional field writes the reset bit for all the
+// currently selected harts. To perform a reset the
+// debugger writes 1, and then writes 0 to deassert
+// the reset signal.
+// While this bit is 1, the debugger must not change
+// which harts are selected.
+// If this feature is not implemented, the bit always
+// stays 0, so after writing 1 the debugger can read
+// the register back to see if the feature is supported.
+// Writes apply to the new value of hartsel and hasel.
+// R/W 0
+// ackhavereset 0: No effect.
+// 1: Clears havereset for any selected harts.
+// Writes apply to the new value of hartsel and hasel.
+// W1 -
+// Continued on next page
+// 24 RISC-V External Debug Support Version 0.13.2
+// Field Description Access Reset
+// hasel Selects the definition of currently selected harts.
+// 0: There is a single currently selected hart, that
+// is selected by hartsel.
+// 1: There may be multiple currently selected harts
+// – the hart selected by hartsel, plus those selected
+// by the hart array mask register.
+// An implementation which does not implement the
+// hart array mask register must tie this field to 0.
+// A debugger which wishes to use the hart array
+// mask register feature should set this bit and read
+// back to see if the functionality is supported.
+// R/W 0
+// hartsello The low 10 bits of hartsel: the DM-specific index
+// of the hart to select. This hart is always part of
+// the currently selected harts.
+// R/W 0
+// hartselhi The high 10 bits of hartsel: the DM-specific index
+// of the hart to select. This hart is always part of
+// the currently selected harts.
+// R/W 0
+// setresethaltreq This optional field writes the halt-on-reset request bit for all currently selected harts, unless
+// clrresethaltreq is simultaneously set to 1. When
+// set to 1, each selected hart will halt upon the next
+// deassertion of its reset. The halt-on-reset request
+// bit is not automatically cleared. The debugger
+// must write to clrresethaltreq to clear it.
+// Writes apply to the new value of hartsel and hasel.
+// If hasresethaltreq is 0, this field is not implemented.
+// W1 -
+// clrresethaltreq This optional field clears the halt-on-reset request
+// bit for all currently selected harts.
+// Writes apply to the new value of hartsel and hasel.
+// W1 -
+// ndmreset This bit controls the reset signal from the DM to
+// the rest of the system. The signal should reset
+// every part of the system, including every hart,
+// except for the DM and any logic required to access
+// the DM. To perform a system reset the debugger
+// writes 1, and then writes 0 to deassert the reset.
+// R/W 0
+// Continued on next page
+// RISC-V External Debug Support Version 0.13.2 25
+// Field Description Access Reset
+// dmactive This bit serves as a reset signal for the Debug
+// Module itself.
+// 0: The module's state, including authentication mechanism, takes its reset values (the dmactive bit is the only bit which can be written to something other than its reset value).
+// 1: The module functions normally. No other mechanism should exist that may result in resetting the Debug Module after power up, with the possible (but not recommended) exception of a global reset signal that resets the entire platform.
+// A debugger may pulse this bit low to get the Debug Module into a known state.
+// Implementations may pay attention to this bit to further aid debugging, for example by preventing the Debug Module from
+
+    reg dmcontrol_reg_t {
+        field {sw=r; hw=na;} haltreq[31:31] = 0;
+        field {sw=r; hw=na;} resumereq[30:30] = 0;
+        field {sw=r; hw=na;} hartreset[29:29] = 0;
+        field {sw=r; hw=na;} ackhavereset[28:28] = 0;
+        field {sw=r; hw=na;} hasel[26:26] = 0;
+        field {sw=r; hw=na;} hartsello[25:16] = 0;
+        field {sw=r; hw=na;} hartselhi[15: 6] = 0;
+        field {sw=r; hw=na;} setresethaltreq[ 3: 3] = 0;
+        field {sw=w; hw=r; onwrite=woclr;} clrresethaltreq[ 2: 2] = 0;
+        field {
+            sw=r;
+            hw=na;
+            desc = "
+                This bit controls the reset signal from the DM to
+                the rest of the system.
+
+                The signal should reset
+                every part of the system, including every hart,
+                except for the DM and any logic required to access
+                the DM.
+
+                To perform a system reset the debugger
+                writes 1, and then writes 0 to deassert the reset.
+            ";
+        } ndmreset[ 1: 1] = 0;
+        field {
+            sw=r;
+            hw=na;
+            desc = "
+                This bit serves as a reset signal for the Debug
+                Module itself.
+
+                * **0**: The module's state, including authentication mechanism,
+                takes its reset values (the [dmactive](/?p=dmi.dmcontrol#dmactive.desc) bit is the only bit which
+                can be written to something other than its reset value).
+                * **1**: The module functions normally. No other mechanism should
+                exist that may result in resetting the Debug Module after power
+                up, with the possible (but not recommended) exception of a global
+                reset signal that resets the entire platform.
+
+                A debugger may pulse this bit low to get the Debug Module into a
+                known state.
+
+                Implementations may pay attention to this bit to further aid
+                debugging, for example by preventing the Debug Module from being
+                power gated while debugging is active.
+            ";
+        } dmactive[ 0: 0] = 0;
+    };
+
+// Field Description Access Reset
+// impebreak If 1, then there is an implicit ebreak instruction
+// at the non-existent word immediately after the
+// Program Buffer. This saves the debugger from
+// having to write the ebreak itself, and allows the
+// Program Buffer to be one word smaller.
+// This must be 1 when progbufsize is 1.
+// R Preset
+// allhavereset This field is 1 when all currently selected harts
+// have been reset and reset has not been acknowledged for any of them.
+// R -
+// anyhavereset This field is 1 when at least one currently selected
+// hart has been reset and reset has not been acknowledged for that hart.
+// R -
+// allresumeack This field is 1 when all currently selected harts
+// have acknowledged their last resume request.
+// R -
+// anyresumeack This field is 1 when any currently selected hart
+// has acknowledged its last resume request.
+// R -
+// allnonexistent This field is 1 when all currently selected harts do
+// not exist in this platform.
+// R -
+// anynonexistent This field is 1 when any currently selected hart
+// does not exist in this platform.
+// R -
+// allunavail This field is 1 when all currently selected harts
+// are unavailable.
+// R -
+// anyunavail This field is 1 when any currently selected hart is
+// unavailable.
+// R -
+// allrunning This field is 1 when all currently selected harts
+// are running.
+// R -
+// anyrunning This field is 1 when any currently selected hart is
+// running.
+// R -
+// allhalted This field is 1 when all currently selected harts
+// are halted.
+// R -
+// anyhalted This field is 1 when any currently selected hart is
+// halted.
+// R -
+// Continued on next page
+// 22 RISC-V External Debug Support Version 0.13.2
+// Field Description Access Reset
+// authenticated 0: Authentication is required before using the
+// DM.
+// 1: The authentication check has passed.
+// On components that don't implement authentication, this bit must be preset as 1.
+// R Preset
+// authbusy 0: The authentication module is ready to process
+// the next read/write to authdata.
+// 1: The authentication module is busy. Accessing
+// authdata results in unspecified behavior.
+// authbusy only becomes set in immediate response
+// to an access to authdata.
+// R 0
+// hasresethaltreq 1 if this Debug Module supports halt-on-reset
+// functionality controllable by the setresethaltreq
+// and clrresethaltreq bits. 0 otherwise.
+// R Preset
+// confstrptrvalid 0: confstrptr0–confstrptr3 hold information
+// which is not relevant to the configuration string.
+// 1: confstrptr0–confstrptr3 hold the address
+// of the configuration string.
+// R Preset
+// version 0: There is no Debug Module present.
+// 1: There is a Debug Module and it conforms to
+// version 0.11 of this specification.
+// 2: There is a Debug Module and it conforms to
+// version 0.13 of this specification.
+// 15: There is a Debug Module but it does not conform to any available version of this spec.
+
+    reg dmstatus_reg_t {
+        field {sw=r; hw=na;} impebreak[22:22] = 0;
+        field {sw=r; hw=na;} allhavereset[19:19] = 0;
+        field {sw=r; hw=na;} anyhavereset[18:18] = 0;
+        field {sw=r; hw=na;} allresumeack[17:17] = 0;
+        field {sw=r; hw=na;} anyresumeack[16:16] = 0;
+        field {sw=r; hw=na;} allnonexistent[15:15] = 0;
+        field {sw=r; hw=na;} anynonexistent[14:14] = 0;
+        field {sw=r; hw=na;} allunavail[13:13] = 0;
+        field {sw=r; hw=na;} anyunavail[12:12] = 0;
+        field {sw=r; hw=na;} allrunning[11:11] = 0;
+        field {sw=r; hw=na;} anyrunning[10:10] = 0;
+        field {sw=r; hw=na;} allhalted[ 9: 9] = 0;
+        field {sw=r; hw=na;} anyhalted[ 8: 8] = 0;
+        field {sw=r; hw=na;} authenticated[ 7: 7] = 0;
+        field {sw=r; hw=na;} authbusy[ 6: 6] = 0;
+        field {sw=r; hw=na;} hasresethaltreq[ 5: 5] = 0;
+        field {sw=r; hw=na;} confstrptrvalid[ 4: 4] = 0;
+        field {sw=r; hw=na;} version[ 3: 0] = 0;
+    };
+
+    dmcontrol_reg_t dmcontrol @ 0x40;
+    dmstatus_reg_t dmstatus @ 0x44;
+//     io_reg_t io_print_u32;
+//     io_reg_t io_exit;
+};

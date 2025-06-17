@@ -9,6 +9,7 @@ ALL_SYNTHESIZERS = [
     Vivado,
 ]
 
+
 @functools.lru_cache()
 def get_synthesizer_cls(name: str) -> Optional[Type[Synthesizer]]:
     if name == "skip":
@@ -25,6 +26,8 @@ def get_synthesizer_cls(name: str) -> Optional[Type[Synthesizer]]:
     for synth_cls in ALL_SYNTHESIZERS:
         if synth_cls.name == name:
             if not synth_cls.is_installed():
-                raise ValueError("Synthesis tool '%s' is not installed" % synth_cls.name)
+                raise ValueError(
+                    "Synthesis tool '%s' is not installed" % synth_cls.name
+                )
             return synth_cls
     raise RuntimeError

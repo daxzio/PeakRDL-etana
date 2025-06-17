@@ -8,11 +8,12 @@ if TYPE_CHECKING:
 
 class HWSet(NextStateConditional):
     comment = "HW Set"
-    def is_match(self, field: 'FieldNode') -> bool:
-        return bool(field.get_property('hwset'))
 
-    def get_predicate(self, field: 'FieldNode') -> str:
-        prop = field.get_property('hwset')
+    def is_match(self, field: "FieldNode") -> bool:
+        return bool(field.get_property("hwset"))
+
+    def get_predicate(self, field: "FieldNode") -> str:
+        prop = field.get_property("hwset")
         if isinstance(prop, bool):
             identifier = self.exp.hwif.get_implied_prop_input_identifier(field, "hwset")
         else:
@@ -20,9 +21,9 @@ class HWSet(NextStateConditional):
             identifier = str(self.exp.dereferencer.get_value(prop))
         return identifier
 
-    def get_assignments(self, field: 'FieldNode') -> List[str]:
-        hwmask = field.get_property('hwmask')
-        hwenable = field.get_property('hwenable')
+    def get_assignments(self, field: "FieldNode") -> List[str]:
+        hwmask = field.get_property("hwmask")
+        hwenable = field.get_property("hwenable")
         R = self.exp.field_logic.get_storage_identifier(field)
         if hwmask is not None:
             M = self.exp.dereferencer.get_value(hwmask)
@@ -41,11 +42,12 @@ class HWSet(NextStateConditional):
 
 class HWClear(NextStateConditional):
     comment = "HW Clear"
-    def is_match(self, field: 'FieldNode') -> bool:
-        return bool(field.get_property('hwclr'))
 
-    def get_predicate(self, field: 'FieldNode') -> str:
-        prop = field.get_property('hwclr')
+    def is_match(self, field: "FieldNode") -> bool:
+        return bool(field.get_property("hwclr"))
+
+    def get_predicate(self, field: "FieldNode") -> str:
+        prop = field.get_property("hwclr")
         if isinstance(prop, bool):
             identifier = self.exp.hwif.get_implied_prop_input_identifier(field, "hwclr")
         else:
@@ -53,9 +55,9 @@ class HWClear(NextStateConditional):
             identifier = str(self.exp.dereferencer.get_value(prop))
         return identifier
 
-    def get_assignments(self, field: 'FieldNode') -> List[str]:
-        hwmask = field.get_property('hwmask')
-        hwenable = field.get_property('hwenable')
+    def get_assignments(self, field: "FieldNode") -> List[str]:
+        hwmask = field.get_property("hwmask")
+        hwenable = field.get_property("hwenable")
         R = self.exp.field_logic.get_storage_identifier(field)
         if hwmask is not None:
             M = self.exp.dereferencer.get_value(hwmask)

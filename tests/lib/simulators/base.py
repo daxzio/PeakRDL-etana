@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     from ..sim_testcase import SimTestCase
 
+
 class Simulator:
     name = ""
 
@@ -10,7 +11,7 @@ class Simulator:
     def is_installed(cls) -> bool:
         raise NotImplementedError
 
-    def __init__(self, testcase: 'SimTestCase' = None) -> None:
+    def __init__(self, testcase: "SimTestCase" = None) -> None:
         self.testcase = testcase
 
     @property
@@ -31,5 +32,5 @@ class Simulator:
     def compile(self) -> None:
         raise NotImplementedError
 
-    def run(self, plusargs:List[str] = None) -> None:
+    def run(self, plusargs: List[str] = None) -> None:
         raise NotImplementedError

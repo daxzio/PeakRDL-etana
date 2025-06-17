@@ -6,14 +6,15 @@ from systemrdl.walker import RDLListener, RDLWalker
 if TYPE_CHECKING:
     from systemrdl.node import AddressableNode, Node
 
-class Body:
 
+class Body:
     def __init__(self) -> None:
-        self.children = [] # type: List[Union[str, Body]]
+        self.children = []  # type: List[Union[str, Body]]
 
     def __str__(self) -> str:
-        s = '\n'.join((str(x) for x in self.children))
+        s = "\n".join((str(x) for x in self.children))
         return s
+
 
 class LoopBody(Body):
     def __init__(self, dim: int, iterator: str, i_type: str) -> None:
@@ -39,7 +40,7 @@ class ForLoopGenerator:
 
     def __init__(self) -> None:
         self._loop_level = 0
-        self._stack = [] # type: List[Body]
+        self._stack = []  # type: List[Body]
         self.top = ""
 
     @property
@@ -81,9 +82,9 @@ class ForLoopGenerator:
             return None
         return str(b)
 
-class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
 
-    def get_content(self, node: 'Node') -> Optional[str]:
+class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
+    def get_content(self, node: "Node") -> Optional[str]:
         self.start()
         walker = RDLWalker()
         walker.walk(node, self, skip_top=True)
@@ -93,17 +94,16 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
         self.top += "\n"
         self.top += s
 
-    def enter_AddressableComponent(self, node: 'AddressableNode') -> None:
+    def enter_AddressableComponent(self, node: "AddressableNode") -> None:
         if not node.array_dimensions:
             return
 
         for dim in node.array_dimensions:
             self.push_loop(dim)
 
-    def exit_AddressableComponent(self, node: 'AddressableNode') -> None:
+    def exit_AddressableComponent(self, node: "AddressableNode") -> None:
         if not node.array_dimensions:
             return
 
         for _ in node.array_dimensions:
             self.pop_loop()
-

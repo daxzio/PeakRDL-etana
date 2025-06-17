@@ -26,14 +26,14 @@ ifneq (${USE_CDS},)
 # 	    COMPILE_ARGS += --top-module glbl
 # 		VERILOG_SOURCES += \
 # 			${XILINX_BASE}/verilog/src/glbl.v
-# 	    VERILOG_SOURCES += ${UNISIMS} 
+# 	    VERILOG_SOURCES += ${UNISIMS}
     endif
 endif
 
 ifneq (${XILINX_BASE},)
 	UNISIMS_VER_CNT=`grep -s unisims_ver ${CDSLIB} | wc -l`
 	UNISIMS_VHDL_CNT=`grep -s unisim ${CDSLIB} | wc -l`
-	
+
     UNISIMS = \
 	    ${XILINX_BASE}/verilog/src/unisims/FDRE.v \
 	    ${XILINX_BASE}/verilog/src/unisims/FDSE.v \
@@ -51,12 +51,14 @@ ifneq (${XILINX_BASE},)
 	    ${XILINX_BASE}/verilog/src/unisims/OBUFDS.v \
 	    ${XILINX_BASE}/verilog/src/unisims/BUFG.v \
 	    ${XILINX_BASE}/verilog/src/unisims/IBUF.v \
-	    ${XILINX_BASE}/verilog/src/unisims/MMCME2_ADV.v 
-    
+	    ${XILINX_BASE}/verilog/src/unisims/MMCME2_ADV.v
+
     ifeq ($(SIM), icarus)
         ifneq ($(XILINX_SIM_SOURCES),)
 			COMPILE_ARGS += -y${XILINX_BASE}/verilog/src/unisims
 			COMPILE_ARGS += -s glbl
+		    VERILOG_SOURCES += \
+			    ${XILINX_BASE}/verilog/src/glbl.v
 		endif
 	else ifeq ($(SIM),xcelium)
 		COMPILE_ARGS += -top glbl
@@ -72,9 +74,9 @@ ifneq (${XILINX_BASE},)
 # 	    COMPILE_ARGS += --top-module glbl
 # 		VERILOG_SOURCES += \
 # 			${XILINX_BASE}/verilog/src/glbl.v
-# 	    VERILOG_SOURCES += ${UNISIMS} 
+# 	    VERILOG_SOURCES += ${UNISIMS}
     endif
-        
+
 endif
 
 default: sim
@@ -90,7 +92,7 @@ xilinx_cdslib:
 		mkdir -p ${XILINX_LIB}/unisims_ver ; \
 		echo "DEFINE unisims_ver ${XILINX_LIB}/unisims_ver" >> ${CDSLIB} ; \
 	fi
-	
+
 
 ${XILINX_LIB}/unisims_ver: ${CDSLIB} xilinx_cdslib
 	${CADENCE_VLOG} -MESSAGES -NOLOG -64bit -CDSLIB ${CDSLIB} -WORK unisims_ver ${XILINX_BASE}/verilog/src/unisims/*.v
@@ -130,24 +132,12 @@ all_libs:: xilinx_library
 
 all_libs_clean:: xilinx_library_clean
 
-# FPGA_DESIGN = ${XILINX_SYNTH_SOURCES} ${RTL_SOURCES} ${IMPORT_SOURCES} ${VHDL_SOURCES}
 FPGA_DESIGN:=\
     ${XILINX_SYNTH_SOURCES} \
     ${INT_VERILOG_SOURCES} \
     ${EXT_VERILOG_SOURCES} \
     ${INT_VHDL_SOURCES} \
     ${EXT_VHDL_SOURCES}
-    
-VERILOG_DESIGN?=\
-    ${INT_VERILOG_SOURCES} \
-    ${SIM_VERILOG_SOURCES} \
-    ${EXT_VERILOG_SOURCES} \
-    ${XILINX_SIM_SOURCES}
-
-VERILOG_SOURCES?=\
-    ${VERILOG_DESIGN} \
-    ${COCOTB_SOURCES}
-
 
 vivado_build:
 	@ export XILINX_PART="${XILINX_PART}" ; \
@@ -159,7 +149,7 @@ vivado_build:
 	export GENERICS="${GENERICS}" ; \
 	export FPGA_DESIGN="${FPGA_DESIGN}" ; \
 		${RTLFLO_PATH}/vivado_helper.py
-    
+
 git_xilinx:
 # 	git add ${PROJ_HOME}/xilinx/ip_srcs/${XILINX_PART}/${XILINX_REV}/common/common.ip_user_files/ip/*/*_sim_netlist.v -f -N --ignore-errors
 	git add ${PROJ_HOME}/xilinx/ip_srcs/${XILINX_PART}/${XILINX_REV}/common/common.runs/*/*_sim_netlist.v -f
@@ -175,4 +165,3 @@ git_xilinx:
 # 	git add ${PROJ_HOME}/xilinx/ip_srcs/${XILINX_PART}/${XILINX_REV}/video/video.runs/*/*_sim_netlist.v -f --ignore-errors
 # 	git add ${PROJ_HOME}/xilinx/ip_srcs/${XILINX_PART}/${XILINX_REV}/video/video.srcs/sources_1/ip/*.xcix -f --ignore-errors
 # 	git add ${PROJ_HOME}/xilinx/ip_srcs/${XILINX_PART}/${XILINX_REV}/video/video.xpr -f --ignore-errors
-

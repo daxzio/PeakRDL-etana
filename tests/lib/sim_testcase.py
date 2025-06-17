@@ -20,7 +20,7 @@ class SimTestCase(BaseTestCase):
     tb_template_file = "tb_template.sv"
 
     # Paths are relative to the testcase dir
-    extra_tb_files = [] # type: List[str]
+    extra_tb_files = []  # type: List[str]
 
     # Whether to initialize the hwif_in struct at test startup
     init_hwif_in = True
@@ -41,9 +41,7 @@ class SimTestCase(BaseTestCase):
         Render the testbench template into actual tb.sv
         """
         template_root_path = os.path.join(os.path.dirname(__file__), "..")
-        loader = jj.FileSystemLoader(
-            template_root_path
-        )
+        loader = jj.FileSystemLoader(template_root_path)
         jj_env = jj.Environment(
             loader=loader,
             undefined=jj.StrictUndefined,
@@ -63,7 +61,6 @@ class SimTestCase(BaseTestCase):
         output_path = os.path.join(self.get_run_dir(), "tb.sv")
         stream = template.stream(context)
         stream.dump(output_path)
-
 
     def setUp(self):
         name = self.request.config.getoption("--sim-tool")
@@ -90,8 +87,7 @@ class SimTestCase(BaseTestCase):
             # cd back
             os.chdir(cwd)
 
-
-    def run_test(self, plusargs:List[str] = None) -> None:
+    def run_test(self, plusargs: List[str] = None) -> None:
         name = self.request.config.getoption("--sim-tool")
         simulator_cls = get_simulator_cls(name)
         simulator = simulator_cls(self)

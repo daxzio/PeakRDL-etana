@@ -2,6 +2,7 @@ from ..base import CpuifTestMode
 
 from peakrdl_regblock.cpuif.avalon import Avalon_Cpuif, Avalon_Cpuif_flattened
 
+
 class Avalon(CpuifTestMode):
     cpuif_cls = Avalon_Cpuif
     rtl_files = [
@@ -12,6 +13,7 @@ class Avalon(CpuifTestMode):
         "avalon_mm_intf_driver.sv",
     ]
     tb_template = "tb_inst.sv"
+
 
 class FlatAvalon(Avalon):
     cpuif_cls = Avalon_Cpuif_flattened

@@ -8,31 +8,29 @@ from ..forloop_generator import RDLForLoopGenerator
 if TYPE_CHECKING:
     from . import ReadBuffering
 
+
 class RBufLogicGenerator(RDLForLoopGenerator):
     i_type = "genvar"
-    def __init__(self, rbuf: 'ReadBuffering') -> None:
+
+    def __init__(self, rbuf: "ReadBuffering") -> None:
         super().__init__()
         self.rbuf = rbuf
         self.exp = rbuf.exp
-        self.template = self.exp.jj_env.get_template(
-            "read_buffering/template.sv"
-        )
+        self.template = self.exp.jj_env.get_template("read_buffering/template.sv")
 
     def enter_Reg(self, node: RegNode) -> None:
         super().enter_Reg(node)
         assert isinstance(node.inst, Reg)
 
-        if not node.get_property('buffer_reads'):
+        if not node.get_property("buffer_reads"):
             return
 
         context = {
-            'node': node,
-            'rbuf': self.rbuf,
-            'get_assignments': self.get_assignments,
+            "node": node,
+            "rbuf": self.rbuf,
+            "get_assignments": self.get_assignments,
         }
         self.add_content(self.template.render(context))
-
-
 
     def get_assignments(self, node: RegNode) -> str:
         data = self.rbuf.get_rbuf_data(node)
@@ -51,7 +49,7 @@ class RBufLogicGenerator(RDLForLoopGenerator):
 
             bidx = field.high + 1
 
-        regwidth = node.get_property('regwidth')
+        regwidth = node.get_property("regwidth")
         if bidx < regwidth:
             # zero padding after last field
             s.append(f"{data}[{regwidth-1}:{bidx}] <= '0;")

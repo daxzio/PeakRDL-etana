@@ -1,5 +1,6 @@
 from ..base import CpuifBase
 
+
 class PassthroughCpuif(CpuifBase):
     template_path = "passthrough_tmpl.sv"
 

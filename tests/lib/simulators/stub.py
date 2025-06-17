@@ -2,6 +2,7 @@ from typing import List
 
 from .base import Simulator
 
+
 class StubSimulator(Simulator):
     name = "stub"
 

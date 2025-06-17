@@ -118,6 +118,7 @@ class testbench:
         #         apb_addr2 = {}
         for attr in sorted(dir(dut)):
             if g := re.search(f"{prefix}_(.+)_rd_data", attr):
+                print(prefix, g.group(1), attr)
                 rd_data[g.group(1)] = getattr(dut, attr)
             elif g := re.search(f"{prefix}_rd_data", attr):
                 rd_data[None] = getattr(dut, attr)
@@ -169,6 +170,8 @@ class testbench:
                         )
                 else:
                     rd_ack.value = 1
+                    print(rd_data.keys())
+                    print(memory.keys())
                     for k in rd_data.keys():
                         rd_data[k].value = memory[k][addr]
 
@@ -211,38 +214,38 @@ async def test_dut_basic(dut):
     await tb.intf.read(0x1008, 0x00000067)
     await tb.intf.write(0x1008, 0x98542373, 0x2)
     await tb.intf.read(0x1008, 0x00002367)
-
-    await tb.intf.read(0x2000)
-    await tb.intf.read(0x2000, 0x0)
-    await tb.intf.write(0x2000, 0xFFFFFFFF)
-    await tb.intf.read(0x2000, 0xF80000F0)
-
-    await tb.intf.read(0x4000)
-    await tb.intf.read(0x4000, 0x0)
-    await tb.intf.write(0x4000, 0x45234877)
-    await tb.intf.write(0x4004, 0x78562345)
-    await tb.intf.write(0x4008, 0x62375367, 0x1)
-    await tb.intf.read(0x4000, 0x45234877)
-    await tb.intf.read(0x4004, 0x78562345)
-    await tb.intf.read(0x4008, 0x00000067)
-    await tb.intf.write(0x4008, 0x98542373, 0x2)
-    await tb.intf.read(0x4008, 0x00002367)
-
-    await tb.intf.read(0x300)
-    await tb.intf.read(0x304)
-    await tb.intf.write(0x300, 0x52344877)
-    await tb.intf.write(0x304, 0x85672345)
-    await tb.intf.read(0x300, 0x52344877)
-    await tb.intf.read(0x304, 0x85672345)
-    #     await tb.intf.read(0x3000)
-    #     await tb.intf.read(0x3000, 0x0)
-    #     await tb.intf.write(0x3000, 0x42534877)
-    #     await tb.intf.write(0x3004, 0x75862345)
-    #     await tb.intf.write(0x3008, 0x63275367, 0x1)
-    #     await tb.intf.read(0x3000,  0x42534877)
-    #     await tb.intf.read(0x3004,  0x75862345)
-    #     await tb.intf.read(0x3008,  0x00000067)
-    #     await tb.intf.write(0x3008, 0x98542373, 0x2)
-    #     await tb.intf.read(0x3008,  0x00002367)
+    #
+    #     await tb.intf.read(0x2000)
+    #     await tb.intf.read(0x2000, 0x0)
+    #     await tb.intf.write(0x2000, 0xFFFFFFFF)
+    #     await tb.intf.read(0x2000, 0xF80000F0)
+    #
+    #     await tb.intf.read(0x4000)
+    #     await tb.intf.read(0x4000, 0x0)
+    #     await tb.intf.write(0x4000, 0x45234877)
+    #     await tb.intf.write(0x4004, 0x78562345)
+    #     await tb.intf.write(0x4008, 0x62375367, 0x1)
+    #     await tb.intf.read(0x4000, 0x45234877)
+    #     await tb.intf.read(0x4004, 0x78562345)
+    #     await tb.intf.read(0x4008, 0x00000067)
+    #     await tb.intf.write(0x4008, 0x98542373, 0x2)
+    #     await tb.intf.read(0x4008, 0x00002367)
+    #
+    #     await tb.intf.read(0x300)
+    #     await tb.intf.read(0x304)
+    #     await tb.intf.write(0x300, 0x52344877)
+    #     await tb.intf.write(0x304, 0x85672345)
+    #     await tb.intf.read(0x300, 0x52344877)
+    #     await tb.intf.read(0x304, 0x85672345)
+    #     #     await tb.intf.read(0x3000)
+    #     #     await tb.intf.read(0x3000, 0x0)
+    #     #     await tb.intf.write(0x3000, 0x42534877)
+    #     #     await tb.intf.write(0x3004, 0x75862345)
+    #     #     await tb.intf.write(0x3008, 0x63275367, 0x1)
+    #     #     await tb.intf.read(0x3000,  0x42534877)
+    #     #     await tb.intf.read(0x3004,  0x75862345)
+    #     #     await tb.intf.read(0x3008,  0x00000067)
+    #     #     await tb.intf.write(0x3008, 0x98542373, 0x2)
+    #     #     await tb.intf.read(0x3008,  0x00002367)
 
     await tb.cr.end_test(200)

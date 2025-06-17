@@ -1,9 +1,9 @@
-module dut 
+module dut
 #(
       integer REGWIDTH = 32
       , integer N_REGS = 1
       , integer G_ADDR_WIDTH = $clog2(N_REGS)+$clog2(REGWIDTH/8)
-) 
+)
 (
         input wire clk,
         input wire rst,
@@ -26,17 +26,16 @@ module dut
         .*
     );
 
-    //`ifdef COCOTB_SIM
-`ifdef COCOTB_ICARUS
-    initial begin
-        $dumpfile("dut.vcd");
-        $dumpvars(0, dut);
-        /* verilator lint_off STMTDLY */
-        #1;
-        /* verilator lint_on STMTDLY */
-    end
-`endif
+//     //`ifdef COCOTB_SIM
+// `ifdef COCOTB_ICARUS
+//     initial begin
+//         $dumpfile("dut.vcd");
+//         $dumpvars(0, dut);
+//         /* verilator lint_off STMTDLY */
+//         #1;
+//         /* verilator lint_on STMTDLY */
+//     end
+// `endif
 
 
 endmodule
-

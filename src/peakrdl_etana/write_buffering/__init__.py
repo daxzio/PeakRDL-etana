@@ -12,20 +12,18 @@ if TYPE_CHECKING:
 
 
 class WriteBuffering:
-    def __init__(self, exp:'RegblockExporter'):
+    def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
 
     @property
-    def top_node(self) -> 'AddrmapNode':
+    def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
-
 
     def get_storage_struct(self) -> str:
         struct_gen = WBufStorageStructGenerator(self)
         s = struct_gen.get_struct(self.top_node, "wbuf_storage_t")
         assert s is not None
         return s + "\nwbuf_storage_t wbuf_storage;"
-
 
     def get_implementation(self) -> str:
         gen = WBufLogicGenerator(self)
@@ -43,15 +41,17 @@ class WriteBuffering:
         prefix = self.get_wbuf_prefix(node)
         return f"{prefix}.pending && {self.get_trigger(node)}"
 
-    def get_raw_trigger(self, node: 'RegNode') -> Union[SVInt, str]:
-        trigger = node.get_property('wbuffer_trigger')
+    def get_raw_trigger(self, node: "RegNode") -> Union[SVInt, str]:
+        trigger = node.get_property("wbuffer_trigger")
 
         if isinstance(trigger, RegNode):
             # Trigger is a register.
             # trigger when uppermost address of the register is written
-            regwidth = trigger.get_property('regwidth')
-            accesswidth = trigger.get_property('accesswidth')
-            strb_prefix = self.exp.dereferencer.get_access_strobe(trigger, reduce_substrobes=False)
+            regwidth = trigger.get_property("regwidth")
+            accesswidth = trigger.get_property("accesswidth")
+            strb_prefix = self.exp.dereferencer.get_access_strobe(
+                trigger, reduce_substrobes=False
+            )
 
             if accesswidth < regwidth:
                 n_subwords = regwidth // accesswidth
@@ -60,7 +60,7 @@ class WriteBuffering:
                 return f"{strb_prefix} && decoded_req_is_wr"
         elif isinstance(trigger, SignalNode):
             s = self.exp.dereferencer.get_value(trigger)
-            if trigger.get_property('activehigh'):
+            if trigger.get_property("activehigh"):
                 return s
             else:
                 return f"~{s}"
@@ -71,7 +71,7 @@ class WriteBuffering:
     def get_trigger(self, node: Union[RegNode, FieldNode]) -> Union[SVInt, str]:
         if isinstance(node, FieldNode):
             node = node.parent
-        trigger = node.get_property('wbuffer_trigger')
+        trigger = node.get_property("wbuffer_trigger")
 
         if isinstance(trigger, RegNode) and trigger == node:
             # register is its own trigger

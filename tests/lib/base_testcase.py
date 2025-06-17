@@ -20,17 +20,17 @@ class BaseTestCase(unittest.TestCase):
     #: Path to the testcase's RDL file.
     #: Relative to the testcase's dir. If unset, the first RDL file found in the
     #: testcase dir will be used
-    rdl_file = None # type: Optional[str]
+    rdl_file = None  # type: Optional[str]
 
     #: RDL type name to elaborate. If unset, compiler will automatically choose
     #: the top.
-    rdl_elab_target = None # type: Optional[str]
+    rdl_elab_target = None  # type: Optional[str]
 
     #: Parameters to pass into RDL elaboration
     rdl_elab_params = {}
 
     #: Define what CPUIF to use for this testcase
-    cpuif = APB4() # type: CpuifTestMode
+    cpuif = APB4()  # type: CpuifTestMode
 
     # Other exporter args:
     retime_read_fanin = False
@@ -41,7 +41,7 @@ class BaseTestCase(unittest.TestCase):
     default_reset_async = False
 
     #: this gets auto-loaded via the _load_request autouse fixture
-    request = None # type: pytest.FixtureRequest
+    request = None  # type: pytest.FixtureRequest
 
     exporter = RegblockExporter()
 
@@ -72,12 +72,11 @@ class BaseTestCase(unittest.TestCase):
         """
         path = os.path.join(self.get_run_dir(), "params.txt")
 
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             for k, v in self.__class__.__dict__.items():
                 if k.startswith("_") or callable(v):
                     continue
                 f.write(f"{k}: {repr(v)}\n")
-
 
     def _export_regblock(self):
         """

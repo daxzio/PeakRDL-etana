@@ -16,7 +16,7 @@ authors = [
 ]
 description = "Compile SystemRDL into a SystemVerilog control/status register (CSR) block"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = {text = "GPLv3"}
 keywords = [
     "SystemRDL", "PeakRDL", "CSR", "compiler", "tool", "registers", "generator",
     "Verilog", "SystemVerilog", "register abstraction layer",
@@ -39,6 +39,12 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
+
+[project.optional-dependencies]
+cli = [
+    "peakrdl-cli >= 1.2.3",
+]
+
 
 [project.urls]
 Source = "https://github.com/daxzio/PeakRDL-etana"

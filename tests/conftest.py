@@ -9,7 +9,7 @@ def pytest_addoption(parser):
         stub: run the testcase using a no-op simulator stub
         skip: skip all the simulation tests
         auto: choose the best simulator based on what is installed
-        """
+        """,
     )
 
     parser.addoption(
@@ -20,9 +20,8 @@ def pytest_addoption(parser):
         Launch sim tool in GUI mode
 
         Only use this option when running a single test
-        """
+        """,
     )
-
 
     parser.addoption(
         "--rerun",
@@ -32,7 +31,7 @@ def pytest_addoption(parser):
         Re-run simulation in-place without re-exporting regblock
 
         Useful if hand-editing a testcase interactively.
-        """
+        """,
     )
 
     parser.addoption(
@@ -44,5 +43,5 @@ def pytest_addoption(parser):
 
         skip: skip all the simulation tests
         auto: choose the best tool based on what is installed
-        """
+        """,
     )

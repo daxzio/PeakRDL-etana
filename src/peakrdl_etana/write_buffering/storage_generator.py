@@ -7,8 +7,9 @@ from ..struct_generator import RDLStructGenerator
 if TYPE_CHECKING:
     from . import WriteBuffering
 
+
 class WBufStorageStructGenerator(RDLStructGenerator):
-    def __init__(self, wbuf: 'WriteBuffering') -> None:
+    def __init__(self, wbuf: "WriteBuffering") -> None:
         super().__init__()
         self.wbuf = wbuf
 
@@ -19,14 +20,14 @@ class WBufStorageStructGenerator(RDLStructGenerator):
     def enter_Reg(self, node: RegNode) -> None:
         super().enter_Reg(node)
 
-        if not node.get_property('buffer_writes'):
+        if not node.get_property("buffer_writes"):
             return
 
-        regwidth = node.get_property('regwidth')
+        regwidth = node.get_property("regwidth")
         self.add_member("data", regwidth)
         self.add_member("biten", regwidth)
         self.add_member("pending")
 
-        trigger = node.get_property('wbuffer_trigger')
+        trigger = node.get_property("wbuffer_trigger")
         if isinstance(trigger, RegNode) and trigger == node:
             self.add_member("trigger_q")

@@ -137,7 +137,7 @@ module {{ds.module_name}}
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
 
-    always @(*) begin 
+    always @(*) begin
         integer next_cpuif_addr;
     {%- if ds.has_external_addressable %}
         logic is_external;
@@ -209,7 +209,7 @@ module {{ds.module_name}}
     // Write response
     //--------------------------------------------------------------------------
 {%- if ext_write_acks.has_external_write() %}
-    always @(*) begin 
+    always @(*) begin
         logic wr_ack;
         wr_ack = '0;
         {{ext_write_acks.get_implementation()|indent(8)}}
@@ -228,7 +228,7 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
 {%- if ext_read_acks.has_external_read() %}
     logic readback_external_rd_ack_c;
-    always @(*) begin 
+    always @(*) begin
         logic rd_ack;
         rd_ack = '0;
         {{ext_read_acks.get_implementation()|indent(8)}}

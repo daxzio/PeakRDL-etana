@@ -22,7 +22,7 @@ format:
 black: format
 
 dist:
-	rm -rf MANIFEST 
+	rm -rf MANIFEST
 	rm -rf CHANGELOG.txt
 	python setup.py sdist
 
@@ -38,3 +38,8 @@ release:
 	git tag -f v${GIT_TAG}
 	git push && git push --tags
 
+git_align:
+	mkdir -p repos
+	cd repos ; git clone git@github.com:daxzio/rtlflo.git 2> /dev/null || (cd rtlflo ; git pull)
+	rsync -artu --exclude .git repos/rtlflo/ cocotb/rtlflo
+	rsync -artu --exclude .git cocotb/rtlflo/ repos/rtlflo

@@ -1,6 +1,6 @@
 cocotb
 peakrdl
-pytest 
+pytest
 mypy
 black
 pyflakes

@@ -2,6 +2,7 @@ from ..base import CpuifTestMode
 
 from peakrdl_regblock.cpuif.passthrough import PassthroughCpuif
 
+
 class Passthrough(CpuifTestMode):
     cpuif_cls = PassthroughCpuif
     rtl_files = []

@@ -9,15 +9,22 @@ from .identifier_filter import kw_filter as kwf
 if TYPE_CHECKING:
     from typing import Union
 
-    from systemrdl.node import AddrmapNode, RegfileNode, RegNode, FieldNode, Node, MemNode
+    from systemrdl.node import (
+        AddrmapNode,
+        RegfileNode,
+        RegNode,
+        FieldNode,
+        Node,
+        MemNode,
+    )
 
 
 class _StructBase:
     def __init__(self) -> None:
-        self.children = [] # type: List[Union[str, _StructBase]]
+        self.children = []  # type: List[Union[str, _StructBase]]
 
     def __str__(self) -> str:
-        s = '\n'.join((str(x) for x in self.children))
+        s = "\n".join((str(x) for x in self.children))
         return textwrap.indent(s, "    ")
 
 
@@ -33,15 +40,17 @@ class _AnonymousStruct(_StructBase):
         else:
             suffix = ""
 
-        return (
-            "struct {\n"
-            + super().__str__()
-            + f"\n}} {self.inst_name}{suffix};"
-        )
+        return "struct {\n" + super().__str__() + f"\n}} {self.inst_name}{suffix};"
 
 
 class _TypedefStruct(_StructBase):
-    def __init__(self, type_name: str, inst_name: Optional[str] = None, array_dimensions: Optional[List[int]] = None, packed: bool = False):
+    def __init__(
+        self,
+        type_name: str,
+        inst_name: Optional[str] = None,
+        array_dimensions: Optional[List[int]] = None,
+        packed: bool = False,
+    ):
         super().__init__()
         self.type_name = type_name
         self.inst_name = inst_name
@@ -56,11 +65,7 @@ class _TypedefStruct(_StructBase):
                 + f"\n}} {self.type_name};"
             )
         else:
-            return (
-                "typedef struct {\n"
-                + super().__str__()
-                + f"\n}} {self.type_name};"
-            )
+            return "typedef struct {\n" + super().__str__() + f"\n}} {self.type_name};"
 
     @property
     def instantiation(self) -> str:
@@ -71,24 +76,27 @@ class _TypedefStruct(_StructBase):
 
         return f"{self.type_name} {self.inst_name}{suffix};"
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
+
 
 class StructGenerator:
-
     def __init__(self) -> None:
-        self._struct_stack = [] # type: List[_StructBase]
+        self._struct_stack = []  # type: List[_StructBase]
 
     @property
     def current_struct(self) -> _StructBase:
         return self._struct_stack[-1]
 
-
-    def push_struct(self, inst_name: str, array_dimensions: Optional[List[int]] = None) -> None:
+    def push_struct(
+        self, inst_name: str, array_dimensions: Optional[List[int]] = None
+    ) -> None:
         s = _AnonymousStruct(inst_name, array_dimensions)
         self._struct_stack.append(s)
 
-
-    def add_member(self, name: str, width: int = 1, array_dimensions: Optional[List[int]] = None) -> None:
+    def add_member(
+        self, name: str, width: int = 1, array_dimensions: Optional[List[int]] = None
+    ) -> None:
         if array_dimensions:
             suffix = "[" + "][".join((str(n) for n in array_dimensions)) + "]"
         else:
@@ -100,14 +108,12 @@ class StructGenerator:
             m = f"logic [{width-1}:0] {name}{suffix};"
         self.current_struct.children.append(m)
 
-
     def pop_struct(self) -> None:
         s = self._struct_stack.pop()
 
         if s.children:
             # struct is not empty. Attach it to the parent
             self.current_struct.children.append(s)
-
 
     def start(self, type_name: str) -> None:
         assert not self._struct_stack
@@ -131,7 +137,7 @@ class RDLStructGenerator(StructGenerator, RDLListener):
     This can be extended to add more intelligent behavior
     """
 
-    def get_struct(self, node: 'Node', type_name: str) -> Optional[str]:
+    def get_struct(self, node: "Node", type_name: str) -> Optional[str]:
         self.start(type_name)
 
         walker = RDLWalker()
@@ -139,43 +145,43 @@ class RDLStructGenerator(StructGenerator, RDLListener):
 
         return self.finish()
 
-
-    def enter_Addrmap(self, node: 'AddrmapNode') -> None:
+    def enter_Addrmap(self, node: "AddrmapNode") -> None:
         self.push_struct(kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Addrmap(self, node: 'AddrmapNode') -> None:
+    def exit_Addrmap(self, node: "AddrmapNode") -> None:
         self.pop_struct()
 
-    def enter_Regfile(self, node: 'RegfileNode') -> None:
+    def enter_Regfile(self, node: "RegfileNode") -> None:
         self.push_struct(kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Regfile(self, node: 'RegfileNode') -> None:
+    def exit_Regfile(self, node: "RegfileNode") -> None:
         self.pop_struct()
 
-    def enter_Mem(self, node: 'MemNode') -> None:
+    def enter_Mem(self, node: "MemNode") -> None:
         self.push_struct(kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Mem(self, node: 'MemNode') -> None:
+    def exit_Mem(self, node: "MemNode") -> None:
         self.pop_struct()
 
-    def enter_Reg(self, node: 'RegNode') -> None:
+    def enter_Reg(self, node: "RegNode") -> None:
         self.push_struct(kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Reg(self, node: 'RegNode') -> None:
+    def exit_Reg(self, node: "RegNode") -> None:
         self.pop_struct()
 
-    def enter_Field(self, node: 'FieldNode') -> None:
+    def enter_Field(self, node: "FieldNode") -> None:
         self.add_member(kwf(node.inst_name), node.width)
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
+
 
 class FlatStructGenerator(StructGenerator):
-
     def __init__(self) -> None:
         super().__init__()
-        self.typedefs = OrderedDict() # type: OrderedDict[str, _TypedefStruct]
+        self.typedefs = OrderedDict()  # type: OrderedDict[str, _TypedefStruct]
 
-    def push_struct(self, type_name: str, inst_name: str, array_dimensions: Optional[List[int]] = None, packed = False) -> None: # type: ignore # pylint: disable=arguments-renamed
+    def push_struct(self, type_name: str, inst_name: str, array_dimensions: Optional[List[int]] = None, packed=False) -> None:  # type: ignore # pylint: disable=arguments-renamed
         s = _TypedefStruct(type_name, inst_name, array_dimensions, packed)
         self._struct_stack.append(s)
 
@@ -217,10 +223,10 @@ class RDLFlatStructGenerator(FlatStructGenerator, RDLListener):
     This can be extended to add more intelligent behavior
     """
 
-    def get_typdef_name(self, node:'Node') -> str:
+    def get_typdef_name(self, node: "Node") -> str:
         raise NotImplementedError
 
-    def get_struct(self, node: 'Node', type_name: str) -> Optional[str]:
+    def get_struct(self, node: "Node", type_name: str) -> Optional[str]:
         self.start(type_name)
 
         walker = RDLWalker()
@@ -228,33 +234,33 @@ class RDLFlatStructGenerator(FlatStructGenerator, RDLListener):
 
         return self.finish()
 
-    def enter_Addrmap(self, node: 'AddrmapNode') -> None:
+    def enter_Addrmap(self, node: "AddrmapNode") -> None:
         type_name = self.get_typdef_name(node)
         self.push_struct(type_name, kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Addrmap(self, node: 'AddrmapNode') -> None:
+    def exit_Addrmap(self, node: "AddrmapNode") -> None:
         self.pop_struct()
 
-    def enter_Regfile(self, node: 'RegfileNode') -> None:
+    def enter_Regfile(self, node: "RegfileNode") -> None:
         type_name = self.get_typdef_name(node)
         self.push_struct(type_name, kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Regfile(self, node: 'RegfileNode') -> None:
+    def exit_Regfile(self, node: "RegfileNode") -> None:
         self.pop_struct()
 
-    def enter_Mem(self, node: 'MemNode') -> None:
+    def enter_Mem(self, node: "MemNode") -> None:
         type_name = self.get_typdef_name(node)
         self.push_struct(type_name, kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Mem(self, node: 'MemNode') -> None:
+    def exit_Mem(self, node: "MemNode") -> None:
         self.pop_struct()
 
-    def enter_Reg(self, node: 'RegNode') -> None:
+    def enter_Reg(self, node: "RegNode") -> None:
         type_name = self.get_typdef_name(node)
         self.push_struct(type_name, kwf(node.inst_name), node.array_dimensions)
 
-    def exit_Reg(self, node: 'RegNode') -> None:
+    def exit_Reg(self, node: "RegNode") -> None:
         self.pop_struct()
 
-    def enter_Field(self, node: 'FieldNode') -> None:
+    def enter_Field(self, node: "FieldNode") -> None:
         self.add_member(kwf(node.inst_name), node.width)

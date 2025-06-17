@@ -1,0 +1,26 @@
+// enum {
+// 	IO_PRINT_CHAR  = 0x000,
+// 	IO_PRINT_U32   = 0x004,
+// 	IO_EXIT        = 0x008,
+// 	IO_SET_SOFTIRQ = 0x010,
+// 	IO_CLR_SOFTIRQ = 0x014,
+// 	IO_GLOBMON_EN  = 0x018,
+// 	IO_SET_IRQ     = 0x020,
+// 	IO_CLR_IRQ     = 0x030,
+// 	IO_MTIME       = 0x100,
+// 	IO_MTIMEH      = 0x104,
+// 	IO_MTIMECMP0   = 0x108,
+// 	IO_MTIMECMP0H  = 0x10c,
+// 	IO_MTIMECMP1   = 0x110,
+// 	IO_MTIMECMP1H  = 0x114
+// };
+
+addrmap io_base {
+    reg io_reg_t {
+        field {sw=rw; hw=na;} IO_PRINT_CHAR[8] = 0;
+    };
+
+    io_reg_t io_print_char;
+    io_reg_t io_print_u32;
+    io_reg_t io_exit;
+};

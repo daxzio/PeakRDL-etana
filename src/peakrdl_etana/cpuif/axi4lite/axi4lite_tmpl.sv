@@ -68,7 +68,7 @@ end
 
 // Request dispatch
 // always_comb begin
-always @(*) begin 
+always @(*) begin
     cpuif_wr_data = axil_wdata;
     for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
         cpuif_wr_biten[i*8 +: 8] = {8{axil_wstrb[i]}};
@@ -216,7 +216,7 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
 end
 
 // always_comb begin
-always @(*) begin 
+always @(*) begin
     axil_resp_acked = '0;
     {{cpuif.signal("bvalid")}} = '0;
     {{cpuif.signal("rvalid")}} = '0;

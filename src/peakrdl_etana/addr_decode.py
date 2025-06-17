@@ -18,17 +18,17 @@ if TYPE_CHECKING:
 
 
 class AddressDecode:
-    def __init__(self, exp:'RegblockExporter'):
+    def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
 
     @property
-    def top_node(self) -> 'AddrmapNode':
+    def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
 
     def get_strobe_logic(self) -> str:
         logic_gen = DecodeStrbGenerator(self)
         s = logic_gen.get_logic(self.top_node)
-        assert s is not None # guaranteed to have at least one reg
+        assert s is not None  # guaranteed to have at least one reg
         return s
 
     def get_implementation(self) -> str:
@@ -37,7 +37,9 @@ class AddressDecode:
         assert s is not None
         return s
 
-    def get_access_strobe(self, node: Union[RegNode, FieldNode], reduce_substrobes: bool=True) -> str:
+    def get_access_strobe(
+        self, node: Union[RegNode, FieldNode], reduce_substrobes: bool = True
+    ) -> str:
         """
         Returns the Verilog string that represents the register/field's access strobe.
         """
@@ -45,8 +47,8 @@ class AddressDecode:
             field = node
             p = IndexedPath(self.top_node, node.parent)
 
-            regwidth = node.parent.get_property('regwidth')
-            accesswidth = node.parent.get_property('accesswidth')
+            regwidth = node.parent.get_property("regwidth")
+            accesswidth = node.parent.get_property("accesswidth")
             if regwidth > accesswidth:
                 # Is wide register.
                 # Determine the substrobe(s) relevant to this field
@@ -67,44 +69,44 @@ class AddressDecode:
             print("yy", node)
         elif isinstance(node.parent, RegfileNode):
             p = IndexedPath(self.top_node, node.parent)
-#             if not node.external:
-#                 raise
+        #             if not node.external:
+        #                 raise
         else:
             p = IndexedPath(self.top_node, node)
-        
+
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
-    def get_external_block_access_strobe(self, node: 'AddressableNode') -> str:
+    def get_external_block_access_strobe(self, node: "AddressableNode") -> str:
         assert node.external
         assert not isinstance(node, RegNode)
-#         path = get_indexed_path(self.top_node, node)
-#         raise
+        #         path = get_indexed_path(self.top_node, node)
+        #         raise
         p = IndexedPath(self.top_node, node)
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
-class DecodeStrbGenerator(RDLForLoopGenerator):
 
+class DecodeStrbGenerator(RDLForLoopGenerator):
     def __init__(self, addr_decode: AddressDecode) -> None:
         self.addr_decode = addr_decode
         super().__init__()
-        self._logic_stack = [] # type: List[_StructBase]
+        self._logic_stack = []  # type: List[_StructBase]
 
-    def get_logic(self, node: 'Node') -> Optional[str]:
+    def get_logic(self, node: "Node") -> Optional[str]:
 
         walker = RDLWalker()
         walker.walk(node, self, skip_top=True)
 
         return self.finish()
-    
-    def build_logic(self, node: 'RegNode', active=1) -> None:
+
+    def build_logic(self, node: "RegNode", active=1) -> None:
         p = self.addr_decode.get_access_strobe(node)
         array_dimensions = node.array_dimensions
-#         index = active
-#         if not array_dimensions is None:
-#             for i in array_dimensions:
-#                 index *= i
+        #         index = active
+        #         if not array_dimensions is None:
+        #             for i in array_dimensions:
+        #                 index *= i
         if array_dimensions is None:
             s = f"logic [{active-1}:0] {p.path};"
         else:
@@ -112,31 +114,34 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
         self._logic_stack.append(s)
 
-    def enter_Mem(self, node: 'MemNode') -> None:
+    def enter_Mem(self, node: "MemNode") -> None:
         if not node.external:
             raise
         self.build_logic(node)
 
-    def enter_Reg(self, node: 'RegNode') -> None:
+    def enter_Reg(self, node: "RegNode") -> None:
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
         self.build_logic(node, n_subwords)
 
     def finish(self) -> Optional[str]:
         s = self._logic_stack
         return str("\n".join(s))
-# 
+
+
+#
+
 
 class DecodeLogicGenerator(RDLForLoopGenerator):
-
     def __init__(self, addr_decode: AddressDecode) -> None:
         self.addr_decode = addr_decode
         super().__init__()
 
         # List of address strides for each dimension
-        self._array_stride_stack = [] # type: List[int]
+        self._array_stride_stack = []  # type: List[int]
 
-
-    def enter_AddressableComponent(self, node: 'AddressableNode') -> Optional[WalkerAction]:
+    def enter_AddressableComponent(
+        self, node: "AddressableNode"
+    ) -> Optional[WalkerAction]:
         super().enter_AddressableComponent(node)
 
         if node.array_dimensions:
@@ -153,7 +158,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             # Is an external block
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-#             strb = self.addr_decode.get_access_strobe(node)
+            #             strb = self.addr_decode.get_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
             self.add_content(f"{strb.path} = {rhs};")
             self.add_content(f"is_external |= {rhs};")
@@ -161,36 +166,42 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
         return WalkerAction.Continue
 
-
-    def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
+    def _get_address_str(self, node: "AddressableNode", subword_offset: int = 0) -> str:
         if len(self._array_stride_stack):
-            a = str(SVInt(
-                node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
-                32
-            ))
+            a = str(
+                SVInt(
+                    node.raw_absolute_address
+                    - self.addr_decode.top_node.raw_absolute_address
+                    + subword_offset,
+                    32,
+                )
+            )
             for i, stride in enumerate(self._array_stride_stack):
                 a += f" + i{i}*{SVInt(stride, self.addr_decode.exp.ds.addr_width)}"
         else:
-            a = str(SVInt(
-                node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
-                self.addr_decode.exp.ds.addr_width
-            ))
+            a = str(
+                SVInt(
+                    node.raw_absolute_address
+                    - self.addr_decode.top_node.raw_absolute_address
+                    + subword_offset,
+                    self.addr_decode.exp.ds.addr_width,
+                )
+            )
         return a
 
-#     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
-#         expr_width = self.addr_decode.exp.ds.addr_width
-#         a = str(SVInt(
-#             node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
-#             expr_width
-#         ))
-#         for i, stride in enumerate(self._array_stride_stack):
-#             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
-#         return a
-
+    #     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
+    #         expr_width = self.addr_decode.exp.ds.addr_width
+    #         a = str(SVInt(
+    #             node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
+    #             expr_width
+    #         ))
+    #         for i, stride in enumerate(self._array_stride_stack):
+    #             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
+    #         return a
 
     def enter_Reg(self, node: RegNode) -> None:
-        regwidth = node.get_property('regwidth')
-        accesswidth = node.get_property('accesswidth')
+        regwidth = node.get_property("regwidth")
+        accesswidth = node.get_property("accesswidth")
 
         if regwidth == accesswidth:
             p = self.addr_decode.get_access_strobe(node)
@@ -199,7 +210,9 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 rhs = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
                 s = f"{p.path}{p.index_str} = {rhs};"
             else:
-                rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node)})"
+                rhs = (
+                    f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node)})"
+                )
                 s = f"{p.path} = {rhs};"
             self.add_content(s)
             if node.external:
@@ -225,7 +238,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 else:
                     for y in p.index:
                         print(y)
-                    #x = f"({n_subwords}*{p.index[0]})"
+                    # x = f"({n_subwords}*{p.index[0]})"
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
                 if node.external:
@@ -240,7 +253,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                     else:
                         raise RuntimeError
 
-    def exit_AddressableComponent(self, node: 'AddressableNode') -> None:
+    def exit_AddressableComponent(self, node: "AddressableNode") -> None:
         super().exit_AddressableComponent(node)
 
         if not node.array_dimensions:

@@ -2,6 +2,7 @@ from ..lib.sim_testcase import SimTestCase
 
 from ..lib.cpuifs.passthrough import Passthrough
 
+
 class Test(SimTestCase):
     cpuif = Passthrough()
 

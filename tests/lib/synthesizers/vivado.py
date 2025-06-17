@@ -4,6 +4,7 @@ import shutil
 
 from .base import Synthesizer
 
+
 class Vivado(Synthesizer):
     name = "vivado"
 
@@ -12,17 +13,19 @@ class Vivado(Synthesizer):
         return shutil.which("vivado") is not None
 
     def run(self) -> None:
-        script = os.path.join(
-            os.path.dirname(__file__),
-            "vivado_scripts/run.tcl"
-        )
+        script = os.path.join(os.path.dirname(__file__), "vivado_scripts/run.tcl")
 
         cmd = [
-            "vivado", "-nojournal", "-notrace",
-            "-mode", "batch",
-            "-log", "out.log",
-            "-source", script,
-            "-tclargs"
+            "vivado",
+            "-nojournal",
+            "-notrace",
+            "-mode",
+            "batch",
+            "-log",
+            "out.log",
+            "-source",
+            script,
+            "-tclargs",
         ]
         cmd.extend(self.testcase._get_synth_files())
 

@@ -51,7 +51,7 @@ class ClkReset:
             self.period = 1000 / self.clk_freq
         else:
             self.period = period
-        print(f"clock period {self.period} {self.clk_freq}")
+        # print(f"clock period {self.period} {self.clk_freq}")
         self._clk = Clk(dut, period=self.period, clkname=clkname)
         self.reset = Reset(
             dut,

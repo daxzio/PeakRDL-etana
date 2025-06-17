@@ -41,15 +41,22 @@ addrmap top {
 //     my_reg int_reg @ 0x04;
     external my_wide_reg wide_ext_reg @ 0x300;
     external my_wide_reg wide_ext_reg_array[8] @ 0x400;
+//     external my_wide_reg wide_ext_reg_xxxay[8][4] @ 0x500;
 //     external my_reg ext_reg_array[32] @ 0x400 += 4;
+//     external my_rew ext_rea_yyyay[3][5] @ 0x600;
 
 
     external regfile {
         my_reg placeholder @ 8*4-4;
+        my_reg second;
     } rf @ 0x1000;
     external regfile {
         my_rea flaceholdet @ 8*4-4;
+//         my_rea glaceholdex;
     } rx @ 0x2000;
+//     external regfile {
+//         my_rea flaceholdet @ 8*4-4;
+//     } rx2 @ 0x3000;
 //     external regfile {
 //         my_wide_reg xxaceholdet @ 8*4-4;
 //     } wrx @ 0x3000;
@@ -67,7 +74,7 @@ addrmap top {
 //     };
 //     external my_ro_reg ro_reg @ 0x5000;
 //     external my_wo_reg wo_reg @ 0x5004;
-// 
+//
 //     reg my_wide_ro_reg {
 //         regwidth = 64;
 //         accesswidth = 32;

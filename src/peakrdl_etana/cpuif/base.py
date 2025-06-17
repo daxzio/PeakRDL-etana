@@ -9,12 +9,13 @@ from ..utils import clog2, is_pow2, roundup_pow2
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter
 
+
 class CpuifBase:
 
     # Path is relative to the location of the class that assigns this variable
     template_path = ""
 
-    def __init__(self, exp:'RegblockExporter'):
+    def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
         self.reset = exp.ds.top_node.cpuif_reset
 
@@ -52,7 +53,6 @@ class CpuifBase:
                 class_dir = os.path.dirname(inspect.getfile(cls))
                 return class_dir
         raise RuntimeError
-
 
     def get_implementation(self) -> str:
         class_dir = self._get_template_path_class_dir()

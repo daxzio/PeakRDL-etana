@@ -1,5 +1,6 @@
 from ..base import CpuifBase
 
+
 class APB3_Cpuif(CpuifBase):
     template_path = "apb3_tmpl.sv"
 
@@ -7,7 +8,7 @@ class APB3_Cpuif(CpuifBase):
     def port_declaration(self) -> str:
         return "apb3_intf.slave s_apb"
 
-    def signal(self, name:str) -> str:
+    def signal(self, name: str) -> str:
         return "s_apb." + name.upper()
 
 
@@ -26,5 +27,5 @@ class APB3_Cpuif_flattened(APB3_Cpuif):
         ]
         return ",\n".join(lines)
 
-    def signal(self, name:str) -> str:
+    def signal(self, name: str) -> str:
         return "s_apb_" + name

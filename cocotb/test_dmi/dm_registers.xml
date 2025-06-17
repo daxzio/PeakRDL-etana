@@ -1,0 +1,1171 @@
+<!-- SPDX-License-Identifier: BSD-2-Clause OR CC-BY-4.0 -->
+
+<!--
+This file is dual-licensed. You may choose to use this file under the terms of
+either of the above licenses.
+
+Note: This dual licensing does not apply to other files that may be part of the
+same project unless stated otherwise.
+-->
+
+<registers name="Debug Module Debug Bus Registers" prefix="DM_">
+
+    <!-- =============== halt/reset/select hart  =============== -->
+
+    <register name="Debug Module Status" short="dmstatus" address="0x11">
+        This register reports status for the overall Debug Module as well as
+        the currently selected harts, as defined in {dmcontrol-hasel}.  Its address will
+        not change in the future, because it contains {dmstatus-version}.
+
+        <field name="0" bits="31:25" access="R" reset="0" />
+        <field name="ndmresetpending" bits="24" access="R" reset="-">
+            <value v="0" name="false">
+            Unimplemented, or {dmcontrol-ndmreset} is zero and no ndmreset is currently
+            in progress.
+            </value>
+
+            <value v="1" name="true">
+            {dmcontrol-ndmreset} is currently nonzero, or there is an ndmreset in progress.
+            </value>
+        </field>
+        <field name="stickyunavail" bits="23" access="R" reset="Preset">
+            <value v="0" name="current">
+            The per-hart `unavail` bits reflect the current state of the hart.
+            </value>
+
+            <value v="1" name="sticky">
+            The per-hart `unavail` bits are sticky. Once they are set, they will
+            not clear until the debugger acknowledges them using {dmcontrol-ackunavail}.
+            </value>
+        </field>
+        <field name="impebreak" bits="22" access="R" reset="Preset">
+            If 1, then there is an implicit `ebreak` instruction at the
+            non-existent word immediately after the Program Buffer. This saves
+            the debugger from having to write the `ebreak` itself, and
+            allows the Program Buffer to be one word smaller.
+
+            This must be 1 when {abstractcs-progbufsize} is 1.
+        </field>
+        <field name="0" bits="21:20" access="R" reset="0" />
+        <field name="allhavereset" bits="19" access="R" reset="-">
+            This field is 1 when all currently selected harts have been reset
+            and reset has not been acknowledged for any of them.
+        </field>
+        <field name="anyhavereset" bits="18" access="R" reset="-">
+            This field is 1 when at least one currently selected hart has been
+            reset and reset has not been acknowledged for that hart.
+        </field>
+        <field name="allresumeack" bits="17" access="R" reset="-">
+            This field is 1 when all currently selected harts have their
+            ((resume ack bit)) set.
+        </field>
+        <field name="anyresumeack" bits="16" access="R" reset="-">
+            This field is 1 when any currently selected hart has its
+            ((resume ack bit)) set.
+        </field>
+        <field name="allnonexistent" bits="15" access="R" reset="-">
+            This field is 1 when all currently selected harts do not exist in
+            this hardware platform.
+        </field>
+        <field name="anynonexistent" bits="14" access="R" reset="-">
+            This field is 1 when any currently selected hart does not exist in
+            this hardware platform.
+        </field>
+        <field name="allunavail" bits="13" access="R" reset="-">
+            This field is 1 when all currently selected harts are
+            unavailable, or (if {dmstatus-stickyunavail} is 1) were
+            unavailable without that being acknowledged.
+        </field>
+        <field name="anyunavail" bits="12" access="R" reset="-">
+            This field is 1 when any currently selected hart is unavailable,
+            or (if {dmstatus-stickyunavail} is 1) was unavailable without
+            that being acknowledged.
+        </field>
+        <field name="allrunning" bits="11" access="R" reset="-">
+            This field is 1 when all currently selected harts are running.
+        </field>
+        <field name="anyrunning" bits="10" access="R" reset="-">
+            This field is 1 when any currently selected hart is running.
+        </field>
+        <field name="allhalted" bits="9" access="R" reset="-">
+            This field is 1 when all currently selected harts are halted.
+        </field>
+        <field name="anyhalted" bits="8" access="R" reset="-">
+            This field is 1 when any currently selected hart is halted.
+        </field>
+
+        <!-- Fields that apply to the entire DM. -->
+        <field name="authenticated" bits="7" access="R" reset="Preset">
+            <value v="0" name="false">
+            Authentication is required before using the DM.
+            </value>
+
+            <value v="1" name="true">
+            The authentication check has passed.
+            </value>
+
+            On components that don't implement authentication, this bit must be
+            preset as 1.
+        </field>
+        <field name="authbusy" bits="6" access="R" reset="0">
+            <value v="0" name="ready">
+            The authentication module is ready to process the next
+            read/write to {dm-authdata}.
+            </value>
+
+            <value v="1" name="busy">
+            The authentication module is busy. Accessing {dm-authdata} results
+            in unspecified behavior.
+            </value>
+
+            {dmstatus-authbusy} only becomes set in immediate response to an access to
+            {dm-authdata}.
+        </field>
+        <field name="hasresethaltreq" bits="5" reset="Preset" access="R">
+            1 if this Debug Module supports halt-on-reset functionality
+            controllable by the {dmcontrol-setresethaltreq} and {dmcontrol-clrresethaltreq} bits.
+            0 otherwise.
+        </field>
+        <field name="confstrptrvalid" bits="4" reset="Preset" access="R">
+            <value v="0" name="invalid">
+            {dm-confstrptr0}--{dm-confstrptr3} hold information which
+            is not relevant to the configuration structure.
+            </value>
+
+            <value v="1" name="valid">
+            {dm-confstrptr0}--{dm-confstrptr3} hold the address of the
+            configuration structure.
+            </value>
+        </field>
+        <field name="version" bits="3:0" reset="3" access="R">
+            <value v="0" name="none">
+            There is no Debug Module present.
+            </value>
+
+            <value v="1" name="0.11">
+            There is a Debug Module and it conforms to version 0.11 of this
+            specification.
+            </value>
+
+            <value v="2" name="0.13">
+            There is a Debug Module and it conforms to version 0.13 of this
+            specification.
+            </value>
+
+            <value v="3" name="1.0">
+            There is a Debug Module and it conforms to version 1.0 of this
+            specification.
+            </value>
+
+            <value v="15" name="custom">
+            There is a Debug Module but it does not conform to any
+            available version of this spec.
+            </value>
+        </field>
+    </register>
+
+    <register name="Debug Module Control" short="dmcontrol" address="0x10">
+        This register controls the overall Debug Module
+        as well as the currently selected harts, as defined in {dmcontrol-hasel}.
+
+[[hartsel]]
+(((hartsel)))
+        Throughout this document we refer to {hartsel}, which is {dmcontrol-hartselhi}
+        combined with {dmcontrol-hartsello}. While the spec allows for 20 {hartsel} bits,
+        an implementation may choose to implement fewer than that. The actual
+        width of {hartsel} is called `HARTSELLEN`. It must be at least 0
+        and at most 20. A debugger should discover `HARTSELLEN` by writing
+        all ones to {hartsel} (assuming the maximum size) and reading back the
+        value to see which bits were actually set. Debuggers must not change
+        {hartsel} while an abstract command is executing. Hardware should enforce
+        this by ignoring changes to {hartsel} while {abstractcs-busy} is set.
+
+        [NOTE]
+        ====
+        There are separate {dmcontrol-setresethaltreq} and {dmcontrol-clrresethaltreq} bits so that
+        it is possible to write {dm-dmcontrol} without changing the halt-on-reset
+        request bit for each selected hart, when not all selected harts have
+        the same configuration.
+        ====
+
+        On any given write, a debugger may only write 1 to at most one of the
+        following bits: {dmcontrol-resumereq}, {dmcontrol-hartreset}, {dmcontrol-ackhavereset},
+        {dmcontrol-setresethaltreq}, and {dmcontrol-clrresethaltreq}. The others must be written 0.
+
+[[resethaltreq]]
+(((resethaltreq)))
+        {resethaltreq} is an optional internal bit of per-hart state that cannot be
+        read, but can be written with {dmcontrol-setresethaltreq} and {dmcontrol-clrresethaltreq}.
+
+[[keepalive]]
+(((keepalive)))
+        {keepalive} is an optional internal bit of per-hart state. When it is
+        set, it suggests that the hardware should attempt to keep the hart
+        available for the debugger, e.g. by keeping it from entering a
+        low-power state once powered on. Even if the bit is implemented,
+        hardware might not be able to keep a hart available. The bit is
+        written through {dmcontrol-setkeepalive} and
+        {dmcontrol-clrkeepalive}.
+
+        For forward compatibility, {dmstatus-version} will always be readable when bit 1
+        ({dmcontrol-ndmreset}) is 0 and bit 0 ({dmcontrol-dmactive}) is 1.
+
+        <!-- Fields that apply to all selected hart(s) -->
+        <field name="haltreq" bits="31" access="WARZ" reset="-">
+            Writing 0 clears the halt request bit for all currently selected
+            harts. This may cancel outstanding halt requests for those harts.
+
+            Writing 1 sets the halt request bit for all currently selected
+            harts. Running harts will halt whenever their halt request bit is
+            set.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+
+            Writes to this bit should be ignored while an abstract command is
+            executing.
+        </field>
+        <field name="resumereq" bits="30" access="W1" reset="-">
+            Writing 1 causes the currently selected harts to resume once, if
+            they are halted when the write occurs. It also clears the resume
+            ack bit for those harts.
+
+            {dmcontrol-resumereq} is ignored if {dmcontrol-haltreq} is set.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+
+            Writes to this bit should be ignored while an abstract command is
+            executing.
+        </field>
+        <field name="hartreset" bits="29" access="WARL" reset="0">
+            This optional field writes the reset bit for all the currently
+            selected harts.  To perform a reset the debugger writes 1, and then
+            writes 0 to deassert the reset signal.
+
+            While this bit is 1, the debugger must not change which harts are
+            selected.
+
+            If this feature is not implemented, the bit always stays 0, so
+            after writing 1 the debugger can read the register back to see if
+            the feature is supported.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+        </field>
+        <field name="ackhavereset" bits="28" access="W1" reset="-">
+            <value v="0" name="nop">
+            No effect.
+            </value>
+
+            <value v="1" name="ack">
+            Clears `havereset` for any selected harts.
+            </value>
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+
+            Writes to this bit should be ignored while an abstract command is
+            executing.
+        </field>
+        <field name="ackunavail" bits="27" access="W1" reset="-">
+            <value v="0" name="nop">
+            No effect.
+            </value>
+
+            <value v="1" name="ack">
+            Clears `unavail` for any selected harts that are currently available.
+            </value>
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+        </field>
+        <field name="hasel" bits="26" access="WARL" reset="0">
+            Selects the definition of currently selected harts.
+
+            <value v="0" name="single">
+            There is a single currently selected hart, that is selected by {hartsel}.
+            </value>
+
+            <value v="1" name="multiple">
+            There may be multiple currently selected harts -- the hart
+            selected by {hartsel}, plus those selected by the hart array mask
+            register.
+            </value>
+
+            An implementation which does not implement the hart array mask register
+            must tie this field to 0. A debugger which wishes to use the hart array
+            mask register feature should set this bit and read back to see if the functionality
+            is supported.
+        </field>
+        <field name="hartsello" bits="25:16" access="WARL" reset="0">
+            The low 10 bits of {hartsel}: the DM-specific index of the hart to
+            select. This hart is always part of the currently selected harts.
+        </field>
+        <field name="hartselhi" bits="15:6" access="WARL" reset="0">
+            The high 10 bits of {hartsel}: the DM-specific index of the hart to
+            select. This hart is always part of the currently selected harts.
+        </field>
+        <field name="setkeepalive" bits="5" access="W1" reset="-">
+            This optional field sets {keepalive} for all currently selected
+            harts, unless {dmcontrol-clrkeepalive} is simultaneously set to
+            1.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+        </field>
+        <field name="clrkeepalive" bits="4" access="W1" reset="-">
+            This optional field clears {keepalive} for all currently selected
+            harts.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+        </field>
+        <field name="setresethaltreq" bits="3" access="W1" reset="-">
+            This optional field writes the halt-on-reset request bit for all
+            currently selected harts, unless {dmcontrol-clrresethaltreq} is
+            simultaneously set to 1.
+            When set to 1, each selected hart will halt upon the next deassertion
+            of its reset. The halt-on-reset request bit is not automatically
+            cleared. The debugger must write to {dmcontrol-clrresethaltreq} to clear it.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+
+            If {dmstatus-hasresethaltreq} is 0, this field is not implemented.
+
+            Writes to this bit should be ignored while an abstract command is
+            executing.
+        </field>
+        <field name="clrresethaltreq" bits="2" access="W1" reset="-">
+            This optional field clears the halt-on-reset request bit for all
+            currently selected harts.
+
+            Writes apply to the new value of {hartsel} and {dmcontrol-hasel}.
+
+            Writes to this bit should be ignored while an abstract command is
+            executing.
+        </field>
+        <!-- Fields that apply to the entire DM. -->
+        <field name="ndmreset" bits="1" access="R/W" reset="0">
+            This bit controls the reset signal from the DM to the rest of the
+            hardware platform. The signal should reset every part of the hardware platform, including
+            every hart, except for the DM and any logic required to access the
+            DM.
+            To perform a hardware platform reset the debugger writes 1,
+            and then writes 0
+            to deassert the reset.
+        </field>
+        <field name="dmactive" bits="0" access="R/W" reset="0">
+            This bit serves as a reset signal for the Debug Module itself.
+            After changing the value of this bit, the debugger must poll
+            {dm-dmcontrol} until {dmcontrol-dmactive} has taken the requested value
+            before performing any action that assumes the requested {dmcontrol-dmactive}
+            state change has completed.  Hardware may
+            take an arbitrarily long time to complete activation or deactivation and will
+            indicate completion by setting {dmcontrol-dmactive} to the requested value.
+            During this time, the DM may ignore any register writes.
+
+            <value v="0" name="inactive">
+            The module's state, including authentication mechanism,
+            takes its reset values (the {dmcontrol-dmactive} bit is the only bit which can
+            be written to something other than its reset value). Any accesses
+            to the module may fail. Specifically, {dmstatus-version} might not return
+            correct data.
+
+            When this value is written, the DM may ignore any other bits written
+            to {dmcontrol} in the same write.
+            </value>
+
+            <value v="1" name="active">
+            The module functions normally.
+            </value>
+
+            No other mechanism should exist that may result in resetting the
+            Debug Module after power up.
+
+            To place the Debug Module into a known state, a debugger should write 0 to {dmcontrol-dmactive},
+            poll until {dmcontrol-dmactive} is observed 0, write 1 to {dmcontrol-dmactive}, and
+            poll until {dmcontrol-dmactive} is observed 1.
+
+            Implementations may pay attention to this bit to further aid
+            debugging, for example by preventing the Debug Module from being
+            power gated while debugging is active.
+        </field>
+    </register>
+
+    <register name="Hart Info" short="hartinfo" address="0x12">
+      This register gives information about the hart currently
+      selected by {hartsel}.
+
+      This register is optional. If it is not present it should
+      read all-zero.
+
+      If this register is included, the debugger can do more with
+      the Program Buffer by writing programs which
+      explicitly access the `data` and/or `dscratch`
+      registers.
+
+        <field name="0" bits="31:24" access="R" reset="0" />
+        <field name="nscratch" bits="23:20" access="R" reset="Preset">
+            Number of `dscratch` registers available for the debugger
+            to use during program buffer execution, starting from {csr-dscratch0}.
+            The debugger can make no assumptions about the contents of these
+            registers between commands.
+        </field>
+        <field name="0" bits="19:17" access="R" reset="0" />
+        <field name="dataaccess" bits="16" access="R" reset="Preset">
+            <value v="0" name="csr">
+            The `data` registers are shadowed in the hart by CSRs.
+            Each CSR is DXLEN bits in size, and corresponds
+            to a single argument, per &lt;&lt;tab:datareg&gt;&gt;.
+            </value>
+
+            <value v="1" name="memory">
+            The `data` registers are shadowed in the hart's memory map.
+            Each register takes up 4 bytes in the memory map.
+            </value>
+        </field>
+        <field name="datasize" bits="15:12" access="R" reset="Preset">
+            If {hartinfo-dataaccess} is 0: Number of CSRs dedicated to
+            shadowing the `data` registers.
+
+            If {hartinfo-dataaccess} is 1: Number of 32-bit words in the memory map
+            dedicated to shadowing the `data` registers.
+
+            Since there are at most 12 `data` registers, the value in this
+            register must be 12 or smaller.
+        </field>
+        <field name="dataaddr" bits="11:0" access="R" reset="Preset">
+            If {hartinfo-dataaccess} is 0: The number of the first CSR dedicated to
+            shadowing the `data` registers.
+
+            If {hartinfo-dataaccess} is 1: Address of RAM where the data
+            registers are shadowed. This address is sign extended giving a
+            range of -2048 to 2047, easily addressed with a load or store using
+            `x0` as the address register.
+        </field>
+    </register>
+
+    <!-- =============== Hart Array Registers =============== -->
+
+    <register name="Hart Array Window Select" short="hawindowsel" address="0x14">
+      This register selects which of the 32-bit portion of the hart array mask
+      register (see xref:hartarraymask[]) is accessible in {dm-hawindow}.
+
+      <field name="0" bits="31:15" access="R" reset="0" />
+      <field name="hawindowsel" bits="14:0" access="WARL" reset="0">
+          The high bits of this field may be tied to 0, depending on how large
+          the array mask register is.  E.g. on a hardware platform with 48 harts only bit 0
+          of this field may actually be writable.
+      </field>
+    </register>
+
+    <register name="Hart Array Window " short="hawindow" address="0x15">
+      This register provides R/W access to a 32-bit portion of the
+      hart array mask register (see xref:hartarraymask[]).
+      The position of the window is determined by {dm-hawindowsel}. I.e. bit 0
+      refers to hart {dm-hawindowsel} latexmath:[$* 32$], while bit 31 refers to hart
+      {dm-hawindowsel} latexmath:[$* 32 + 31$].
+
+      Since some bits in the hart array mask register may be constant 0, some
+      bits in this register may be constant 0, depending on the current value
+      of {dm-hawindowsel}.
+      <field name="maskdata" bits="31:0" access="WARL" reset="0" />
+    </register>
+
+    <!-- =============== abstract commands =============== -->
+
+    <register name="Abstract Control and Status" short="abstractcs" address="0x16">
+        Writing this register while an abstract command is executing causes
+        {abstractcs-cmderr} to become 1 (busy) once the command completes
+        ({abstractcs-busy} becomes 0).
+
+        [NOTE]
+        ====
+            {abstractcs-datacount} must be at least 1 to support RV32 harts, 2 to support
+            RV64 harts, or 4 to support RV128 harts.
+        ====
+
+                <field name="0" bits="31:29" access="R" reset="0" />
+        <field name="progbufsize" bits="28:24" access="R" reset="Preset">
+            Size of the Program Buffer, in 32-bit words. Valid sizes are 0 - 16.
+        </field>
+        <field name="0" bits="23:13" access="R" reset="0" />
+        <field name="busy" bits="12" access="R" reset="0">
+            <value v="0" name="ready">
+            There is no abstract command currently being executed.
+            </value>
+
+            <value v="1" name="busy">
+            An abstract command is currently being executed.
+            </value>
+
+            This bit is set as soon as {dm-command} is written, and is
+            not cleared until that command has completed.
+        </field>
+        <field name="relaxedpriv" bits="11" access="WARL" reset="Preset">
+           This optional bit controls whether program buffer and abstract
+           memory accesses are performed with the exact and full set of
+           permission checks that apply based on the current architectural
+           state of the hart performing the access, or with a relaxed set of
+           permission checks (e.g. PMP restrictions are ignored).  The
+           details of the latter are implementation-specific.
+
+           <value v="0" name="full checks">
+           Full permission checks apply.
+           </value>
+
+           <value v="1" name="relaxed checks">
+           Relaxed permission checks apply.
+           </value>
+        </field>
+        <field name="cmderr" bits="10:8" access="R/W1C" reset="0">
+            Gets set if an abstract command fails. The bits in this field remain set until
+            they are cleared by writing 1 to them. No abstract command is
+            started until the value is reset to 0.
+
+            This field only contains a valid value if {abstractcs-busy} is 0.
+
+            <value v="0" name="none">
+            No error.
+            </value>
+
+            <value v="1" name="busy">
+            An abstract command was executing while {dm-command},
+            {dm-abstractcs}, or {dm-abstractauto} was written, or when one
+            of the `data` or `progbuf` registers was read or written.
+            This status is only written if {abstractcs-cmderr} contains 0.
+            </value>
+
+            <value v="2" name="not supported">
+            The command in {dm-command} is not supported.  It
+            may be supported with different options set, but it will not be
+            supported at a later time when the hart or system state are
+            different.
+            </value>
+
+            <value v="3" name="exception">
+            An exception occurred while executing the command
+            (e.g. while executing the Program Buffer).
+            </value>
+
+            <value v="4" name="halt/resume">
+            The abstract command couldn't execute because the
+            hart wasn't in the required state (running/halted), or unavailable.
+            </value>
+
+            <value v="5" name="bus">
+            The abstract command failed due to a bus error (e.g.
+            alignment, access size, or timeout).
+            </value>
+
+            <value v="6" name="reserved">
+            Reserved for future use.
+            </value>
+
+            <value v="7" name="other">
+            The command failed for another reason.
+            </value>
+        </field>
+        <field name="0" bits="7:4" access="R" reset="0"/>
+        <field name="datacount" bits="3:0" access="R" reset="Preset">
+            Number of `data` registers that are implemented as part of the
+            abstract command interface. Valid sizes are 1 -- 12.
+        </field>
+    </register>
+
+    <register name="Abstract Command" short="command" address="0x17">
+        Writes to this register cause the corresponding abstract command to be
+        executed.
+
+        Writing this register while an abstract command is executing causes
+        {abstractcs-cmderr} to become 1 (busy) once the command completes
+        (busy becomes 0).
+
+        If {abstractcs-cmderr} is non-zero, writes to this register are ignored.
+
+        [NOTE]
+        ====
+            {abstractcs-cmderr} inhibits starting a new command to accommodate debuggers
+            that, for performance reasons, send several commands to be executed
+            in a row without checking {abstractcs-cmderr} in between. They can safely do
+            so and check {abstractcs-cmderr} at the end without worrying that one command
+            failed but then a later command (which might have depended on the
+            previous one succeeding) passed.
+        ====
+
+        <field name="cmdtype"    bits="31:24" access="WARZ" reset="0">
+            The type determines the overall functionality of this
+            abstract command.
+        </field>
+        <field name="control" bits="23:0" access="WARZ" reset="0" >
+            This field is interpreted in a command-specific manner,
+            described for each abstract command.
+        </field>
+    </register>
+
+    <register name ="Abstract Command Autoexec" short="abstractauto" address="0x18">
+        This register is optional. Including it allows more efficient burst
+        accesses.  A debugger can detect whether it is supported by setting bits
+        and reading them back.
+
+        If this register is implemented then bits corresponding to implemented
+        progbuf and data registers must be writable.  Other bits must be
+        hard-wired to 0.
+
+        If this register is written while an abstract command is executing
+        then the write is ignored and
+        {abstractcs-cmderr} becomes 1 (busy) once the command completes
+        (busy becomes 0).
+
+        <field name="autoexecprogbuf" bits="31:16" access="WARL" reset="0">
+            When a bit in this field is 1, read or write accesses to the
+            corresponding `progbuf` word cause the DM to act as if the
+            current value in {dm-command} was written there again after the
+            access to `progbuf` completes.
+        </field>
+        <field name="0" bits ="15:12" access="R" reset = "0"/>
+        <field name="autoexecdata" bits="11:0" access="WARL" reset="0">
+            When a bit in this field is 1, read or write accesses to the
+            corresponding `data` word cause the DM to act as if the current
+            value in {dm-command} was written there again after the
+            access to `data` completes.
+        </field>
+    </register>
+
+    <register name="Configuration Structure Pointer 0" short="confstrptr0" address="0x19">
+      When {dmstatus-confstrptrvalid} is set, reading this register returns bits 31:0
+      of the configuration structure pointer. Reading the other `confstrptr`
+      registers returns the upper bits of the address.
+
+      When system bus access is implemented, this must be an
+      address that can be used with the System Bus Access module. Otherwise,
+      this must be an address that can be used to access the
+      configuration structure from the hart with ID 0.
+
+      If {dmstatus-confstrptrvalid} is 0, then the `confstrptr` registers
+      hold identifier information which is not
+      further specified in this document.
+
+      The configuration structure itself is a data structure of the same format
+      as the data structure pointed to by `mconfigptr` as described in the
+      Privileged Spec.
+      <field name="addr" bits="31:0" access="R" reset="Preset"/>
+    </register>
+    <register name="Configuration Structure Pointer 1" short="confstrptr1" address="0x1a">
+      When {dmstatus-confstrptrvalid} is set, reading this register returns bits 63:32
+      of the configuration structure pointer. See {dm-confstrptr0} for more details.
+      <field name="addr" bits="31:0" access="R" reset="Preset"/>
+    </register>
+    <register name="Configuration Structure Pointer 2" short="confstrptr2" address="0x1b">
+      When {dmstatus-confstrptrvalid} is set, reading this register returns bits 95:64
+      of the configuration structure pointer. See {dm-confstrptr0} for more details.
+      <field name="addr" bits="31:0" access="R" reset="Preset"/>
+    </register>
+    <register name="Configuration Structure Pointer 3" short="confstrptr3" address="0x1c">
+      When {dmstatus-confstrptrvalid} is set, reading this register returns bits 127:96
+      of the configuration structure pointer. See {dm-confstrptr0} for more details.
+      <field name="addr" bits="31:0" access="R" reset="Preset"/>
+    </register>
+
+    <register name="Next Debug Module" short="nextdm" address="0x1d">
+        If there is more than one DM accessible on this DMI, this register
+        contains the base address of the next one in the chain, or 0 if this is
+        the last one in the chain.
+
+        <field name="addr" bits="31:0" access="R" reset="Preset"/>
+    </register>
+
+    <register name="Abstract Data 0" short="data0" address="0x04">
+        {dm-data0} through {dm-data11} are registers that may
+        be read or changed by abstract commands. {abstractcs-datacount} indicates how many
+        of them are implemented, starting at {dm-data0}, counting up.
+        &lt;&lt;tab:datareg&gt;&gt; shows how abstract commands use these
+        registers.
+
+        Accessing these registers while an abstract command is executing causes
+        {abstractcs-cmderr} to be set to 1 (busy) if it is 0.
+
+        Attempts to write them while {abstractcs-busy} is set does not change their value.
+
+        The values in these registers might not be preserved after an abstract
+        command is executed. The only guarantees on their contents are the ones
+        offered by the command in question. If the command fails, no
+        assumptions can be made about the contents of these registers.
+
+        <field name="data" bits="31:0" access="R/W" reset="0" />
+    </register>
+    <register name="Abstract Data 1" short="data1" address="0x05" />
+    <register name="Abstract Data 2" short="data2" address="0x06" />
+    <register name="Abstract Data 3" short="data3" address="0x07" />
+    <register name="Abstract Data 4" short="data4" address="0x08" />
+    <register name="Abstract Data 5" short="data5" address="0x09" />
+    <register name="Abstract Data 6" short="data6" address="0x0a" />
+    <register name="Abstract Data 7" short="data7" address="0x0b" />
+    <register name="Abstract Data 8" short="data8" address="0x0c" />
+    <register name="Abstract Data 9" short="data9" address="0x0d" />
+    <register name="Abstract Data 10" short="data10" address="0x0e" />
+    <register name="Abstract Data 11" short="data11" address="0x0f" />
+
+    <!-- =============== Program Buffer =============== -->
+
+    <register name="Program Buffer 0" short="progbuf0" address="0x20">
+        {dm-progbuf0} through {dm-progbuf15} must provide write access to the
+        optional program buffer. It may also be possible for the debugger to
+        read from the program buffer through these registers. If reading
+        is not supported, then all reads return 0.
+
+        {abstractcs-progbufsize} indicates how many `progbuf` registers are
+        implemented starting at {dm-progbuf0}, counting up.
+
+        Accessing these registers while an abstract command is executing causes
+        {abstractcs-cmderr} to be set to 1 (busy) if it is 0.
+
+        Attempts to write them while {abstractcs-busy} is set does not change their value.
+
+        <field name="data" bits="31:0" access="R/W" reset="0" />
+    </register>
+    <register name="Program Buffer 1" short="progbuf1" address="0x21" />
+    <register name="Program Buffer 2" short="progbuf2" address="0x22" />
+    <register name="Program Buffer 3" short="progbuf3" address="0x23" />
+    <register name="Program Buffer 4" short="progbuf4" address="0x24" />
+    <register name="Program Buffer 5" short="progbuf5" address="0x25" />
+    <register name="Program Buffer 6" short="progbuf6" address="0x26" />
+    <register name="Program Buffer 7" short="progbuf7" address="0x27" />
+    <register name="Program Buffer 8" short="progbuf8" address="0x28" />
+    <register name="Program Buffer 9" short="progbuf9" address="0x29" />
+    <register name="Program Buffer 10" short="progbuf10" address="0x2a" />
+    <register name="Program Buffer 11" short="progbuf11" address="0x2b" />
+    <register name="Program Buffer 12" short="progbuf12" address="0x2c" />
+    <register name="Program Buffer 13" short="progbuf13" address="0x2d" />
+    <register name="Program Buffer 14" short="progbuf14" address="0x2e" />
+    <register name="Program Buffer 15" short="progbuf15" address="0x2f" />
+
+    <!-- =============== authentication =============== -->
+
+    <register name="Authentication Data" short="authdata" address="0x30">
+        This register serves as a 32-bit serial port to/from the authentication
+        module.
+
+        When {dmstatus-authbusy} is clear, the debugger can communicate with the
+        authentication module by reading or writing this register. There is no
+        separate mechanism to signal overflow/underflow.
+
+        <field name="data" bits="31:0" access="R/W" reset="0" />
+    </register>
+
+    <register name="Debug Module Control and Status 2" short="dmcs2" address="0x32">
+        This register contains DM control and status bits that didn't easily
+        fit in {dm-dmcontrol} and {dm-dmstatus}. All are optional.
+
+        If halt groups are not implemented, then {dmcs2-group} will always
+        be 0 when {dmcs2-grouptype} is 0.
+
+        If resume groups are not implemented, then {dmcs2-grouptype} will
+        remain 0 even after 1 is written there.
+
+        The DM external triggers available to add to halt groups may be the same as
+        or distinct from the DM external triggers available to add to resume groups.
+
+        <field name="0" bits="31:12" access="R" reset="0" />
+        <field name="grouptype" bits="11" access="WARL" reset="0">
+            <value v="0" name="halt">
+            The remaining fields in this register configure halt groups.
+            </value>
+
+            <value v="1" name="resume">
+            The remaining fields in this register configure resume groups.
+            </value>
+        </field>
+        <field name="dmexttrigger" bits="10:7" access="WARL" reset="0">
+            This field contains the currently selected DM external trigger.
+
+            If a non-existent trigger value is written here, the hardware will
+            change it to a valid one or 0 if no DM external triggers exist.
+        </field>
+        <field name="group" bits="6:2" access="WARL" reset="preset">
+            When {dmcs2-hgselect} is 0, contains the group of the hart
+            specified by {hartsel}.
+
+            When {dmcs2-hgselect} is 1, contains the group of the DM external
+            trigger selected by {dmcs2-dmexttrigger}.
+
+            The value written to this field is ignored unless {dmcs2-hgwrite}
+            is also written 1.
+
+            Group numbers are contiguous starting at 0, with the highest number
+            being implementation-dependent, and possibly different between
+            different group types. Debuggers should read back this field after
+            writing to confirm they are using a hart group that is supported.
+
+            If groups aren't implemented, then this entire field is 0.
+        </field>
+        <field name="hgwrite" bits="1" access="W1" reset="-">
+            When 1 is written and {dmcs2-hgselect} is 0, for every selected
+            hart the DM will change its group to the value written to {dmcs2-group},
+            if the hardware supports that group for that hart.
+            Implementations may also change the group of a minimal set of
+            unselected harts in the same way, if that is necessary due to
+            a hardware limitation.
+
+            When 1 is written and {dmcs2-hgselect} is 1, the DM will change
+            the group of the DM external trigger selected by {dmcs2-dmexttrigger}
+            to the value written to {dmcs2-group}, if the hardware supports
+            that group for that trigger.
+
+            Writing 0 has no effect.
+        </field>
+        <field name="hgselect" bits="0" access="WARL" reset="0">
+            <value v="0" name="harts">
+            Operate on harts.
+            </value>
+
+            <value v="1" name="triggers">
+            Operate on DM external triggers.
+            </value>
+
+            If there are no DM external triggers, this field must be tied to 0.
+        </field>
+    </register>
+
+    <register name="Halt Summary 0" short="haltsum0" address="0x40">
+        Each bit in this read-only register indicates whether one specific hart
+        is halted or not. Unavailable/nonexistent harts are not considered to
+        be halted.
+
+        This register might not be present if fewer than 2 harts are connected
+        to this DM.
+
+        The LSB reflects the halt status of hart {hartsel[19:5],5'h0}, and the
+        MSB reflects halt status of hart {hartsel[19:5],5'h1f}.
+
+        <field name="haltsum0" bits="31:0" access="R" reset="0" />
+    </register>
+
+    <register name="Halt Summary 1" short="haltsum1" address="0x13">
+        Each bit in this read-only register indicates whether any of a group of
+        harts is halted or not. Unavailable/nonexistent harts are not considered to
+        be halted.
+
+        This register might not be present if fewer than 33 harts are connected
+        to this DM.
+
+        The LSB reflects the halt status of harts {hartsel[19:10],10'h0}
+        through {hartsel[19:10],10'h1f}.
+        The MSB reflects the halt status of harts {hartsel[19:10],10'h3e0}
+        through {hartsel[19:10],10'h3ff}.
+
+        <field name="haltsum1" bits="31:0" access="R" reset="0" />
+    </register>
+
+    <register name="Halt Summary 2" short="haltsum2" address="0x34">
+        Each bit in this read-only register indicates whether any of a group of
+        harts is halted or not. Unavailable/nonexistent harts are not considered to
+        be halted.
+
+        This register might not be present if fewer than 1025 harts are connected
+        to this DM.
+
+        The LSB reflects the halt status of harts {hartsel[19:15],15'h0}
+        through {hartsel[19:15],15'h3ff}.
+        The MSB reflects the halt status of harts {hartsel[19:15],15'h7c00}
+        through {hartsel[19:15],15'h7fff}.
+
+        <field name="haltsum2" bits="31:0" access="R" reset="0" />
+    </register>
+
+    <register name="Halt Summary 3" short="haltsum3" address="0x35">
+        Each bit in this read-only register indicates whether any of a group of
+        harts is halted or not. Unavailable/nonexistent harts are not considered to
+        be halted.
+
+        This register might not be present if fewer than 32769 harts are connected
+        to this DM.
+
+        The LSB reflects the halt status of harts 20'h0 through 20'h7fff.
+        The MSB reflects the halt status of harts 20'hf8000 through 20'hfffff.
+
+        <field name="haltsum3" bits="31:0" access="R" reset="0" />
+    </register>
+
+    <!-- =============== system bus access =============== -->
+
+    <register name="System Bus Access Control and Status" short="sbcs" address="0x38">
+        <field name="sbversion" bits="31:29" access="R" reset="1">
+            <value v="0" name="legacy">
+            The System Bus interface conforms to mainline drafts of this
+            spec older than 1 January, 2018.
+            </value>
+
+            <value v="1" name="1.0">
+            The System Bus interface conforms to this version of the spec.
+            </value>
+
+            Other values are reserved for future versions.
+        </field>
+        <field name="0" bits="28:23" access="R" reset="0" />
+        <field name="sbbusyerror" bits="22" access="R/W1C" reset="0">
+            Set when the debugger attempts to read data while a read is in
+            progress, or when the debugger initiates a new access while one is
+            already in progress (while {sbcs-sbbusy} is set). It remains set until
+            it's explicitly cleared by the debugger.
+
+            While this field is set, no more system bus accesses can be
+            initiated by the Debug Module.
+        </field>
+        <field name="sbbusy" bits="21" access="R" reset="0">
+            When 1, indicates the system bus manager is busy. (Whether the
+            system bus itself is busy is related, but not the same thing.) This
+            bit goes high immediately when a read or write is requested for any
+            reason, and does not go low until the access is fully completed.
+
+            Writes to {dm-sbcs} while {sbcs-sbbusy} is high result in undefined
+            behavior.  A debugger must not write to {dm-sbcs} until it reads
+            {sbcs-sbbusy} as 0.
+        </field>
+        <field name="sbreadonaddr" bits="20" access="R/W" reset="0">
+            When 1, every write to {dm-sbaddress0} automatically triggers a
+            system bus read at the new address.
+        </field>
+        <field name="sbaccess" bits="19:17" access="R/W" reset="2">
+            Select the access size to use for system bus accesses.
+
+            <value v="0" name="8bit">
+            8-bit
+            </value>
+
+            <value v="1" name="16bit">
+            16-bit
+            </value>
+
+            <value v="2" name="32bit">
+            32-bit
+            </value>
+
+            <value v="3" name="64bit">
+            64-bit
+            </value>
+
+            <value v="4" name="128bit">
+            128-bit
+            </value>
+
+            If {sbcs-sbaccess} has an unsupported value when the DM starts a bus
+            access, the access is not performed and {sbcs-sberror} is set to 4.
+        </field>
+        <field name="sbautoincrement" bits="16" access="R/W" reset="0">
+            When 1, `sbaddress` is incremented by the access size (in
+            bytes) selected in {sbcs-sbaccess} after every system bus access.
+        </field>
+        <field name="sbreadondata" bits="15" access="R/W" reset="0">
+            When 1, every read from {dm-sbdata0} automatically triggers a
+            system bus read at the (possibly auto-incremented) address.
+        </field>
+        <field name="sberror" bits="14:12" access="R/W1C" reset="0">
+            When the Debug Module's system bus
+            manager encounters an error, this field gets set. The bits in this
+            field remain set until they are cleared by writing 1 to them.
+            While this field is non-zero, no more system bus accesses can be
+            initiated by the Debug Module.
+
+            An implementation may report ``Other'' (7) for any error condition.
+
+            <value v="0" name="none">
+            There was no bus error.
+            </value>
+
+            <value v="1" name="timeout">
+            There was a timeout.
+            </value>
+
+            <value v="2" name="address">
+            A bad address was accessed.
+            </value>
+
+            <value v="3" name="alignment">
+            There was an alignment error.
+            </value>
+
+            <value v="4" name="size">
+            An access of unsupported size was requested.
+            </value>
+
+            <value v="7" name="other">
+            Other.
+            </value>
+        </field>
+        <field name="sbasize" bits="11:5" access="R" reset="Preset">
+            Width of system bus addresses in bits. (0 indicates there is no bus
+            access support.)
+        </field>
+        <field name="sbaccess128" bits="4" access="R" reset="Preset">
+            1 when 128-bit system bus accesses are supported.
+        </field>
+        <field name="sbaccess64" bits="3" access="R" reset="Preset">
+            1 when 64-bit system bus accesses are supported.
+        </field>
+        <field name="sbaccess32" bits="2" access="R" reset="Preset">
+            1 when 32-bit system bus accesses are supported.
+        </field>
+        <field name="sbaccess16" bits="1" access="R" reset="Preset">
+            1 when 16-bit system bus accesses are supported.
+        </field>
+        <field name="sbaccess8" bits="0" access="R" reset="Preset">
+            1 when 8-bit system bus accesses are supported.
+        </field>
+    </register>
+
+    <register name="System Bus Address 31:0" short="sbaddress0" address="0x39">
+        If {sbcs-sbasize} is 0, then this register is not present.
+
+        When the system bus manager is busy, writes to this register will set
+        {sbcs-sbbusyerror} and don't do anything else.
+
+        If {sbcs-sberror} is 0, {sbcs-sbbusyerror} is 0, and {sbcs-sbreadonaddr} is set then writes to this register start the following:
+
+        . Set {sbcs-sbbusy}.
+        . Perform a bus read from the new value of `sbaddress`.
+        . If the read succeeded and {sbcs-sbautoincrement} is set, increment `sbaddress`.
+        . Clear {sbcs-sbbusy}.
+
+        <field name="address" bits="31:0" access="R/W" reset="0">
+            Accesses bits 31:0 of the physical address in `sbaddress`.
+        </field>
+    </register>
+
+    <register name="System Bus Address 63:32" short="sbaddress1" address="0x3a">
+        If {sbcs-sbasize} is less than 33, then this register is not present.
+
+        When the system bus manager is busy, writes to this register will set
+        {sbcs-sbbusyerror} and don't do anything else.
+
+        <field name="address" bits="31:0" access="R/W" reset="0">
+            Accesses bits 63:32 of the physical address in `sbaddress` (if
+            the system address bus is that wide).
+        </field>
+    </register>
+
+    <register name="System Bus Address 95:64" short="sbaddress2" address="0x3b">
+        If {sbcs-sbasize} is less than 65, then this register is not present.
+
+        When the system bus manager is busy, writes to this register will set
+        {sbcs-sbbusyerror} and don't do anything else.
+
+        <field name="address" bits="31:0" access="R/W" reset="0">
+            Accesses bits 95:64 of the physical address in `sbaddress` (if
+            the system address bus is that wide).
+        </field>
+    </register>
+
+    <register name="System Bus Address 127:96" short="sbaddress3" address="0x37">
+        If {sbcs-sbasize} is less than 97, then this register is not present.
+
+        When the system bus manager is busy, writes to this register will set
+        {sbcs-sbbusyerror} and don't do anything else.
+
+        <field name="address" bits="31:0" access="R/W" reset="0">
+            Accesses bits 127:96 of the physical address in `sbaddress` (if
+            the system address bus is that wide).
+        </field>
+    </register>
+
+    <register name="System Bus Data 31:0" short="sbdata0" address="0x3c">
+        If all of the `sbaccess` bits in {dm-sbcs} are 0, then this register
+        is not present.
+
+        Any successful system bus read updates `sbdata`. If the width of
+        the read access is less than the width of `sbdata`, the contents of
+        the remaining high bits may take on any value.
+
+        If either {sbcs-sberror} or {sbcs-sbbusyerror} isn't 0 then accesses do nothing.
+
+        If the bus manager is busy then accesses set {sbcs-sbbusyerror}, and don't do
+        anything else.
+
+        Writes to this register start the following:
+
+            . Set {sbcs-sbbusy}.
+            . Perform a bus write of the new value of `sbdata` to `sbaddress`.
+            . If the write succeeded and {sbcs-sbautoincrement} is set,
+            increment `sbaddress`.
+            . Clear {sbcs-sbbusy}.
+
+        Reads from this register start the following:
+
+            . "Return" the data.
+            . Set {sbcs-sbbusy}.
+            . If {sbcs-sbreadondata} is set:
+                // TODO: This doesn't work right, but it does work in asiidoclive
+                .. Perform a system bus read from the address contained in
+                        `sbaddress`, placing the result in `sbdata`.
+                .. If {sbcs-sbautoincrement} is set and the read was
+                        successful, increment `sbaddress`.
+            . Clear {sbcs-sbbusy}.
+
+        Only {dm-sbdata0} has this behavior. The other `sbdata` registers
+        have no side effects. On systems that have buses wider than 32 bits, a
+        debugger should access {dm-sbdata0} after accessing the other `sbdata`
+        registers.
+
+        <field name="data" bits="31:0" access="R/W" reset="0">
+            Accesses bits 31:0 of `sbdata`.
+        </field>
+    </register>
+
+    <register name="System Bus Data 63:32" short="sbdata1" address="0x3d">
+        If {sbcs-sbaccess64} and {sbcs-sbaccess128} are 0, then this
+        register is not present.
+
+        If the bus manager is busy then accesses set {sbcs-sbbusyerror}, and don't do
+        anything else.
+
+        <field name="data" bits="31:0" access="R/W" reset="0">
+            Accesses bits 63:32 of `sbdata` (if the system bus is that
+            wide).
+        </field>
+    </register>
+
+    <register name="System Bus Data 95:64" short="sbdata2" address="0x3e">
+        This register only exists if {sbcs-sbaccess128} is 1.
+
+        If the bus manager is busy then accesses set {sbcs-sbbusyerror}, and don't do
+        anything else.
+
+        <field name="data" bits="31:0" access="R/W" reset="0">
+            Accesses bits 95:64 of `sbdata` (if the system bus is that
+            wide).
+        </field>
+    </register>
+
+    <register name="System Bus Data 127:96" short="sbdata3" address="0x3f">
+        This register only exists if {sbcs-sbaccess128} is 1.
+
+        If the bus manager is busy then accesses set {sbcs-sbbusyerror}, and don't do
+        anything else.
+
+        <field name="data" bits="31:0" access="R/W" reset="0">
+            Accesses bits 127:96 of `sbdata` (if the system bus is that
+            wide).
+        </field>
+    </register>
+
+    <register name="Custom Features" short="custom" address="0x1f">
+        This optional register may be used for non-standard features. Future
+        version of the debug spec will not use this address.
+    </register>
+
+    <register name="Custom Features 0" short="custom0" address="0x70">
+        The optional {dm-custom0} through {dm-custom15} registers may
+        be used for non-standard features. Future versions of the debug spec
+        will not use these addresses.
+    </register>
+    <register name="Custom Features 1" short="custom1" address="0x71" />
+    <register name="Custom Features 2" short="custom2" address="0x72" />
+    <register name="Custom Features 3" short="custom3" address="0x73" />
+    <register name="Custom Features 4" short="custom4" address="0x74" />
+    <register name="Custom Features 5" short="custom5" address="0x75" />
+    <register name="Custom Features 6" short="custom6" address="0x76" />
+    <register name="Custom Features 7" short="custom7" address="0x77" />
+    <register name="Custom Features 8" short="custom8" address="0x78" />
+    <register name="Custom Features 9" short="custom9" address="0x79" />
+    <register name="Custom Features 10" short="custom10" address="0x7a" />
+    <register name="Custom Features 11" short="custom11" address="0x7b" />
+    <register name="Custom Features 12" short="custom12" address="0x7c" />
+    <register name="Custom Features 13" short="custom13" address="0x7d" />
+    <register name="Custom Features 14" short="custom14" address="0x7e" />
+    <register name="Custom Features 15" short="custom15" address="0x7f" />
+
+</registers>

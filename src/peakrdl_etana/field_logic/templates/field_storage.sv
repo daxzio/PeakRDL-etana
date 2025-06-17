@@ -1,6 +1,6 @@
 {%- import 'field_logic/templates/counter_macros.sv' as counter_macros with context -%}
 // always_comb begin
-always @(*) begin 
+always @(*) begin
     logic [{{node.width-1}}:0] next_c;
     logic load_next_c;
     next_c = {{field_logic.get_storage_identifier(node)}};

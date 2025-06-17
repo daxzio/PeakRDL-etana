@@ -9,19 +9,23 @@ if TYPE_CHECKING:
 
 # TODO: implement sw=w1 "write once" fields
 
+
 class _OnWrite(NextStateConditional):
     onwritetype = None
-    def is_match(self, field: 'FieldNode') -> bool:
-        return field.is_sw_writable and field.get_property('onwrite') == self.onwritetype
 
-    def get_predicate(self, field: 'FieldNode') -> str:
-        if field.parent.get_property('buffer_writes'):
+    def is_match(self, field: "FieldNode") -> bool:
+        return (
+            field.is_sw_writable and field.get_property("onwrite") == self.onwritetype
+        )
+
+    def get_predicate(self, field: "FieldNode") -> str:
+        if field.parent.get_property("buffer_writes"):
             # Is buffered write. Use alternate strobe
             wstrb = self.exp.write_buffering.get_write_strobe(field)
 
-            if field.get_property('swwe') or field.get_property('swwel'):
+            if field.get_property("swwe") or field.get_property("swwel"):
                 # dereferencer will wrap swwel complement if necessary
-                qualifier = self.exp.dereferencer.get_field_propref_value(field, 'swwe')
+                qualifier = self.exp.dereferencer.get_field_propref_value(field, "swwe")
                 return f"{wstrb} && {qualifier}"
 
             return wstrb
@@ -29,16 +33,16 @@ class _OnWrite(NextStateConditional):
             # is regular register
             p = self.exp.dereferencer.get_access_strobe(field)
 
-            if field.get_property('swwe') or field.get_property('swwel'):
+            if field.get_property("swwe") or field.get_property("swwel"):
                 # dereferencer will wrap swwel complement if necessary
-                qualifier = self.exp.dereferencer.get_field_propref_value(field, 'swwe')
+                qualifier = self.exp.dereferencer.get_field_propref_value(field, "swwe")
                 return f"{p.path} && decoded_req_is_wr && {qualifier}"
 
             return f"{p.path}{p.index_str} && decoded_req_is_wr"
 
-    def _wbus_bitslice(self, field: 'FieldNode', subword_idx: int = 0) -> str:
+    def _wbus_bitslice(self, field: "FieldNode", subword_idx: int = 0) -> str:
         # Get the source bitslice range from the internal cpuif's data bus
-        if field.parent.get_property('buffer_writes'):
+        if field.parent.get_property("buffer_writes"):
             # register is buffered.
             # write buffer is the full width of the register. no need to deal with subwords
             high = field.high
@@ -46,7 +50,7 @@ class _OnWrite(NextStateConditional):
             if field.msb < field.lsb:
                 # slice is for an msb0 field.
                 # mirror it
-                regwidth = field.parent.get_property('regwidth')
+                regwidth = field.parent.get_property("regwidth")
                 low = regwidth - 1 - low
                 high = regwidth - 1 - high
                 low, high = high, low
@@ -56,7 +60,7 @@ class _OnWrite(NextStateConditional):
             # values unchanged.
             # For fields within a wide register (accesswidth < regwidth), low/high
             # may be shifted down and clamped depending on which sub-word is being accessed
-            accesswidth = field.parent.get_property('accesswidth')
+            accesswidth = field.parent.get_property("accesswidth")
 
             # Shift based on subword
             high = field.high - (subword_idx * accesswidth)
@@ -76,8 +80,8 @@ class _OnWrite(NextStateConditional):
 
         return f"[{high}:{low}]"
 
-    def _wr_data(self, field: 'FieldNode', subword_idx: int=0) -> str:
-        if field.parent.get_property('buffer_writes'):
+    def _wr_data(self, field: "FieldNode", subword_idx: int = 0) -> str:
+        if field.parent.get_property("buffer_writes"):
             # Is buffered. Use value from write buffer
             # No need to check msb0 ordering. Bus is pre-swapped, and bitslice
             # accounts for it
@@ -95,8 +99,8 @@ class _OnWrite(NextStateConditional):
                 value = "decoded_wr_data" + bslice
             return value
 
-    def _wr_biten(self, field: 'FieldNode', subword_idx: int=0) -> str:
-        if field.parent.get_property('buffer_writes'):
+    def _wr_biten(self, field: "FieldNode", subword_idx: int = 0) -> str:
+        if field.parent.get_property("buffer_writes"):
             # Is buffered. Use value from write buffer
             # No need to check msb0 ordering. Bus is pre-swapped, and bitslice
             # accounts for it
@@ -114,7 +118,7 @@ class _OnWrite(NextStateConditional):
                 value = "decoded_wr_biten" + bslice
             return value
 
-    def get_assignments(self, field: 'FieldNode') -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> List[str]:
         accesswidth = field.parent.get_property("accesswidth")
 
         # Due to 10.6.1-f, it is impossible for a field with an onwrite action to
@@ -136,13 +140,14 @@ class _OnWrite(NextStateConditional):
         raise NotImplementedError
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 class WriteOneSet(_OnWrite):
     comment = "SW write 1 set"
     onwritetype = OnWriteType.woset
 
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} | ({data} & {strb})"
+
 
 class WriteOneClear(_OnWrite):
     comment = "SW write 1 clear"
@@ -151,12 +156,14 @@ class WriteOneClear(_OnWrite):
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} & ~({data} & {strb})"
 
+
 class WriteOneToggle(_OnWrite):
     comment = "SW write 1 toggle"
     onwritetype = OnWriteType.wot
 
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} ^ ({data} & {strb})"
+
 
 class WriteZeroSet(_OnWrite):
     comment = "SW write 0 set"
@@ -165,12 +172,14 @@ class WriteZeroSet(_OnWrite):
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} | (~{data} & {strb})"
 
+
 class WriteZeroClear(_OnWrite):
     comment = "SW write 0 clear"
     onwritetype = OnWriteType.wzc
 
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} & ({data} | ~{strb})"
+
 
 class WriteZeroToggle(_OnWrite):
     comment = "SW write 0 toggle"
@@ -179,25 +188,28 @@ class WriteZeroToggle(_OnWrite):
     def get_onwrite_rhs(self, reg: str, data: str, strb: str) -> str:
         return f"{reg} ^ (~{data} & {strb})"
 
+
 class WriteClear(_OnWrite):
     comment = "SW write clear"
     onwritetype = OnWriteType.wclr
 
-    def get_assignments(self, field: 'FieldNode') -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> List[str]:
         return [
             "next_c = '0;",
             "load_next_c = '1;",
         ]
 
+
 class WriteSet(_OnWrite):
     comment = "SW write set"
     onwritetype = OnWriteType.wset
 
-    def get_assignments(self, field: 'FieldNode') -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> List[str]:
         return [
             "next_c = '1;",
             "load_next_c = '1;",
         ]
+
 
 class Write(_OnWrite):
     comment = "SW write"

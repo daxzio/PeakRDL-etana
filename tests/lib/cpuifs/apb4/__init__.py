@@ -2,6 +2,7 @@ from ..base import CpuifTestMode
 
 from peakrdl_regblock.cpuif.apb4 import APB4_Cpuif, APB4_Cpuif_flattened
 
+
 class APB4(CpuifTestMode):
     cpuif_cls = APB4_Cpuif
     rtl_files = [
@@ -12,6 +13,7 @@ class APB4(CpuifTestMode):
         "apb4_intf_driver.sv",
     ]
     tb_template = "tb_inst.sv"
+
 
 class FlatAPB4(APB4):
     cpuif_cls = APB4_Cpuif_flattened

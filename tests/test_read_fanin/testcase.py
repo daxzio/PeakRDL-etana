@@ -4,9 +4,13 @@ from ..lib.sim_testcase import SimTestCase
 from ..lib.test_params import get_permutations
 
 
-PARAMS = get_permutations({
-    "regwidth" : [8, 16, 32, 64],
-})
+PARAMS = get_permutations(
+    {
+        "regwidth": [8, 16, 32, 64],
+    }
+)
+
+
 @parameterized_class(PARAMS)
 class TestFanin(SimTestCase):
     retime_read_fanin = False
@@ -25,10 +29,14 @@ class TestFanin(SimTestCase):
         self.run_test()
 
 
-PARAMS = get_permutations({
-    "n_regs" : [1, 4, 7, 9, 11],
-    "regwidth" : [8, 16, 32, 64],
-})
+PARAMS = get_permutations(
+    {
+        "n_regs": [1, 4, 7, 9, 11],
+        "regwidth": [8, 16, 32, 64],
+    }
+)
+
+
 @parameterized_class(PARAMS)
 class TestRetimedFanin(TestFanin):
     retime_read_fanin = True

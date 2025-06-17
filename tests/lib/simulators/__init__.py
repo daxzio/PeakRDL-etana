@@ -13,6 +13,7 @@ ALL_SIMULATORS = [
     StubSimulator,
 ]
 
+
 @functools.lru_cache()
 def get_simulator_cls(name: str) -> Optional[Type[Simulator]]:
     if name == "skip":

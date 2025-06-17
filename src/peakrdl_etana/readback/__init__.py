@@ -7,16 +7,17 @@ if TYPE_CHECKING:
     from ..exporter import RegblockExporter, DesignState
     from systemrdl.node import AddrmapNode
 
+
 class Readback:
-    def __init__(self, exp:'RegblockExporter'):
+    def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
 
     @property
-    def ds(self) -> 'DesignState':
+    def ds(self) -> "DesignState":
         return self.exp.ds
 
     @property
-    def top_node(self) -> 'AddrmapNode':
+    def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
 
     def get_implementation(self) -> str:
@@ -30,10 +31,10 @@ class Readback:
             self.ds.retime_read_fanin = False
 
         context = {
-            "array_assignments" : array_assignments,
-            "array_size" : array_size,
-            'get_always_ff_event': self.exp.dereferencer.get_always_ff_event,
-            'get_resetsignal': self.exp.dereferencer.get_resetsignal,
+            "array_assignments": array_assignments,
+            "array_size": array_size,
+            "get_always_ff_event": self.exp.dereferencer.get_always_ff_event,
+            "get_resetsignal": self.exp.dereferencer.get_resetsignal,
             "cpuif": self.exp.cpuif,
             "ds": self.ds,
         }
@@ -61,12 +62,10 @@ class Readback:
             else:
                 fanin_loop_iter = fanin_array_size
 
-            context['fanin_stride'] = fanin_stride
-            context['fanin_array_size'] = fanin_array_size
-            context['fanin_residual_stride'] = fanin_residual_stride
-            context['fanin_loop_iter'] = fanin_loop_iter
+            context["fanin_stride"] = fanin_stride
+            context["fanin_array_size"] = fanin_array_size
+            context["fanin_residual_stride"] = fanin_residual_stride
+            context["fanin_loop_iter"] = fanin_loop_iter
 
-        template = self.exp.jj_env.get_template(
-            "readback/templates/readback.sv"
-        )
+        template = self.exp.jj_env.get_template("readback/templates/readback.sv")
         return template.render(context)

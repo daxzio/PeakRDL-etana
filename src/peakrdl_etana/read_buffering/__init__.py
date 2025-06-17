@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 
 
 class ReadBuffering:
-    def __init__(self, exp:'RegblockExporter'):
+    def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
 
     @property
-    def top_node(self) -> 'AddrmapNode':
+    def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
 
     def get_storage_struct(self) -> str:
@@ -32,14 +32,16 @@ class ReadBuffering:
         return s
 
     def get_trigger(self, node: RegNode) -> str:
-        trigger = node.get_property('rbuffer_trigger')
+        trigger = node.get_property("rbuffer_trigger")
 
         if isinstance(trigger, RegNode):
             # Trigger is a register.
             # trigger when lowermost address of the register is written
-            regwidth = trigger.get_property('regwidth')
-            accesswidth = trigger.get_property('accesswidth')
-            strb_prefix = self.exp.dereferencer.get_access_strobe(trigger, reduce_substrobes=False)
+            regwidth = trigger.get_property("regwidth")
+            accesswidth = trigger.get_property("accesswidth")
+            strb_prefix = self.exp.dereferencer.get_access_strobe(
+                trigger, reduce_substrobes=False
+            )
 
             if accesswidth < regwidth:
                 return f"{strb_prefix}[0] && !decoded_req_is_wr"
@@ -47,7 +49,7 @@ class ReadBuffering:
                 return f"{strb_prefix} && !decoded_req_is_wr"
         elif isinstance(trigger, SignalNode):
             s = self.exp.dereferencer.get_value(trigger)
-            if trigger.get_property('activehigh'):
+            if trigger.get_property("activehigh"):
                 return str(s)
             else:
                 return f"~{s}"

@@ -1,5 +1,6 @@
 from typing import Optional
 
+
 class SVInt:
     def __init__(self, value: int, width: Optional[int] = None) -> None:
         self.value = value
