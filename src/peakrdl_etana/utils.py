@@ -99,17 +99,32 @@ class IndexedPath:
         v = ""
         for i in self.index:
             v += f"[{i}]"
+        
+        x = []
+        mult = 1
+        for i, val in enumerate(reversed(self.index)):
+            if 0 == i:
+                x.append(val)
+            else:
+                x.append(f"{mult}*{val}")
+            mult *= 5
+            
+        
+        if not 0 == len(self.index): 
+            print('+'.join(reversed(x)))
+        
+        
         return v
     
-#     @property
-#     def index_vector(self) -> str:
-#         v = ""
-#         if not 0 == len(self.index): 
-#             v += "["
-#             for i in self.index:
-#                 v += f"({i}*{self.regwidth})+"
-#             v += f":{self.regwidth}]"
-#         return v
+    @property
+    def index_vector(self) -> str:
+        v = ""
+        if not 0 == len(self.index): 
+            v += "["
+            for i in self.index:
+                v += f"({i}*{self.regwidth})+"
+            v += f":{self.regwidth}]"
+        return v
 #     
     @property
     def array_instances(self) -> str:
@@ -175,7 +190,9 @@ def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) 
         current_node = ref
     elif isinstance(ref, PropertyReference):
         current_node = ref.node
-
+    else:
+        raise RuntimeError
+        
     while current_node is not None:
         if current_node == top_node:
             # reached top node without finding any external components

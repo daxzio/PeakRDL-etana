@@ -14,6 +14,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
     def __init__(self, exp: 'RegblockExporter') -> None:
         super().__init__()
         self.exp = exp
+        self.ext_wacks = []
 
     def has_external_write(self) -> bool:
         if self.get_content(self.exp.ds.top_node) is None:
@@ -26,35 +27,43 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
             return ""
         return content
 
+    def enter_Mem(self, node: 'MemNode') -> WalkerAction:
+        #print('enter_Mem')
+        if not node.external:
+            raise
+        if node.is_sw_writable:
+            x = self.exp.hwif.get_external_wr_ack(node, True)
+            self.ext_wacks.append(x)
+
+    def enter_Addrmap(self, node: 'AddrmapNode') -> WalkerAction:
+        print('enter_Addrmap')
+        raise Exception("Unimplemented")
+        if not node.external:
+            if node.is_sw_writable:
+                x = self.exp.hwif.get_external_wr_ack(node, True)
+                self.ext_wacks.append(x)
+
+    def enter_Regfile(self, node: 'RegfileNode') -> WalkerAction:
+        print('enter_Regfile')
+        raise Exception("Unimplemented")
+        if node.is_sw_writable:
+            x = self.exp.hwif.get_external_wr_ack(node, True)
+            self.ext_wacks.append(x)
+               
     def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
         super().enter_AddressableComponent(node)
-
-        if node.external:
-            if not isinstance(node, RegNode) and not isinstance(node, RegfileNode):
-                pass
-                print(node)
-#                 raise
-            x = ""
-            if isinstance(node, RegfileNode):
-                for c in node.children():
-                    x = self.exp.hwif.get_external_wr_ack(c, True)
-#                     print(node, c, x)
-#             elif not isinstance(node, RegNode) or node.has_sw_writable:
-            elif isinstance(node, MemNode) or isinstance(node, AddrmapNode) or node.has_sw_writable:
-                x = self.exp.hwif.get_external_wr_ack(node, True)
-#                 self.add_content(f"wr_ack |= {self.exp.hwif.get_external_wr_ack(node, True)};")
-            if not x == "":
-#                 print(x)
-                self.add_content(f"wr_ack |= {x};")
-            return WalkerAction.SkipDescendants
-
-        return WalkerAction.Continue
+        self.ext_wacks = []
+   
+    def exit_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
+        for ext_wack in self.ext_wacks:
+            self.add_content(f"wr_ack |= {ext_wack};")
 
 
 class ExternalReadAckGenerator(RDLForLoopGenerator):
     def __init__(self, exp: 'RegblockExporter') -> None:
         super().__init__()
         self.exp = exp
+        self.ext_racks = []
 
     def has_external_read(self) -> bool:
         if self.get_content(self.exp.ds.top_node) is None:
@@ -67,26 +76,33 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             return ""
         return content
 
+    def enter_Mem(self, node: 'MemNode') -> WalkerAction:
+        #print('enter_Mem')
+        if not node.external:
+            raise
+        if node.is_sw_readable:
+            x = self.exp.hwif.get_external_rd_ack(node, True)
+            self.ext_racks.append(x)
+
+    def enter_Addrmap(self, node: 'AddrmapNode') -> WalkerAction:
+        print('enter_Addrmap')
+        raise Exception("Unimplemented")
+        if not node.external:
+            if node.is_sw_readable:
+                x = self.exp.hwif.get_external_rd_ack(node, True)
+                self.ext_racks.append(x)
+
+    def enter_Regfile(self, node: 'RegfileNode') -> WalkerAction:
+        print('enter_Regfile')
+        raise Exception("Unimplemented")
+        if node.is_sw_readable:
+            x = self.exp.hwif.get_external_rd_ack(node, True)
+            self.ext_racks.append(x)
+               
     def enter_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
         super().enter_AddressableComponent(node)
-
-#         if node.external:
-#             if not isinstance(node, RegNode) or node.has_sw_readable:
-#                 self.add_content(f"rd_ack |= {self.exp.hwif.get_external_rd_ack(node, True)};")
-#             return WalkerAction.SkipDescendants
-
-        if node.external:
-            if not isinstance(node, RegNode) and not isinstance(node, RegfileNode):
-                pass
-#                 raise
-            x = ""
-            if isinstance(node, RegfileNode):
-                pass
-#                 for c in node.children():
-#                     x = self.exp.hwif.get_external_rd_ack(c, True)
-            elif isinstance(node, MemNode) or isinstance(node, AddrmapNode) or node.has_sw_readable:
-                x = self.exp.hwif.get_external_rd_ack(node, True)
-            if not x == "":
-                self.add_content(f"rd_ack |= {x};")
-
-        return WalkerAction.Continue
+        self.ext_racks = []
+   
+    def exit_AddressableComponent(self, node: 'AddressableNode') -> WalkerAction:
+        for ext_rack in self.ext_racks:
+            self.add_content(f"rd_ack |= {ext_rack};")

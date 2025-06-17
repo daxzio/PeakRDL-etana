@@ -237,6 +237,7 @@ class Hwif:
             raise
         if index:
             s += p.index_str
+#             print(p.index_vector)
         return s
 
 

@@ -99,6 +99,7 @@ class NextStateConditional:
             <field>.next = <next value>
             <field>.load_next = '1;
         """
+        raise NotImplementedError
 
     def get_extra_combo_signals(self, field: 'FieldNode') -> List[SVLogic]:
         """
@@ -106,3 +107,12 @@ class NextStateConditional:
         will assign if present.
         """
         return []
+
+
+class NextStateUnconditional(NextStateConditional):
+    """
+    Use this class if predicate can never evaluate to false.
+    This will be generated as an 'else' clause, or a direct assignment
+    """
+    # Explanation text for use in error message about conflicts
+    unconditional_explanation = ""

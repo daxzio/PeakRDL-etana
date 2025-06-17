@@ -5,7 +5,7 @@ from systemrdl.node import FieldNode, RegNode, RegfileNode, AddrmapNode, MemNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLListener, RDLWalker
 
-from ..utils import IndexedPath
+from ..utils import IndexedPath, clog2
 from ..struct_generator import RDLFlatStructGenerator
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
@@ -38,10 +38,12 @@ class InputLogicGenerator(RDLListener):
         return self.lines
 
     def enter_Addrmap(self, node: 'AddrmapNode') -> None:
+        raise
         in_port = []
         out_port = []
         width = node.total_size
-        addr_width = node.size.bit_length()
+        #addr_width = node.size.bit_length()
+        addr_width = clog2(node.size)
         ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
         ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
         in_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
@@ -58,18 +60,20 @@ class InputLogicGenerator(RDLListener):
     def enter_Mem(self, node: 'MemNode') -> None:
         in_port = []
         out_port = []
-        width = node.total_size
-        addr_width = node.size.bit_length()
+        width = node.get_property("memwidth")
+        addr_width = clog2(node.size)
         ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
         ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
-        in_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
-        in_port.append(f"input logic [0:0] {ext_in}_rd_ack")
-        in_port.append(f"input logic [0:0] {ext_in}_wr_ack")
         out_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
         out_port.append(f"output logic [0:0] {ext_out}_req")
-        out_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
-        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
-        out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+        if node.is_sw_readable:
+            in_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
+            in_port.append(f"input logic [0:0] {ext_in}_rd_ack")
+        if node.is_sw_writable:
+            in_port.append(f"input logic [0:0] {ext_in}_wr_ack")
+            out_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
+            out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
+            out_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
         self.hwif_in.extend(in_port)
         self.hwif_in.extend(out_port)
    
@@ -82,7 +86,7 @@ class InputLogicGenerator(RDLListener):
         self.ext_out = self.hwif.get_external_out_prefix2(node)
         #print(self.ext_out)
         if node.external:
-            addr_width = node.parent.size.bit_length()
+            addr_width = clog2(node.size)
             out_port.append(f"output logic [{addr_width-1}:0] {self.ext_out}_addr")
         
         self.hwif_in.extend(in_port)
@@ -136,7 +140,8 @@ class InputLogicGenerator(RDLListener):
             in_id = self.ext_in
             out_id = self.ext_out
         else:
-            in_id = re.sub(f'_{node.inst_name}.+', '', input_identifier)
+            in_id = input_identifier
+#             in_id = re.sub(f'_{node.inst_name}.+', '', input_identifier)
             out_id = re.sub('_in_', '_out_', in_id)
 
         if node.external:

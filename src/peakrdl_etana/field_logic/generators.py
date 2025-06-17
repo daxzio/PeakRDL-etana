@@ -8,96 +8,14 @@ from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 
 from ..struct_generator import RDLStructGenerator
 from ..forloop_generator import RDLForLoopGenerator
-from ..utils import IndexedPath
+from ..utils import IndexedPath, clog2
 from ..identifier_filter import kw_filter as kwf
+from .bases import NextStateUnconditional
 
 if TYPE_CHECKING:
     from . import FieldLogic
     from systemrdl.node import FieldNode, AddressableNode
     from .bases import SVLogic
-
-class CombinationalStructGenerator(RDLStructGenerator):
-
-    def __init__(self, field_logic: 'FieldLogic'):
-        super().__init__()
-        self.field_logic = field_logic
-
-    def enter_AddressableComponent(self, node: 'AddressableNode') -> Optional[WalkerAction]:
-        super().enter_AddressableComponent(node)
-
-        if node.external:
-            return WalkerAction.SkipDescendants
-        return WalkerAction.Continue
-
-    def enter_Field(self, node: 'FieldNode') -> None:
-        # If a field doesn't implement storage, it is not relevant here
-        if not node.implements_storage:
-            return
-
-        # collect any extra combo signals that this field requires
-        extra_combo_signals = OrderedDict() # type: OrderedDict[str, SVLogic]
-        for conditional in self.field_logic.get_conditionals(node):
-            for signal in conditional.get_extra_combo_signals(node):
-                if signal.name in extra_combo_signals:
-                    # Assert that subsequent declarations of the same signal
-                    # are identical
-                    assert signal == extra_combo_signals[signal.name]
-                else:
-                    extra_combo_signals[signal.name] = signal
-
-        self.push_struct(kwf(node.inst_name))
-        self.add_member("next", node.width)
-        self.add_member("load_next")
-        for signal in extra_combo_signals.values():
-            self.add_member(signal.name, signal.width)
-        if node.is_up_counter:
-            self.add_up_counter_members(node)
-        if node.is_down_counter:
-            self.add_down_counter_members(node)
-        if node.get_property('paritycheck'):
-            self.add_member("parity_error")
-        self.pop_struct()
-
-    def add_up_counter_members(self, node: 'FieldNode') -> None:
-        self.add_member('incrthreshold')
-        if self.field_logic.counter_incrsaturates(node):
-            self.add_member('incrsaturate')
-        else:
-            self.add_member('overflow')
-
-    def add_down_counter_members(self, node: 'FieldNode') -> None:
-        self.add_member('decrthreshold')
-        if self.field_logic.counter_decrsaturates(node):
-            self.add_member('decrsaturate')
-        else:
-            self.add_member('underflow')
-
-
-class FieldStorageStructGenerator(RDLStructGenerator):
-
-    def __init__(self, field_logic: 'FieldLogic') -> None:
-        super().__init__()
-        self.field_logic = field_logic
-
-    def enter_AddressableComponent(self, node: 'AddressableNode') -> Optional[WalkerAction]:
-        super().enter_AddressableComponent(node)
-
-        if node.external:
-            return WalkerAction.SkipDescendants
-        return WalkerAction.Continue
-
-    def enter_Field(self, node: 'FieldNode') -> None:
-        self.push_struct(kwf(node.inst_name))
-
-        if node.implements_storage:
-            self.add_member("value", node.width)
-            if node.get_property('paritycheck'):
-                self.add_member("parity")
-
-        if self.field_logic.has_next_q(node):
-            self.add_member("next_q", node.width)
-
-        self.pop_struct()
 
 
 class FieldLogicGenerator(RDLForLoopGenerator):
@@ -136,8 +54,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         return WalkerAction.Continue
 
     def enter_Reg(self, node: 'RegNode') -> Optional[WalkerAction]:
-        self.intr_fields = []
-        self.halt_fields = []
+        self.intr_fields = [] # type: List[FieldNode]
+        self.halt_fields = [] # type: List[FieldNode]
+        self.msg = self.ds.top_node.env.msg
         self.fields = []
 
 
@@ -217,15 +136,21 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def generate_field_storage(self, node: 'FieldNode') -> None:
         conditionals = self.field_logic.get_conditionals(node)
         extra_combo_signals = OrderedDict()
-        unconditional = None
+        unconditional: Optional[NextStateUnconditional] = None
         new_conditionals = []
         for conditional in conditionals:
             for signal in conditional.get_extra_combo_signals(node):
                 extra_combo_signals[signal.name] = signal
 
-            if conditional.is_unconditional:
-                assert unconditional is None # Can only have one unconditional assignment per field
-                unconditional = conditional
+            if isinstance(conditional, NextStateUnconditional):
+                if unconditional is not None:
+                    # Too inconvenient to validate this early. Easier to validate here in-place generically
+                    self.msg.fatal(
+                        "Field has multiple conflicting properties that unconditionally set its state:\n"
+                        f"  * {conditional.unconditional_explanation}\n"
+                        f"  * {unconditional.unconditional_explanation}",
+                        node.inst.inst_src_ref
+                    )
             else:
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
@@ -345,6 +270,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def assign_external_reg_outputs(self, node: 'RegNode') -> None:
 #         print(self.fields)
         p = IndexedPath(self.exp.ds.top_node, node)
+        print("tr", p.path)
         prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_access_strobe(node)
         index_str = strb.index_str
@@ -371,8 +297,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         for field in self.fields:
             #print(f"[{field.msb}:{field.lsb}]")
             x = IndexedPath(self.exp.ds.top_node, field)
-#             print('p', p.path, n_subwords)
-#             print('x', x.path, f"[{field.msb}:{field.lsb}]", bslice, width, self.exp.cpuif.data_width)
+            print('p', p.path, n_subwords)
+            print('x', x.path)
+            y = field.get_rel_path(self.exp.ds.top_node)
+            print('y', y)
             path = re.sub(p.path, "", x.path)
             if 1 == n_subwords:
                 vslice = f"[{field.msb}:{field.lsb}]"
@@ -380,7 +308,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 vslice = f"[{node.get_property('accesswidth')-1}:0]"
             inst_names.append([path, vslice])
         
-#         print(prefix, inst_names)
+        print(prefix, inst_names)
 #         print(p.wr_elem)
         context = {
             "has_sw_writable": node.has_sw_writable,
@@ -403,7 +331,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         prefix = "hwif_out_" + p.path
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
         index_str = p.index_str
-        addr_width = node.size.bit_length()
+        addr_width = clog2(node.size)
         inst_names = []
         if 0 == len(p.inst_names):
             inst_names.append("")
@@ -420,6 +348,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             retime = self.ds.retime_external_addrmap
 
         context = {
+            "is_sw_writable": node.is_sw_writable,
+            "is_sw_readable": node.is_sw_readable,
             "prefix": prefix,
             "inst_names": inst_names,
             "strb": strb,

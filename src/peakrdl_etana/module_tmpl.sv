@@ -137,7 +137,6 @@ module {{ds.module_name}}
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
 
-//     always_comb begin
     always @(*) begin 
         integer next_cpuif_addr;
     {%- if ds.has_external_addressable %}
@@ -209,11 +208,8 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Write response
     //--------------------------------------------------------------------------
-// %- if ds.has_external_addressable %
 {%- if ext_write_acks.has_external_write() %}
-//     always_comb begin
     always @(*) begin 
-//         automatic logic wr_ack;
         logic wr_ack;
         wr_ack = '0;
         {{ext_write_acks.get_implementation()|indent(8)}}
@@ -221,6 +217,7 @@ module {{ds.module_name}}
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
 {%- else %}
+    assign external_wr_ack = 0;
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
     // Writes are always granted with no error response
@@ -229,12 +226,9 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Readback
     //--------------------------------------------------------------------------
-//%- if ds.has_external_addressable %
 {%- if ext_read_acks.has_external_read() %}
     logic readback_external_rd_ack_c;
-//     always_comb begin
     always @(*) begin 
-//         automatic logic rd_ack;
         logic rd_ack;
         rd_ack = '0;
         {{ext_read_acks.get_implementation()|indent(8)}}

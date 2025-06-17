@@ -94,14 +94,14 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
         self.top += s
 
     def enter_AddressableComponent(self, node: 'AddressableNode') -> None:
-        if not node.is_array:
+        if not node.array_dimensions:
             return
 
         for dim in node.array_dimensions:
             self.push_loop(dim)
 
     def exit_AddressableComponent(self, node: 'AddressableNode') -> None:
-        if not node.is_array:
+        if not node.array_dimensions:
             return
 
         for _ in node.array_dimensions:

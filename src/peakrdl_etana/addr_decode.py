@@ -139,7 +139,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     def enter_AddressableComponent(self, node: 'AddressableNode') -> Optional[WalkerAction]:
         super().enter_AddressableComponent(node)
 
-        if node.is_array:
+        if node.array_dimensions:
             # Collect strides for each array dimension
             current_stride = node.array_stride
             strides = []
@@ -176,6 +176,16 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 self.addr_decode.exp.ds.addr_width
             ))
         return a
+
+#     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
+#         expr_width = self.addr_decode.exp.ds.addr_width
+#         a = str(SVInt(
+#             node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
+#             expr_width
+#         ))
+#         for i, stride in enumerate(self._array_stride_stack):
+#             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
+#         return a
 
 
     def enter_Reg(self, node: RegNode) -> None:
@@ -233,7 +243,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     def exit_AddressableComponent(self, node: 'AddressableNode') -> None:
         super().exit_AddressableComponent(node)
 
-        if not node.is_array:
+        if not node.array_dimensions:
             return
 
         for _ in node.array_dimensions:
