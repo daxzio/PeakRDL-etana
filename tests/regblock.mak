@@ -13,16 +13,16 @@ ${BASE}-apb4:
 	@mkdir -p ${BASE}-apb4
 
 apb4: ${BASE}-apb4
-	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat ${ELAB_ARGS}
+	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat --default-reset rst_n ${ELAB_ARGS}
 #      --hwif-report --rename top ${ELAB_ARGS}
 
 axi:
 	mkdir -p ./regblock-axi4-lite
-	peakrdl regblock ${RDL_FILE} -o ./regblock-axi4-lite/ --cpuif axi4-lite-flat --hwif-report ${ELAB_ARGS}
+	peakrdl regblock ${RDL_FILE} -o ./regblock-axi4-lite/ --cpuif axi4-lite-flat --default-reset rst_n --hwif-report ${ELAB_ARGS}
 
 apbx:
 	mkdir -p ./regblock-apbx
-	peakrdl regblock ./regblock.rdl -o regblock-apbx/ --cpuif apb4-flat --hwif-report ${ELAB_ARGS}
+	peakrdl regblock ./regblock.rdl -o regblock-apbx/ --cpuif apb4-flat --default-reset rst_n --hwif-report ${ELAB_ARGS}
 
 verilog:
 	mkdir -p ./verilog-apb
