@@ -19,7 +19,7 @@ def parity(x, width=32):
 class testbench:
     def __init__(self, dut, reset_sense=1, period=10):
 
-        self.cr = ClkReset(dut, period, reset_sense=reset_sense, resetname="rst")
+        self.cr = ClkReset(dut, period, reset_sense=reset_sense, resetname="rst_n")
         self.dut = dut
 
         apb_prefix = "s_apb"
@@ -30,7 +30,7 @@ class testbench:
 
 @test()
 async def test_dut_basic(dut):
-    tb = testbench(dut, reset_sense=1)
+    tb = testbench(dut, reset_sense=0)
     #     tb.hwif_in_main_sync_mult.value = 30
 
     await tb.cr.wait_clkn(200)

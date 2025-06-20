@@ -3,7 +3,7 @@ module dut #(
       , integer G_ADDR_WIDTH = 13
 ) (
         input wire clk,
-        input wire rst,
+        input wire rst_n,
 
         output logic parity_error,
 
@@ -24,17 +24,6 @@ module dut #(
     top i_top (
         .*
     );
-
-    //`ifdef COCOTB_SIM
-`ifdef COCOTB_ICARUS
-    initial begin
-        $dumpfile("dut.vcd");
-        $dumpvars(0, dut);
-        /* verilator lint_off STMTDLY */
-        #1;
-        /* verilator lint_on STMTDLY */
-    end
-`endif
 
 
 endmodule
