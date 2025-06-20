@@ -155,7 +155,12 @@ class RegblockExporter:
 
         # Construct exporter components
         self.cpuif = cpuif_cls(self)
-        self.hwif = Hwif(self, hwif_report_file=hwif_report_file)
+        self.hwif = Hwif(
+            self,
+            hwif_report_file=hwif_report_file,
+            hwif_in_str=self.ds.hwif_in_str,
+            hwif_out_str=self.ds.hwif_out_str,
+        )
         self.readback = Readback(self)
         self.address_decode = AddressDecode(self)
         self.field_logic = FieldLogic(self)
@@ -253,6 +258,8 @@ class DesignState:
         self.default_reset_async = kwargs.pop(
             "default_reset_async", False
         )  # type: bool
+        self.hwif_in_str = kwargs.pop("in_str", "hwif_in")  # type: str
+        self.hwif_out_str = kwargs.pop("out_str", "hwif_out")  # type: str
 
         # ------------------------
         # Info about the design

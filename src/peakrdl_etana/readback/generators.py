@@ -92,7 +92,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             #             regwidth = node.get_property("regwidth")
             print(memwidth)
             strb = self.exp.hwif.get_external_rd_ack(node, True)
-            data = self.exp.hwif.get_external_rd_data2(node, True)
+            data = self.exp.hwif.get_external_rd_data(node, True)
             # print('gy', data)
             self.add_content(
                 f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;"

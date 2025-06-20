@@ -169,6 +169,18 @@ class Exporter(ExporterSubcommandPlugin):
             specified by the SystemRDL design. If unspecified, the default reset
             is active-high and synchronous [rst]""",
         )
+        arg_group.add_argument(
+            "--in-str",
+            type=str,
+            default="hwif_in",
+            help="""Head of input port name, default \"hwif_in\"""",
+        )
+        arg_group.add_argument(
+            "--out-str",
+            type=str,
+            default="hwif_out",
+            help="""Head of output port name, default \"hwif_out\"""",
+        )
 
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
@@ -234,4 +246,6 @@ class Exporter(ExporterSubcommandPlugin):
             address_width=options.addr_width,
             default_reset_activelow=default_reset_activelow,
             default_reset_async=default_reset_async,
+            in_str=options.in_str,
+            out_str=options.out_str,
         )

@@ -33,12 +33,18 @@ class Hwif:
     - Signal inputs (except those that are promoted to the top)
     """
 
-    def __init__(self, exp: "RegblockExporter", hwif_report_file: Optional[TextIO]):
+    def __init__(
+        self,
+        exp: "RegblockExporter",
+        hwif_report_file: Optional[TextIO],
+        hwif_in_str: str = "hwif_in",
+        hwif_out_str: str = "hwif_out",
+    ):
         self.exp = exp
-        #         self.hwif_in_str = "hzwif_in"
-        #         self.hwif_out_str = "hzwif_out"
-        self.hwif_in_str = "i"
-        self.hwif_out_str = "o"
+        self.hwif_in_str = hwif_in_str
+        self.hwif_out_str = hwif_out_str
+        #         self.hwif_in_str = "i"
+        #         self.hwif_out_str = "o"
         self.hwif_report_file = hwif_report_file
 
     @property

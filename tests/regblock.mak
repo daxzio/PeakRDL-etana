@@ -13,7 +13,7 @@ ${BASE}-apb4:
 	@mkdir -p ${BASE}-apb4
 
 apb4: ${BASE}-apb4
-	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat --default-reset rst_n ${ELAB_ARGS}
+	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat --default-reset rst_n --in-str=i --out-str=o ${ELAB_ARGS}
 #      --hwif-report --rename top ${ELAB_ARGS}
 
 axi:
