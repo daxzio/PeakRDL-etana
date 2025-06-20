@@ -7,6 +7,7 @@ default:
 	cd tests/test_onread_onwrite ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 # 	cd tests/test_external ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 	cd tests/test_external_mem ; make clean apb4 sim  ; ../rtlflo/combine_results.py
+	cd tests/test_external_basic ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 
 pre-commit:
 	pre-commit run --all-files

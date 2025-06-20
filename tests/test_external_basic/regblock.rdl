@@ -1,0 +1,16 @@
+addrmap regblock {
+    default regwidth = 32;
+    external reg {
+        desc="Rx FIFO Receive data FIFO";
+        field {
+            sw=r; hw=w;
+        } fifo[8] = 0;
+    } rx_fifo;
+    external reg {
+        desc="Tx FIFO Transmit data FIFO";
+        field {
+            sw=w; hw=r;
+        } fifo[8] = 0;
+    } tx_fifo;
+
+};
