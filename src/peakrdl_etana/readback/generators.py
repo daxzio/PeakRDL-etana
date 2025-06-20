@@ -88,6 +88,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
         #         super().enter_AddressableComponent(node)
         if node.external:
+            memwidth = node.get_property("memwidth")
+            #             regwidth = node.get_property("regwidth")
+            print(memwidth)
             strb = self.exp.hwif.get_external_rd_ack(node, True)
             data = self.exp.hwif.get_external_rd_data2(node, True)
             # print('gy', data)
@@ -116,8 +119,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def enter_Field(self, node: FieldNode) -> WalkerAction:
         if node.is_sw_readable and node.external:
-            x = self.exp.hwif.get_external_rd_data2(node, True)
-            print(f"{x}")
+            x = self.exp.hwif.get_external_rd_data(node, True)
+            #             print(f"{x}")
+            #             print({"name": x, "msb": node.msb, "lsb": node.lsb})
             self.fields.append({"name": x, "msb": node.msb, "lsb": node.lsb})
 
     def enter_Reg(self, node: RegNode) -> WalkerAction:
@@ -157,12 +161,13 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         vec = []
         for i, f in enumerate(self.fields):
+            #             print(i, f)
             if 0 == i and not f["lsb"] == 0:
                 vec.insert(0, f"{f['lsb']}'b0")
             elif not 0 == i and not f["lsb"] == self.fields[i - 1]["msb"] - 1:
                 vec.insert(0, f"{f['lsb']-self.fields[i-1]['msb']-1}'b0")
             vec.insert(0, f["name"])
-        #         y = f"{{{', '.join(vec)}}}"
+
         if 1 == len(vec):
             self.data = vec[0]
         else:

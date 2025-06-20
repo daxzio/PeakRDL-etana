@@ -223,9 +223,10 @@ module {{ds.module_name}}
     // Writes are always granted with no error response
     assign cpuif_wr_err = '0;
 
-    //--------------------------------------------------------------------------
-    // Readback
-    //--------------------------------------------------------------------------
+//--------------------------------------------------------------------------
+// Readback
+//--------------------------------------------------------------------------
+    logic readback_external_rd_ack;
 {%- if ext_read_acks.has_external_read() %}
     logic readback_external_rd_ack_c;
     always @(*) begin
@@ -235,7 +236,6 @@ module {{ds.module_name}}
         readback_external_rd_ack_c = rd_ack;
     end
 
-    logic readback_external_rd_ack;
     {%- if ds.retime_read_fanin %}
     always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
@@ -249,6 +249,8 @@ module {{ds.module_name}}
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
     {%- endif %}
+{%- else %}
+    assign readback_external_rd_ack = 0;
 {%- endif %}
 
     logic readback_err;

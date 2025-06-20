@@ -35,11 +35,10 @@ class Hwif:
 
     def __init__(self, exp: "RegblockExporter", hwif_report_file: Optional[TextIO]):
         self.exp = exp
-        self.hwif_in_str = "hwif_in"
-        self.hwif_out_str = "hwif_out"
-
-        #         self.has_hwif_ports = False
-
+        #         self.hwif_in_str = "hzwif_in"
+        #         self.hwif_out_str = "hzwif_out"
+        self.hwif_in_str = "i"
+        self.hwif_out_str = "o"
         self.hwif_report_file = hwif_report_file
 
     @property
@@ -110,7 +109,16 @@ class Hwif:
                 return self.exp.dereferencer.get_value(next_value, width)
             # Otherwise, use inferred
             p = IndexedPath(self.top_node, obj)
-            s = f"{self.hwif_in_str}_{p.path}_next"
+            s = f"{self.hwif_in_str}_{p.path}"
+            return s
+        elif isinstance(obj, RegNode):
+            next_value = obj.get_property("next")
+            if next_value is not None:
+                # 'next' property replaces the inferred input signal
+                return self.exp.dereferencer.get_value(next_value, width)
+            # Otherwise, use inferred
+            p = IndexedPath(self.top_node, obj)
+            s = f"{self.hwif_in_str}_{p.path}"
             return s
         elif isinstance(obj, SignalNode):
             if obj.get_path() in self.ds.out_of_hier_signals:
@@ -157,7 +165,7 @@ class Hwif:
         s = f"{self.hwif_out_str}_{p.path}"
         return s
 
-    def get_external_rd_data(self, node: AddressableNode, index: bool = False) -> str:
+    def get_external_rd_data2(self, node: AddressableNode, index: bool = False) -> str:
         """
         Returns the identifier string for an external component's rd_data signal
         """
@@ -189,8 +197,6 @@ class Hwif:
             for e in p.rd_elem:
                 if not e[0] is None:
                     x.append(f"{self.hwif_in_str}_{p.path}{pn}_{e[0]}_rd_data")
-            #             x = f"hwif_in_{p.path}{pn}_{p.rd_elem[0][0]}_rd_data"
-            #             print(x)
             return x
         else:
             y = []
@@ -212,7 +218,7 @@ class Hwif:
         #         print(s)
         return s
 
-    def get_external_rd_data2(self, node: AddressableNode, index: bool = False) -> str:
+    def get_external_rd_data(self, node: AddressableNode, index: bool = False) -> str:
         """
         Returns the identifier string for an external component's rd_data signal
         """
@@ -293,7 +299,8 @@ class Hwif:
         """
         if isinstance(obj, FieldNode):
             p = IndexedPath(self.top_node, obj)
-            hwif_out = f"{self.hwif_out_str}_{p.path}_value"
+            #             hwif_out = f"{self.hwif_out_str}_{p.path}_value"
+            hwif_out = f"{self.hwif_out_str}_{p.path}"
             if not 0 == len(p.index) and index:
                 hwif_out += f"[({p.width}*("
                 for i in range(len(p.array_dimensions) - 1, -1, -1):
@@ -301,6 +308,11 @@ class Hwif:
                         hwif_out += f"+{p.array_dimensions[i-1]}*"
                     hwif_out += f"{p.index[i]}"
                 hwif_out += f"))+:{p.width}]"
+            return hwif_out
+        elif isinstance(obj, RegNode):
+            p = IndexedPath(self.top_node, obj)
+            #             hwif_out = f"{self.hwif_out_str}_{p.path}_value"
+            hwif_out = f"{self.hwif_out_str}_{p.path}"
             return hwif_out
         elif isinstance(obj, PropertyReference):
             # TODO: this might be dead code.
