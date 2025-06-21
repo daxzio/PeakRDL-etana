@@ -2,7 +2,7 @@ SIM?=icarus
 
 default:
 	cd tests/test_read_fanin ; make clean apb4 sim ; ../rtlflo/combine_results.py
-# 	cd tests/test_read_fanin ; make clean apb4 sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin ; make clean apb4 sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
 	cd tests/test_parity ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 	cd tests/test_onread_onwrite ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 # 	cd tests/test_external ; make clean apb4 sim  ; ../rtlflo/combine_results.py
