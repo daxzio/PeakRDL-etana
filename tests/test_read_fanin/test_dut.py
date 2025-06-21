@@ -8,13 +8,13 @@ from cocotbext.apb import ApbBus
 
 
 class testbench:
-    def __init__(self, dut, reset_sense=1, period=10):
+    def __init__(self, dut, reset_sense=0, period=10):
 
         self.regwidth = int(dut.REGWIDTH)
         self.n_regs = int(dut.N_REGS)
         self.mask = (2**self.regwidth) - 1
         self.incr = int(self.regwidth / 8)
-        self.cr = ClkReset(dut, period, reset_sense=reset_sense, resetname="rst")
+        self.cr = ClkReset(dut, period, reset_sense=reset_sense, resetname="rst_n")
         self.dut = dut
 
         apb_prefix = "s_apb"
@@ -25,7 +25,7 @@ class testbench:
 
 @test()
 async def test_dut_basic(dut):
-    tb = testbench(dut, reset_sense=1)
+    tb = testbench(dut)
 
     await tb.cr.wait_clkn(200)
 

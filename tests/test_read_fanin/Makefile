@@ -8,8 +8,8 @@ TOPLEVEL = dut
 MODULE = test_${TOPLEVEL}
 
 INT_VERILOG_SOURCES += \
-    ./regblock-apbx/top.v \
-#     ./${BASE}-apb4/top.sv \
+    ./${BASE}-apb4/top.sv \
+#     ./regblock-apbx/top.v \
 
 COCOTB_SOURCES = \
     ./dut.sv
