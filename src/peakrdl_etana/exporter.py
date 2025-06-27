@@ -14,7 +14,7 @@ from .utils import clog2
 from .scan_design import DesignScanner
 from .validate_design import DesignValidator
 from .cpuif import CpuifBase
-from .cpuif.apb4 import APB4_Cpuif
+from .cpuif.apb4 import APB4_Cpuif_flattened
 from .hwif import Hwif
 from .write_buffering import WriteBuffering
 from .read_buffering import ReadBuffering
@@ -136,7 +136,9 @@ class RegblockExporter:
 
         self.ds = DesignState(top_node, kwargs)
 
-        cpuif_cls = kwargs.pop("cpuif_cls", None) or APB4_Cpuif  # type: Type[CpuifBase]
+        cpuif_cls = (
+            kwargs.pop("cpuif_cls", None) or APB4_Cpuif_flattened
+        )  # type: Type[CpuifBase]
         generate_hwif_report = kwargs.pop("generate_hwif_report", False)  # type: bool
 
         # Check for stray kwargs

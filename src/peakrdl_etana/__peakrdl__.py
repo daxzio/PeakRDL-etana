@@ -54,13 +54,9 @@ class Exporter(ExporterSubcommandPlugin):
         # All built-in CPUIFs
         cpuifs = {
             "passthrough": passthrough.PassthroughCpuif,
-            "apb3": apb3.APB3_Cpuif,
             "apb3-flat": apb3.APB3_Cpuif_flattened,
-            "apb4": apb4.APB4_Cpuif,
             "apb4-flat": apb4.APB4_Cpuif_flattened,
-            "axi4-lite": axi4lite.AXI4Lite_Cpuif,
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
-            "avalon-mm": avalon.Avalon_Cpuif,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
         }
 

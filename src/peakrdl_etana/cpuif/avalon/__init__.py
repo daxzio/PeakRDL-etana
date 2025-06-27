@@ -2,23 +2,9 @@ from ..base import CpuifBase
 from ...utils import clog2
 
 
-class Avalon_Cpuif(CpuifBase):
+class Avalon_Cpuif_flattened(CpuifBase):
     template_path = "avalon_tmpl.sv"
 
-    @property
-    def port_declaration(self) -> str:
-        return "avalon_mm_intf.agent avalon"
-
-    def signal(self, name: str) -> str:
-        return "avalon." + name
-
-    @property
-    def word_addr_width(self) -> int:
-        # Avalon agents use word addressing, therefore address width is reduced
-        return self.addr_width - clog2(self.data_width_bytes)
-
-
-class Avalon_Cpuif_flattened(Avalon_Cpuif):
     @property
     def port_declaration(self) -> str:
         lines = [
@@ -37,3 +23,8 @@ class Avalon_Cpuif_flattened(Avalon_Cpuif):
 
     def signal(self, name: str) -> str:
         return "avalon_" + name
+
+    @property
+    def word_addr_width(self) -> int:
+        # Avalon agents use word addressing, therefore address width is reduced
+        return self.addr_width - clog2(self.data_width_bytes)
