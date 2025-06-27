@@ -44,6 +44,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
 
     def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
         print("enter_Addrmap")
+        raise Exception("enter_Addrmap")
         if node.external:
             # AddrmapNode doesn't have is_sw_writable - skip for now
             # if node.is_sw_writable:
@@ -54,8 +55,8 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         return None
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        print("enter_Regfile")
-        raise Exception("enter_Regfile")
+        #         print("enter_Regfile")
+        #         raise Exception("enter_Regfile")
         if node.external:
             # print(dir(node))
             x = self.exp.hwif.get_external_wr_ack(node, True)
@@ -71,6 +72,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         for ext_wack in self.ext_wacks:
             self.add_content(f"wr_ack |= {ext_wack};")
         # IMPORTANT: Call parent's exit method to balance the stack
+        self.ext_wacks = []
         return super().exit_AddressableComponent(node)
 
 
@@ -96,6 +98,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             if node.has_sw_readable:
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
+        #                 print("enter_Reg", x)
         return None
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
@@ -106,22 +109,22 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             x = self.exp.hwif.get_external_rd_ack(node, True)
             self.ext_racks.append(x)
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
-        print("enter_Addrmap")
-        # Skip unimplemented functionality for now
-        # if not node.external:
-        #     if node.is_sw_readable:
-        #         x = self.exp.hwif.get_external_rd_ack(node, True)
-        #         self.ext_racks.append(x)
-        return None
-
-    def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        print("enter_Regfile")
-        # Skip unimplemented functionality for now
-        # if node.is_sw_readable:
-        #     x = self.exp.hwif.get_external_rd_ack(node, True)
-        #     self.ext_racks.append(x)
-        return None
+    #     def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
+    #         print("enter_Addrmap")
+    #         # Skip unimplemented functionality for now
+    #         # if not node.external:
+    #         #     if node.is_sw_readable:
+    #         #         x = self.exp.hwif.get_external_rd_ack(node, True)
+    #         #         self.ext_racks.append(x)
+    #         return None
+    #
+    #     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
+    #         print("enter_Regfile")
+    #         # Skip unimplemented functionality for now
+    #         # if node.is_sw_readable:
+    #         #     x = self.exp.hwif.get_external_rd_ack(node, True)
+    #         #     self.ext_racks.append(x)
+    #         return None
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
         super().enter_AddressableComponent(node)
@@ -131,4 +134,5 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         for ext_rack in self.ext_racks:
             self.add_content(f"rd_ack |= {ext_rack};")
         # IMPORTANT: Call parent's exit method to balance the stack
+        self.ext_racks = []
         return super().exit_AddressableComponent(node)

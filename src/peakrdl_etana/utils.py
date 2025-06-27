@@ -13,80 +13,22 @@ class IndexedPath:
         self.top_node = top_node
         self.target_node = target_node
         self.index = []
-        #         if isinstance(self.target_node, RegNode):
-        #             self.array_dimensions = self.target_node.parent.array_dimensions
-        #         elif isinstance(self.target_node, FieldNode):
-        #             self.array_dimensions = self.target_node.parent.array_dimensions
+        if isinstance(self.target_node, RegNode):
+            self.array_dimensions = self.target_node.parent.array_dimensions
+        elif isinstance(self.target_node, FieldNode):
+            self.array_dimensions = self.target_node.parent.array_dimensions
         #             print(True, self.array_dimensions)
-        self.array_dimensions = self.target_node.parent.array_dimensions
+        #         self.array_dimensions = self.target_node.parent.array_dimensions
 
         try:
             self.width = self.target_node.width
         except AttributeError:
             self.width = None
 
-        self.inst_names = []
-        self.regwidth = []
-        self.rd_elem = []
-        self.wr_elem = []
-        self.pn = []
-        last_lsb_rd = 0
-        last_lsb_wr = 0
-        tnodes = [self.target_node]
-        n_subwords = 1
-        if isinstance(self.target_node, RegNode):
-            n_subwords = self.target_node.get_property(
-                "regwidth"
-            ) // self.target_node.get_property("accesswidth")
-        if isinstance(self.target_node, AddrmapNode):
-            for c in self.target_node.children():
-                # print(c)
-                tnodes = [c]
-
-        #                self.target_node = c
-        #         if isinstance(self.target_node, FieldNode):
-        #             print('tnodes', tnodes)
-        #             for tnode in tnodes:
-        #                 print(tnode)
-        if isinstance(self.target_node, RegfileNode):
-            #            print(target_node.inst_name)
-            tnodes = []
-            for c in self.target_node.children():
-                tnodes.append(c)
-                self.pn.append(c.inst_name)
-
-        for tnode in tnodes:
-            for c in tnode.children():
-                #                 print(tnode, c.width)
-                if 1 == n_subwords:
-                    width = c.width
-                else:
-                    width = self.target_node.get_property("accesswidth")
-                self.inst_names.append(c.inst_name)
-                self.regwidth.append(width)
-                if c.is_sw_readable:
-                    if c.lsb > last_lsb_rd:
-                        d = c.lsb - last_lsb_rd
-                        #                         print(True, d, f"{d}'b0")
-                        self.rd_elem.append([None, d, f"{d}'b0"])
-                    #                     print(c.inst_name, c.is_sw_readable, c.width, f"[{c.msb}:{c.lsb}]")
-                    self.rd_elem.append([c.inst_name, c.width, f"[{c.msb}:{c.lsb}]"])
-                    last_lsb_rd = c.msb + 1
-                if c.is_sw_writable:
-                    if 1 == n_subwords:
-                        if c.lsb > last_lsb_wr:
-                            d = c.lsb - last_lsb_wr
-                            #                             print(True, d, f"{d}'b0")
-                            self.wr_elem.append([None, d, f"{d}'b0"])
-                        #                         print(c.inst_name, c.is_sw_readable, c.width, f"[{c.msb}:{c.lsb}]")
-                        self.wr_elem.append([c.inst_name, width, f"[{c.msb}:{c.lsb}]"])
-                        last_lsb_wr = c.msb + 1
-                    else:
-                        self.wr_elem.append([c.inst_name, width, f"[{width-1}:{0}]"])
-
         self.path = self.target_node.get_rel_path(
             self.top_node, empty_array_suffix="[!]", hier_separator="_"
         )
+        #         print(self.path)
 
         def kw_filter_repl(m: Match) -> str:
             return kwf(m.group(0))
@@ -96,9 +38,6 @@ class IndexedPath:
         for i, g in enumerate(re.findall(r"\[!\]", self.path)):
             self.index.append(f"i{i}")
         self.path = re.sub(r"\[!\]", "", self.path)
-
-    #         if isinstance(self.target_node, FieldNode):
-    #             print('z', self.path)
 
     @property
     def index_str(self) -> str:
@@ -115,8 +54,8 @@ class IndexedPath:
                 x.append(f"{mult}*{val}")
             mult *= 5
 
-        if not 0 == len(self.index):
-            print("+".join(reversed(x)))
+        #         if not 0 == len(self.index):
+        #             print("+".join(reversed(x)))
 
         return v
 

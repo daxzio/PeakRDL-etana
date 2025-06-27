@@ -90,7 +90,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         if node.external:
             memwidth = node.get_property("memwidth")
             #             regwidth = node.get_property("regwidth")
-            print(memwidth)
+            #             print(memwidth)
             strb = self.exp.hwif.get_external_rd_ack(node, True)
             data = self.exp.hwif.get_external_rd_data(node, True)
             # print('gy', data)
@@ -110,27 +110,20 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     #         return WalkerAction.Continue
 
-    def exit_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        #         if node.external:
-        #             print(f"assign readback_array {self.strb}")
-        #             self.add_content(f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;")
-        #             self.current_offset += 1
-        self.regfile = False
-
-    def enter_Field(self, node: FieldNode) -> WalkerAction:
-        if node.is_sw_readable and node.external:
-            x = self.exp.hwif.get_external_rd_data(node, True)
-            #             print(f"{x}")
-            #             print({"name": x, "msb": node.msb, "lsb": node.lsb})
-            self.fields.append({"name": x, "msb": node.msb, "lsb": node.lsb})
+    #     def exit_Regfile(self, node: "RegfileNode") -> WalkerAction:
+    #         #         if node.external:
+    #         #             print(f"assign readback_array {self.strb}")
+    #         #             self.add_content(f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;")
+    #         #             self.current_offset += 1
+    #         self.regfile = False
 
     def enter_Reg(self, node: RegNode) -> WalkerAction:
-        self.fields = []
         if not node.has_sw_readable:
             return WalkerAction.SkipDescendants
 
-        if node.external:
-            return
+        #         if node.external:
+        #             self.process_reg(node)
+        #             return
         #             self.process_external_reg(node)
         #             #return WalkerAction.SkipDescendants
 
@@ -155,48 +148,107 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         # return WalkerAction.SkipDescendants
 
-    def exit_Reg(self, node: RegNode) -> WalkerAction:
-        if not node.has_sw_readable:
-            return WalkerAction.SkipDescendants
-
-        vec = []
-        for i, f in enumerate(self.fields):
-            #             print(i, f)
-            if 0 == i and not f["lsb"] == 0:
-                vec.insert(0, f"{f['lsb']}'b0")
-            elif not 0 == i and not f["lsb"] == self.fields[i - 1]["msb"] - 1:
-                vec.insert(0, f"{f['lsb']-self.fields[i-1]['msb']-1}'b0")
-            vec.insert(0, f["name"])
-
-        if 1 == len(vec):
-            self.data = vec[0]
-        else:
-            self.data = f"{{{', '.join(vec)}}}"
-        self.strb = self.exp.hwif.get_external_rd_ack(node, True)
-
-        if node.external:
-            self.process_external_reg(node)
+    #     def exit_Reg(self, node: RegNode) -> WalkerAction:
+    #         if not node.has_sw_readable:
+    #             return WalkerAction.SkipDescendants
+    #
+    #         if node.external:
+    #             # need to build up readback value from elements AND pad it all out to regwidth
+    # #             regwidth = node.get_property("regwidth")
+    # #             vec = []
+    # #             last_msb = regwidth
+    # #             for i, field in enumerate(node.fields()):
+    # #                 if not field.is_sw_readable:
+    # #                     continue
+    # #                 name = self.exp.hwif.get_external_rd_data(field, True)
+    # # #                 print(i, field, name, field.high, field.low)
+    # #                 if 0 == i and not field.low == 0:
+    # #                     vec.insert(0, f"{field.low}'b0")
+    # #                 elif not 0 == i and not field.low == last_msb - 1:
+    # #                     vec.insert(0, f"{field.low-last_msb}'b0")
+    # #                 vec.insert(0, name)
+    # #                 last_msb = field.high+1
+    # # #             print(vec)
+    # # #             vec = []
+    # # #             last_msb = regwidth
+    # # #             for i, f in enumerate(self.fields):
+    # # #                 if 0 == i and not f["lsb"] == 0:
+    # # #                     vec.insert(0, f"{f['lsb']}'b0")
+    # # #                 elif not 0 == i and not f["lsb"] == self.fields[i - 1]["msb"] - 1:
+    # # #                     vec.insert(0, f"{f['lsb']-self.fields[i-1]['msb']-1}'b0")
+    # # #                 vec.insert(0, f["name"])
+    # # #                 last_msb = f["msb"]+1
+    # #
+    # #             if not regwidth == 32:
+    # #                 raise NotImplementedError
+    # #             if not last_msb == regwidth:
+    # #                 vec.insert(0, f"{regwidth-last_msb}'b0")
+    # #             self.data = f"{{{', '.join(vec)}}}"
+    # #             self.strb = self.exp.hwif.get_external_rd_ack(node, True)
+    #
+    # #             self.process_external_reg(node)
+    #             self.process_reg(node)
 
     def process_external_reg(self, node: RegNode) -> None:
         regwidth = node.get_property("regwidth")
         if regwidth < self.exp.cpuif.data_width:
-            self.add_content(
-                f"assign readback_array[{self.current_offset_str}][{self.exp.cpuif.data_width-1}:{regwidth}] = '0;"
-            )
-            self.add_content(
-                f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {self.strb} ? {self.data} : '0;"
-            )
-        else:
-            self.add_content(
-                f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;"
-            )
+            raise
 
-        self.current_offset += 1
+    #             self.add_content(
+    #                 f"assign readback_array[{self.current_offset_str}][{self.exp.cpuif.data_width-1}:{regwidth}] = '0;"
+    #             )
+    #             self.add_content(
+    #                 f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {self.strb} ? {self.data} : '0;"
+    #             )
+    #         else:
+    #             self.add_content(
+    #                 f"assign readback_array[{self.current_offset_str}] = {self.strb} ? {self.data} : '0;"
+    #             )
+    #
+    #         current_bit = 0
+    #         p = self.exp.dereferencer.get_access_strobe(node)
+    #         rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
+    #         # Fields are sorted by ascending low bit
+    #         for field in node.fields():
+    #             if not field.is_sw_readable:
+    #                 continue
+    #
+    #             # insert reserved assignment before this field if needed
+    #             if field.low != current_bit:
+    #                 self.add_content(
+    #                     f"assign readback_array[{self.current_offset_str}][{field.low-1}:{current_bit}] = '0;"
+    #                 )
+    #
+    #             value = self.exp.hwif.get_external_rd_data(field, True)
+    #             if field.msb < field.lsb:
+    #                 # Field gets bitswapped since it is in [low:high] orientation
+    #                 value = do_bitswap(value)
+    #
+    #             self.add_content(
+    #                 f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"
+    #             )
+    #
+    #             current_bit = field.high + 1
+    #
+    #         # Insert final reserved assignment if needed
+    #         bus_width = self.exp.cpuif.data_width
+    #         if current_bit < bus_width:
+    #             self.add_content(
+    #                 f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{current_bit}] = '0;"
+    #             )
+    #
+    #         self.current_offset += 1
 
     def process_reg(self, node: RegNode) -> None:
+        regwidth = node.get_property("regwidth")
+        if regwidth < self.exp.cpuif.data_width:
+            raise
         current_bit = 0
         p = self.exp.dereferencer.get_access_strobe(node)
-        rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
+        if node.external:
+            rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
+        else:
+            rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
         # Fields are sorted by ascending low bit
         for field in node.fields():
             if not field.is_sw_readable:
@@ -208,7 +260,10 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     f"assign readback_array[{self.current_offset_str}][{field.low-1}:{current_bit}] = '0;"
                 )
 
-            value = self.exp.dereferencer.get_value(field)
+            if node.external:
+                value = self.exp.hwif.get_external_rd_data(field, True)
+            else:
+                value = self.exp.dereferencer.get_value(field)
             if field.msb < field.lsb:
                 # Field gets bitswapped since it is in [low:high] orientation
                 value = do_bitswap(value)
@@ -226,8 +281,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{current_bit}] = '0;"
             )
 
-        #         print(2, True)
-        #         if not self.regfile:
         self.current_offset += 1
 
     def process_buffered_reg(

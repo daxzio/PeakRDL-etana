@@ -134,11 +134,15 @@ module {{ds.module_name}}
 {% endif %}
     logic decoded_req;
     logic decoded_req_is_wr;
+    /* verilator lint_off UNUSEDSIGNAL */
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
+    /* verilator lint_on UNUSEDSIGNAL */
 
     always @(*) begin
+        /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
+        /* verilator lint_on UNUSEDSIGNAL */
     {%- if ds.has_external_addressable %}
         logic is_external;
         is_external = '0;
@@ -200,7 +204,7 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // Read double-buffers
     //--------------------------------------------------------------------------
-    {{read_buffering.get_storage_struct()|indent}}
+//     {{read_buffering.get_storage_struct()|indent}}
 
     {{read_buffering.get_implementation()|indent}}
 {%- endif %}

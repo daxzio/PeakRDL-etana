@@ -25,6 +25,7 @@ class InputLogicGenerator(RDLListener):
         self.regfile = False
         self.in_port = []
         self.out_port = []
+        self.regfile_array = []
 
     def get_logic(self, node: "Node") -> Optional[str]:
 
@@ -72,24 +73,31 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
 
     def enter_Regfile(self, node: "RegfileNode") -> None:
-        self.ext_out = self.hwif.get_external_out_prefix2(node)
-        if node.external:
-            addr_width = clog2(node.size)
-            self.hwif_port.append(
-                f"output logic [{addr_width-1}:0] {self.ext_out}_addr"
-            )
+        self.regfile_array = []
+        if node.is_array:
+            self.regfile_array.extend(node.array_dimensions)
+
+    def exit_Regfile(self, node: "RegfileNode") -> None:
+        self.regfile_array = []
 
     def enter_Reg(self, node: "RegNode") -> None:
+        #         print('xenter_Reg', node.is_array, node.array_dimensions)
         self.n_subwords = node.get_property("regwidth") // node.get_property(
             "accesswidth"
         )
 
         self.vector = 1
         self.vector_text = ""
+        array_dimensions = []
         if node.is_array:
-            for i in node.array_dimensions:
-                self.vector_text = f"[{i-1}:0] " + self.vector_text
-                self.vector *= i
+            array_dimensions.extend(node.array_dimensions)
+
+        #         if node.parent.is_array and isinstance(node.parent, RegfileNode):
+        array_dimensions.extend(self.regfile_array)
+
+        for i in array_dimensions:
+            self.vector_text = f"[{i-1}:0] " + self.vector_text
+            self.vector *= i
 
         if node.external:
             vector_extend = ""
@@ -97,9 +105,11 @@ class InputLogicGenerator(RDLListener):
                 vector_extend = f"[{self.n_subwords-1}:0] "
 
             x = self.hwif.get_output_identifier(node)
-            self.hwif_port.append(f"output logic {vector_extend}{x}_req")
+            self.hwif_port.append(
+                f"output logic {self.vector_text}{vector_extend}{x}_req"
+            )
             if node.has_hw_readable:
-                self.hwif_port.append(f"output logic {x}_req_is_wr")
+                self.hwif_port.append(f"output logic {self.vector_text}{x}_req_is_wr")
             if node.has_sw_readable:
                 self.hwif_port.append(
                     f"input wire {self.vector_text}{self.hwif.get_external_rd_ack(node)}"

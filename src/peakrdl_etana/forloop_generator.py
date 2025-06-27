@@ -17,18 +17,27 @@ class Body:
 
 
 class LoopBody(Body):
-    def __init__(self, dim: int, iterator: str, i_type: str) -> None:
+    _label_counter = 0  # Class-level counter for unique labels
+
+    def __init__(self, dim: int, iterator: str, i_type: str, label: str = None) -> None:
         super().__init__()
         self.dim = dim
         self.iterator = iterator
         self.i_type = i_type
         self.pre_loop = ""
 
+        # Generate unique label if not provided
+        if label is None:
+            LoopBody._label_counter += 1
+            self.label = f"gen_loop_{LoopBody._label_counter}"
+        else:
+            self.label = label
+
     def __str__(self) -> str:
         s = super().__str__()
         val = ""
         val = self.pre_loop
-        val += f"for({self.i_type} {self.iterator}=0; {self.iterator}<{self.dim}; {self.iterator}++) begin\n"
+        val += f"for({self.i_type} {self.iterator}=0; {self.iterator}<{self.dim}; {self.iterator}++) begin : {self.label}\n"
         val += textwrap.indent(s, "    ")
         val += "\nend"
         return val

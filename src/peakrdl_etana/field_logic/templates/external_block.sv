@@ -29,6 +29,8 @@ end
 {%- else -%}
 
 
+{%- if is_sw_readable or is_sw_writable %}
+{%- endif %}
 assign {{prefix}}_addr = decoded_addr[{{addr_width-1}}:0];
 assign {{prefix}}_req = {{strb.path}};
 {%- if is_sw_writable %}

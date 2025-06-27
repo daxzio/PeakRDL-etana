@@ -47,12 +47,13 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     ) -> Optional[WalkerAction]:
         super().enter_AddressableComponent(node)
 
-        if node.external and not isinstance(node, RegNode):
-            # Is an external block
-            self.assign_external_block_outputs(node)
-
-            # Do not recurse
-            return WalkerAction.SkipDescendants
+        # #         if node.external and not isinstance(node, RegNode):
+        #         if node.external and not isinstance(node, RegNode):
+        #             # Is an external block
+        #             self.assign_external_block_outputs(node)
+        #
+        #             # Do not recurse
+        #             return WalkerAction.SkipDescendants
 
         return WalkerAction.Continue
 
@@ -262,11 +263,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def assign_external_reg_outputs(self, node: "RegNode") -> None:
         #         print(self.fields)
         p = IndexedPath(self.exp.ds.top_node, node)
-        #         print("tr", p.path)
         prefix = self.hwif_out_str + "_" + p.path
         strb = self.exp.dereferencer.get_access_strobe(node)
         index_str = strb.index_str
         strb = f"{strb.path}"
+        #         print("tr", p.path, strb)
 
         width = min(self.exp.cpuif.data_width, node.get_property("regwidth"))
         if width != self.exp.cpuif.data_width:
@@ -281,6 +282,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             x = IndexedPath(self.exp.ds.top_node, field)
             y = field.get_rel_path(self.exp.ds.top_node)
             path = re.sub(p.path, "", x.path)
+            #             print("ss", x , path)
             if 1 == n_subwords:
                 vslice = f"[{field.msb}:{field.lsb}]"
             else:
@@ -309,17 +311,25 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def assign_external_block_outputs(self, node: "AddressableNode") -> None:
         p = IndexedPath(self.exp.ds.top_node, node)
+        #         print('ex', node)
         prefix = self.hwif_out_str + "_" + p.path
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
+        #         print('prefix', prefix, 'strb', strb.path)
         index_str = p.index_str
         addr_width = clog2(node.size)
+        #         raise
         inst_names = []
-        if 0 == len(p.inst_names):
-            inst_names.append("")
-        else:
-            for inst in p.inst_names:
-                inst_names.append(f"_{inst}")
+        inst_names.append("")
+        for field in self.fields:
+            x = IndexedPath(self.exp.ds.top_node, field)
+        #             print("jj", x)
+        #         if 0 == len(p.inst_names):
+        #             inst_names.append("")
+        #         else:
+        #             for inst in p.inst_names:
+        #                 inst_names.append(f"_{inst}")
 
+        #         print('inst_names', inst_names)
         retime = False
         writable = False
         readable = False
@@ -346,4 +356,5 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "get_resetsignal": self.exp.dereferencer.get_resetsignal,
             "resetsignal": self.exp.ds.top_node.cpuif_reset,
         }
+        #         print(context)
         self.add_content(self.external_block_template.render(context))
