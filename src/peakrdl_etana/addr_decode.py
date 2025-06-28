@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class AddressDecode:
-    def __init__(self, exp: "RegblockExporter"):
+    def __init__(self, exp: "RegblockExporter") -> None:
         self.exp = exp
 
     @property

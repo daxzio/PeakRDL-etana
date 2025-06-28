@@ -253,11 +253,8 @@ SV_KEYWORDS = {
 
 def kw_filter(s: str) -> str:
     """
-    Make all user identifiers 'safe' and ensure they do not collide with
-    SystemVerilog keywords.
-
-    If an SV keyword is encountered, add an underscore suffix
+    Filter out SystemVerilog reserved keywords by appending '_' suffix
     """
     if s in SV_KEYWORDS:
-        s += "_"
+        return s + "_"
     return s

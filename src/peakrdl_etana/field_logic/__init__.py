@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Dict, List
 
 from systemrdl.rdltypes import PrecedenceType, InterruptType
 
@@ -17,17 +17,16 @@ from ..sv_int import SVInt
 from .generators import FieldLogicGenerator
 
 if TYPE_CHECKING:
-    from typing import Dict, List
     from systemrdl.node import AddrmapNode, FieldNode
     from ..exporter import RegblockExporter, DesignState
 
 
 class FieldLogic:
-    def __init__(self, exp: "RegblockExporter"):
+    def __init__(self, exp: "RegblockExporter") -> None:
         self.exp = exp
 
-        self._hw_conditionals = {}  # type: Dict[int, List[NextStateConditional]]
-        self._sw_conditionals = {}  # type: Dict[int, List[NextStateConditional]]
+        self._hw_conditionals: Dict[int, List[NextStateConditional]] = {}
+        self._sw_conditionals: Dict[int, List[NextStateConditional]] = {}
 
         self.init_conditionals()
 

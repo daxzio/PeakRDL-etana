@@ -29,7 +29,9 @@ class _StructBase:
 
 
 class _AnonymousStruct(_StructBase):
-    def __init__(self, inst_name: str, array_dimensions: Optional[List[int]] = None):
+    def __init__(
+        self, inst_name: str, array_dimensions: Optional[List[int]] = None
+    ) -> None:
         super().__init__()
         self.inst_name = inst_name
         self.array_dimensions = array_dimensions
@@ -50,7 +52,7 @@ class _TypedefStruct(_StructBase):
         inst_name: Optional[str] = None,
         array_dimensions: Optional[List[int]] = None,
         packed: bool = False,
-    ):
+    ) -> None:
         super().__init__()
         self.type_name = type_name
         self.inst_name = inst_name

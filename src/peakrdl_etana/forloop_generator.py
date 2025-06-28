@@ -19,7 +19,9 @@ class Body:
 class LoopBody(Body):
     _label_counter = 0  # Class-level counter for unique labels
 
-    def __init__(self, dim: int, iterator: str, i_type: str, label: str = None) -> None:
+    def __init__(
+        self, dim: int, iterator: str, i_type: str, label: Optional[str] = None
+    ) -> None:
         super().__init__()
         self.dim = dim
         self.iterator = iterator

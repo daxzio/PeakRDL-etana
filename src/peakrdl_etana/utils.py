@@ -9,7 +9,7 @@ from .sv_int import SVInt
 
 
 class IndexedPath:
-    def __init__(self, top_node: Node, target_node: Node):
+    def __init__(self, top_node: Node, target_node: Node) -> None:
         self.top_node = top_node
         self.target_node = target_node
         self.index = []

@@ -17,7 +17,7 @@ class Dereferencer:
     into Verilog identifiers
     """
 
-    def __init__(self, exp: "RegblockExporter"):
+    def __init__(self, exp: "RegblockExporter") -> None:
         self.exp = exp
 
     @property

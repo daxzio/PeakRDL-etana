@@ -57,3 +57,30 @@ version = {attr = "peakrdl_etana.__about__.__version__"}
 
 [project.entry-points."peakrdl.exporters"]
 etana = "peakrdl_etana.__peakrdl__:Exporter"
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = false
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = false
+strict_equality = true
+
+# Allow flexibility for compatibility
+allow_redefinition = true
+allow_untyped_globals = true
+allow_untyped_calls = true
+
+[[tool.mypy.overrides]]
+module = [
+    "systemrdl.*",
+    "jinja2.*",
+]
+ignore_missing_imports = true
