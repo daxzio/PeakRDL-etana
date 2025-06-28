@@ -1,3 +1,5 @@
+
+
 // Request
 always_comb begin
     cpuif_req = {{cpuif.signal("read")}} | {{cpuif.signal("write")}};

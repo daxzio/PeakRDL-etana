@@ -55,6 +55,30 @@ class Hwif:
     def top_node(self) -> AddrmapNode:
         return self.exp.ds.top_node
 
+    def get_extra_package_params(self) -> str:
+        """
+        Generate localparam declarations for user-defined parameters
+        """
+        lines = []
+
+        for param in self.top_node.inst.parameters:
+            value = param.get_value()
+            if isinstance(value, int):
+                lines.append(f"localparam {param.name} = {SVInt(value)};")
+            elif isinstance(value, str):
+                lines.append(f"localparam {param.name} = {value};")
+
+        return "\n".join(lines)
+
+    def get_package_contents(self) -> str:
+        """
+        Generate package contents (placeholder for flattened interface approach)
+        """
+        # Since this implementation uses flattened signals instead of structs,
+        # package contents are minimal. User enums or other package content
+        # could be added here in the future.
+        return ""
+
     @property
     def has_hwif_ports(self) -> bool:
         hwif_ports = InputLogicGenerator(self.exp.hwif)

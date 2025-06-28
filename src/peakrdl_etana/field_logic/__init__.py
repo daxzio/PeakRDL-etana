@@ -9,6 +9,7 @@ from . import sw_singlepulse
 from . import hw_write
 from . import hw_set_clr
 from . import hw_interrupts
+from . import hw_interrupts_with_write
 
 from ..utils import IndexedPath
 from ..sv_int import SVInt
@@ -237,9 +238,10 @@ class FieldLogic:
                 wstrb = self.exp.write_buffering.get_write_strobe(field)
                 return wstrb
             else:
-                # Unbuffered. Use decoder strobe directly
+                # Unbuffered. Use decoder strobe directly with byte enable check
                 p = self.exp.dereferencer.get_access_strobe(field)
-                return f"{p.path} && decoded_req_is_wr"
+                wr_biten = self._get_wr_biten_for_field(field)
+                return f"{p.path} && decoded_req_is_wr && (|({wr_biten}))"
 
         if w_modifiable and r_modifiable:
             # assert swmod on both sw read and write
@@ -253,13 +255,16 @@ class FieldLogic:
                 if buffer_writes:
                     wstrb = self.exp.write_buffering.get_write_strobe(field)
                 else:
-                    wstrb = f"{p.path} && decoded_req_is_wr"
+                    # Use byte enable check for write operations
+                    wr_biten = self._get_wr_biten_for_field(field)
+                    wstrb = f"{p.path} && decoded_req_is_wr && (|({wr_biten}))"
 
                 return f"{wstrb} || {rstrb}"
             else:
                 # Unbuffered. Use decoder strobe directly
-                p = self.exp.dereferencer.get_access_strobe(field)
-                return p
+                # For read-write modifiable fields, check byte enables only for writes
+                wr_biten = self._get_wr_biten_for_field(field)
+                return f"({p.path} && !decoded_req_is_wr) || ({p.path} && decoded_req_is_wr && (|({wr_biten})))"
 
         if not w_modifiable and r_modifiable:
             # assert swmod only on sw read
@@ -272,6 +277,61 @@ class FieldLogic:
 
         # Not sw modifiable
         return "1'b0"
+
+    def _get_wr_biten_for_field(self, field: "FieldNode") -> str:
+        """
+        Get the byte enable signal slice that corresponds to this field for swmod checking.
+        """
+        # Use the existing method from sw_onwrite logic
+        bslice = self._wbus_bitslice(field)
+
+        if field.msb < field.lsb:
+            # Field gets bitswapped since it is in [low:high] orientation
+            return "decoded_wr_biten_bswap" + bslice
+        else:
+            return "decoded_wr_biten" + bslice
+
+    def _wbus_bitslice(self, field: "FieldNode", subword_idx: int = 0) -> str:
+        """
+        Get the bitslice range string from the internal cpuif's data bus for this field.
+        """
+        if field.parent.get_property("buffer_writes"):
+            # register is buffered.
+            # write buffer is the full width of the register. no need to deal with subwords
+            high = field.high
+            low = field.low
+            if field.msb < field.lsb:
+                # slice is for an msb0 field.
+                # mirror it
+                regwidth = field.parent.get_property("regwidth")
+                low = regwidth - 1 - low
+                high = regwidth - 1 - high
+                low, high = high, low
+        else:
+            # Regular non-buffered register
+            # For normal fields this ends up passing-through the field's low/high
+            # values unchanged.
+            # For fields within a wide register (accesswidth < regwidth), low/high
+            # may be shifted down and clamped depending on which sub-word is being accessed
+            accesswidth = field.parent.get_property("accesswidth")
+
+            # Shift based on subword
+            high = field.high - (subword_idx * accesswidth)
+            low = field.low - (subword_idx * accesswidth)
+
+            # clamp to accesswidth
+            high = max(min(high, accesswidth), 0)
+            low = max(min(low, accesswidth), 0)
+
+            if field.msb < field.lsb:
+                # slice is for an msb0 field.
+                # mirror it
+                bus_width = self.exp.cpuif.data_width
+                low = bus_width - 1 - low
+                high = bus_width - 1 - high
+                low, high = high, low
+
+        return f"[{high}:{low}]"
 
     def get_parity_identifier(self, field: "FieldNode", declare: bool = False) -> str:
         """
@@ -403,6 +463,47 @@ class FieldLogic:
             sw_singlepulse.Singlepulse(self.exp), AssignmentPrecedence.SW_SINGLEPULSE
         )
 
+        # Write enable combined with interrupt types
+        self.add_hw_conditional(
+            hw_interrupts_with_write.StickyWE(self.exp), AssignmentPrecedence.HW_WRITE
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.StickyWEL(self.exp), AssignmentPrecedence.HW_WRITE
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.PosedgeStickybitWE(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.PosedgeStickybitWEL(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.NegedgeStickybitWE(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.NegedgeStickybitWEL(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.BothedgeStickybitWE(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.BothedgeStickybitWEL(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.StickybitWE(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+        self.add_hw_conditional(
+            hw_interrupts_with_write.StickybitWEL(self.exp),
+            AssignmentPrecedence.HW_WRITE,
+        )
+
+        # Standard interrupt types
         self.add_hw_conditional(
             hw_interrupts.PosedgeStickybit(self.exp), AssignmentPrecedence.HW_WRITE
         )

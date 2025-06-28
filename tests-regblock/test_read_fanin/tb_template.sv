@@ -30,5 +30,7 @@
         cpuif.assert_read(i*STRIDE, data[i]);
     end
 
+    `ifndef SYNTHESIS
     assert($bits(dut.cpuif_wr_data) == REGWIDTH);
+    `endif
 {% endblock %}

@@ -55,6 +55,9 @@ always_ff @(posedge clk) begin
         {%- if node.get_property('paritycheck') %}
         {{field_logic.get_parity_identifier(node)}} <= ^{{reset}};
         {%- endif %}
+        {%- if field_logic.has_next_q(node) %}
+        {{field_logic.get_next_q_identifier(node)}} <= {{reset}};
+        {%- endif %}
     end else {% endif %}if({{field_logic.get_field_combo_identifier(node, "load_next")}}) begin
         {{field_logic.get_storage_identifier(node)}} <= {{field_logic.get_field_combo_identifier(node, "next")}};
         {%- if node.get_property('paritycheck') %}

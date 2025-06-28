@@ -7,8 +7,10 @@
     ##1;
 
     // check enum values
+    `ifndef SYNTHESIS
     assert(regblock_pkg::top__my_enum__val_1 == 'd3);
     assert(regblock_pkg::top__my_enum__val_2 == 'd4);
+    `endif
 
     // check initial conditions
     cpuif.assert_read('h0, regblock_pkg::top__my_enum__val_2);

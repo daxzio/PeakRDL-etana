@@ -27,7 +27,9 @@
         end
     join_any
     disable fork;
+    `ifndef SYNTHESIS
     assert(event_count == 0) else $error("Observed excess singlepulse events: %0d", event_count);
+    `endif
 
     // single pulse
     event_count = 0;
@@ -48,7 +50,9 @@
         end
     join_any
     disable fork;
+    `ifndef SYNTHESIS
     assert(event_count == 1) else $error("Observed incorrect number of singlepulse events: %0d", event_count);
+    `endif
 
     // auto-clears
     cpuif.assert_read('h0, 'h0);

@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Union, Any, Type, Optional, Set, List
+from typing import TYPE_CHECKING, Union, Any, Type, Optional, Set, List, TextIO
 from collections import OrderedDict
 
 import jinja2 as jj
@@ -82,13 +82,13 @@ class RegblockExporter:
             Override the SystemVerilog package name. By default, the package name
             is the top-level node's name with a "_pkg" suffix.
         reuse_hwif_typedefs: bool
-            By default, the exporter will attempt to re-use hwif struct definitions for
-            nodes that are equivalent. This allows for better modularity and type reuse.
-            Struct type names are derived using the SystemRDL component's type
-            name and declared lexical scope path.
+            By default, the exporter will attempt to re-use flattened signal definitions for
+            identical hierarchical content. If disabled, each instance will get its own
+            flattened signal declarations.
 
-            If this is not desireable, override this parameter to ``False`` and structs
-            will be generated more naively using their hierarchical paths.
+            .. note::
+                This fork uses flattened signals instead of SystemVerilog structs for
+                better tool compatibility and easier integration.
         retime_read_fanin: bool
             Set this to ``True`` to enable additional read path retiming.
             For large register blocks that operate at demanding clock rates, this
@@ -119,7 +119,8 @@ class RegblockExporter:
             Retime outputs to external ``addrmap`` components.
         generate_hwif_report: bool
             If set, generates a hwif report that can help designers understand
-            the contents of the ``hwif_in`` and ``hwif_out`` structures.
+            the flattened signal interface. Each line contains the full hierarchical
+            path of each signal.
         address_width: int
             Override the CPU interface's address width. By default, address width
             is sized to the contents of the regblock.
@@ -128,6 +129,7 @@ class RegblockExporter:
         default_reset_async: bool
             If overriden to True, default reset is asynchronous instead of synchronous.
         """
+
         # If it is the root node, skip to top addrmap
         if isinstance(node, RootNode):
             top_node = node.top

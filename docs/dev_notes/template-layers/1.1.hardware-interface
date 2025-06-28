@@ -4,8 +4,19 @@ Summary
 
 RTL interface that provides access to per-field context signals
 
+**NOTE: This fork implements FLATTENED SIGNALS instead of structs**
+
+This implementation uses individual signal ports for each hardware interface signal
+instead of SystemVerilog structs. Each signal follows the naming pattern:
+{direction}_{hierarchical_path}_{feature}
+
+Examples:
+- hwif_out_my_reg_my_field (field value output)
+- hwif_in_my_reg_my_field_we (write enable input)
+- hwif_in_user_signal (external signal input)
+
 Regarding signals:
-    RDL-declared signals are part of the hwif input structure.
+    RDL-declared signals are part of the flattened hwif inputs.
     Only include them if they are referenced by the design (need to scan the
     full design anyways, so may as well filter out unreferenced ones)
 
@@ -28,76 +39,95 @@ Regarding signals:
         If the hwif generator encounters a signal during traversal:
             check if it exists in the signal path list
 
-    out-of-hier signals are inserted outside of the hwif_in as standalone signals.
-    For now, just use their plain inst names. If I need to uniquify them i can add that later.
-    I should at least check against a list of known "dirty words". Seems very likely someone will choose
-    a signal called "rst".
-    Prefix with usersig_ if needed
-
-
+    out-of-hier signals are inserted as standalone flattened signals.
+    Use their plain inst names with keyword filtering applied.
+    Prefix with usersig_ if needed to avoid naming conflicts.
 
 
 ================================================================================
-Naming Scheme
+Naming Scheme (FLATTENED IMPLEMENTATION)
 ================================================================================
 
-hwif_out
-    .my_regblock
-        .my_reg[X][Y]
-            .my_field
-                .value
-                .anded
+**Field Outputs:**
+    hwif_out_my_regblock_my_reg_0_my_field (field value)
+    hwif_out_my_regblock_my_reg_0_my_field_anded (reduction)
 
-hwif_in
-    .my_regblock
-        .my_reg[X][Y]
-            .my_field
-                .value
-                .we
-                .my_signal
-        .my_fieldreset_signal
+**Field Inputs:**
+    hwif_in_my_regblock_my_reg_0_my_field (next value)
+    hwif_in_my_regblock_my_reg_0_my_field_we (write enable)
 
-================================================================================
-Flattened mode? --> NO
-================================================================================
-If user wants a flattened list of ports,
-still use the same hwif_in/out struct internally.
-Rather than declaring hwif_in and hwif_out in the port list, declare it internally
+**External Signals:**
+    hwif_in_my_fieldreset_signal
 
-Add a mapping layer in the body of the module that performs a ton of assign statements
-to map flat signals <-> struct
+**Register/Memory Signals:**
+    hwif_out_my_mem_req
+    hwif_in_my_mem_rd_ack
 
-Alternatively, don't do this at all.
-If I want to add a flattened mode, generate a wrapper module instead.
-
-Marking this as YAGNI for now.
-
+Array indices are flattened: my_reg[2] becomes my_reg_2
 
 ================================================================================
-IO Signals
+Flattened Implementation Details
+================================================================================
+
+**IMPLEMENTED**: This fork uses flattened signals throughout.
+
+Key design decisions:
+1. **Individual port declarations** - Each signal becomes a separate module port
+2. **Hierarchical naming** - Path through design hierarchy becomes signal name
+3. **Array flattening** - Array indices become part of signal name (reg_0, reg_1, etc.)
+4. **MSB0 handling** - Bit swapping logic handles [low:high] fields transparently
+5. **Width validation** - Added comprehensive width mismatch detection
+6. **Signal filtering** - Only referenced signals are included in interface
+
+Benefits of flattened approach:
+- No SystemVerilog struct dependencies
+- Better tool compatibility
+- Easier debug and waveform viewing
+- Direct signal connectivity
+- Clearer signal tracing
+
+Implementation files:
+- src/peakrdl_etana/hwif/generators.py (InputLogicGenerator)
+- src/peakrdl_etana/hwif/__init__.py (Hwif class)
+
+
+================================================================================
+IO Signals (FLATTENED)
 ================================================================================
 
 Outputs:
-    field value
+    field value (hwif_out_*_*)
         If hw readable
-    bitwise reductions
-        if anded, ored, xored == True, output a signal
-    swmod/swacc
-        event strobes
+    bitwise reductions (hwif_out_*_*_anded/ored/xored)
+        if anded, ored, xored == True, output individual signals
+    swmod/swacc (hwif_out_*_*_swmod/swacc)
+        event strobes as individual signals
 
 Inputs:
-    field value
+    field value (hwif_in_*_*)
         If hw writable
-    we/wel
+    we/wel (hwif_in_*_*_we/wel)
         if either is boolean, and true
         not part of external hwif if reference
         mutually exclusive
-    hwclr/hwset
+    hwclr/hwset (hwif_in_*_*_hwclr/hwset)
         if either is boolean, and true
         not part of external hwif if reference
-    incr/decr
-        if counter=true, generate BOTH
-    incrvalue/decrvalue
+    incr/decr (hwif_in_*_*_incr/decr)
+        if counter=true, generate BOTH as individual signals
+    incrvalue/decrvalue (hwif_in_*_*_incrvalue/decrvalue)
         if either incrwidth/decrwidth are set
-    signals!
-        any signal instances instantiated in the scope
+    signals! (hwif_in_*)
+        any signal instances instantiated in the scope as individual ports
+
+================================================================================
+Recent Enhancements
+================================================================================
+
+Applied fixes from upstream PeakRDL-regblock v1.1.0:
+- Width mismatch detection in dereferencer
+- Enhanced swmod byte strobe checking
+- Write enable + sticky interrupt combinations
+- Optimized single-bit stickybit logic
+- RTL assertion guards for synthesis
+- Reset logic improvements

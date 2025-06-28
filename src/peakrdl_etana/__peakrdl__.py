@@ -117,10 +117,12 @@ class Exporter(ExporterSubcommandPlugin):
             dest="type_style",
             choices=["lexical", "hier"],
             default="lexical",
-            help="""Choose how HWIF struct type names are generated.
-            The 'lexical' style will use RDL lexical scope & type names where
-            possible and attempt to re-use equivalent type definitions.
-            The 'hier' style uses component's hierarchy as the struct type name. [lexical]
+            help="""Choose how flattened signal names are generated.
+
+        This fork uses flattened signals instead of SystemVerilog structs.
+            The 'lexical' style will attempt to re-use signal definitions for
+            equivalent hierarchical content where possible.
+            The 'hier' style will generate signals using their full hierarchical paths. [lexical]
             """,
         )
 

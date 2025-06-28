@@ -1,56 +1,65 @@
 Introduction
 ============
 
-PeakRDL-regblock is a free and open-source control & status register (CSR) compiler.
-This code generator translates your SystemRDL register description into
-a synthesizable SystemVerilog RTL module that can be easily instantiated into
-your hardware design.
+PeakRDL-etana is a specialized fork of PeakRDL-regblock that implements a **flattened signal architecture**.
+This free and open-source control & status register (CSR) compiler translates your SystemRDL register
+description into synthesizable SystemVerilog RTL with individual signal ports instead of SystemVerilog structs.
+
+**Key Differences from Original PeakRDL-regblock:**
+
+* **Flattened signal interface** - Individual ports (``hwif_in_reg_field``) instead of struct members (``hwif_in.reg.field``)
+* **Enhanced compatibility** - Works with all synthesis tools and design flows
+* **Direct connectivity** - No struct unpacking required
+* **Improved debugging** - Individual signals easier to trace in waveforms
+
+**Features:**
 
 * Generates fully synthesizable SystemVerilog RTL (IEEE 1800-2012)
 * Options for many popular CPU interface protocols (AMBA APB, AXI4-Lite, and more)
-* Configurable pipelining options for designs with fast clock rates.
+* Configurable pipelining options for designs with fast clock rates
 * Broad support for SystemRDL 2.0 features
 * Fully synthesizable SystemVerilog. Tested on Xilinx/AMD's Vivado & Intel Quartus
+* Enhanced safety checks: width validation, assertion guards, optimized field logic
 
 .. warning::
 
-    The PeakRDL-regblock SV generator is still in pre-production (v0.x version numbers).
-    During this time, I may decide to refactor things which could affect compatibility.
+    This is a specialized fork with flattened signal architecture. For the original
+    struct-based implementation, see `PeakRDL-regblock <https://github.com/SystemRDL/PeakRDL-regblock>`_.
 
+## Upstream Sync Status
+
+This fork is based on **PeakRDL-regblock v0.22.0** (December 2024) and includes all applicable
+fixes from **v1.1.0**. See ``UPSTREAM_SYNC_STATUS.md`` in the repository root for detailed information.
 
 Installing
 ----------
 
-Install from `PyPi`_ using pip
+Clone and install from the repository:
 
 .. code-block:: bash
 
-    python3 -m pip install peakrdl-regblock
-
-.. _PyPi: https://pypi.org/project/peakrdl-regblock
-
-
+    git clone https://github.com/daxzio/PeakRDL-etana.git
+    cd PeakRDL-etana
+    pip install -e .
 
 Example
 -------
-The easiest way to use PeakRDL-regblock is via the  `PeakRDL command line tool <https://peakrdl.readthedocs.io/>`_:
+Use PeakRDL-etana via the PeakRDL command line tool:
 
 .. code-block:: bash
 
     # Install the command line tool
     python3 -m pip install peakrdl
 
-    # Export!
+    # Export with flattened signals!
     peakrdl regblock atxmega_spi.rdl -o regblock/ --cpuif axi4-lite
-
 
 Links
 -----
 
-- `Source repository <https://github.com/SystemRDL/PeakRDL-regblock>`_
-- `Release Notes <https://github.com/SystemRDL/PeakRDL-regblock/releases>`_
-- `Issue tracker <https://github.com/SystemRDL/PeakRDL-regblock/issues>`_
-- `PyPi <https://pypi.org/project/peakrdl-regblock>`_
+- `Source repository <https://github.com/daxzio/PeakRDL-etana>`_
+- `Original PeakRDL-regblock <https://github.com/SystemRDL/PeakRDL-regblock>`_
+- `Issue tracker <https://github.com/daxzio/PeakRDL-etana/issues>`_
 - `SystemRDL Specification <http://accellera.org/downloads/standards/systemrdl>`_
 
 

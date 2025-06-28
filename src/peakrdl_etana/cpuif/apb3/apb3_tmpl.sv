@@ -1,3 +1,5 @@
+
+
 // Request
 logic is_active;
 always_ff {{get_always_ff_event(cpuif.reset)}} begin

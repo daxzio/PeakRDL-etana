@@ -1,3 +1,4 @@
+
 // Max Outstanding Transactions: {{cpuif.max_outstanding}}
 logic [{{clog2(cpuif.max_outstanding+1)-1}}:0] axil_n_in_flight;
 logic axil_prev_was_rd;

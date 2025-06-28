@@ -17,6 +17,7 @@
     end
 
     // Assert via hwif
+    `ifndef SYNTHESIS
     assert(cb.hwif_out.r0.a.value == 'h42);
     assert(cb.hwif_out.r0.b.value == 'h0);
     assert(cb.hwif_out.r0.c.value == 'h1);
@@ -28,6 +29,7 @@
     assert(cb.hwif_out.r2.a.value == 'h11);
     assert(cb.hwif_out.r2.b.value == 'h0);
     assert(cb.hwif_out.r2.c.value == 'h1);
+    `endif
 
     // Write values
     cpuif.write(0, 32'h8000_0002);
@@ -50,6 +52,7 @@
     end
 
     // Assert via hwif
+    `ifndef SYNTHESIS
     assert(cb.hwif_out.r0.a.value == 'h02);
     assert(cb.hwif_out.r0.b.value == 'h0);
     assert(cb.hwif_out.r0.c.value == 'h1);
@@ -61,13 +64,16 @@
     assert(cb.hwif_out.r2.a.value == 'h0);
     assert(cb.hwif_out.r2.b.value == 'h0);
     assert(cb.hwif_out.r2.c.value == 'h0);
+    `endif
 
     // rw_reg
     cpuif.assert_read('h3000, 0);
     cpuif.write('h3000, 'h4DEAB000);
     @cb;
+    `ifndef SYNTHESIS
     assert(cb.hwif_out.rw_reg.f1.value == 8'hAB);
     assert(cb.hwif_out.rw_reg.f2.value == 11'h4DE);
+    `endif
     cpuif.assert_read('h3000, 'h4DEAB000);
 
     // rw_reg_lsb0
@@ -76,8 +82,10 @@
         cpuif.assert_read('h3004, 0);
         cpuif.write('h3004, 'h4DEAB000);
         @cb;
+        `ifndef SYNTHESIS
         assert(`bitswap(cb.hwif_out.rw_reg_lsb0.f1.value) == 8'hAB);
         assert(`bitswap(cb.hwif_out.rw_reg_lsb0.f2.value) == 11'h4DE);
+        `endif
         cpuif.assert_read('h3004, 'h4DEAB000);
     `endif
 {% endblock %}

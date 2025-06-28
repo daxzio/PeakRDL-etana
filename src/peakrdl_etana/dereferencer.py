@@ -61,6 +61,13 @@ class Dereferencer:
             return SVInt(obj, width)
 
         if isinstance(obj, FieldNode):
+            # Check for width mismatch
+            if width is not None and obj.width != width:
+                obj.env.msg.warning(
+                    f"Field '{obj.inst_name}' width mismatch: expected {width} bits, but field is {obj.width} bits",
+                    obj.inst.inst_src_ref,
+                )
+
             if obj.implements_storage:
                 return self.field_logic.get_storage_identifier(obj)
 
@@ -81,10 +88,29 @@ class Dereferencer:
                 return "'X"
 
         if isinstance(obj, SignalNode):
+            # Check for width mismatch
+            if width is not None and obj.width != width:
+                obj.env.msg.warning(
+                    f"Signal '{obj.inst_name}' width mismatch: expected {width} bits, but signal is {obj.width} bits",
+                    obj.inst.inst_src_ref,
+                )
+
             # Signals are always inputs from the hwif
             return self.hwif.get_input_identifier(obj, width)
 
         if isinstance(obj, PropertyReference):
+            # For property references, validate width if the reference has a known width
+            if (
+                width is not None
+                and hasattr(obj, "width")
+                and obj.width is not None
+                and obj.width != width
+            ):
+                obj.node.env.msg.warning(
+                    f"Property reference '{obj.node.inst_name}->{obj.name}' width mismatch: expected {width} bits, but reference is {obj.width} bits",
+                    obj.node.inst.inst_src_ref,
+                )
+
             if isinstance(obj.node, FieldNode):
                 return self.get_field_propref_value(obj.node, obj.name, width)
             elif isinstance(obj.node, RegNode):
@@ -125,7 +151,38 @@ class Dereferencer:
             "reset",
             "resetsignal",
         }:
-            return self.get_value(field.get_property(prop_name), width)
+            prop_value = field.get_property(prop_name)
+
+            # Special width validation for counter increment/decrement values
+            if prop_name in {"incrvalue", "decrvalue"} and prop_value is not None:
+                expected_width = None
+                if prop_name == "incrvalue":
+                    incrwidth = field.get_property("incrwidth")
+                    if incrwidth is not None:
+                        expected_width = incrwidth
+                elif prop_name == "decrvalue":
+                    decrwidth = field.get_property("decrwidth")
+                    if decrwidth is not None:
+                        expected_width = decrwidth
+
+                if expected_width is not None:
+                    if isinstance(prop_value, int):
+                        if prop_value.bit_length() > expected_width:
+                            field.env.msg.warning(
+                                f"Field '{field.inst_name}' {prop_name} ({prop_value}) requires {prop_value.bit_length()} bits but {prop_name.replace('value', 'width')} is set to {expected_width} bits",
+                                field.inst.inst_src_ref,
+                            )
+                    elif (
+                        hasattr(prop_value, "width")
+                        and prop_value.width is not None
+                        and prop_value.width != expected_width
+                    ):
+                        field.env.msg.warning(
+                            f"Field '{field.inst_name}' {prop_name} width mismatch: {prop_name.replace('value', 'width')} is {expected_width} bits, but referenced value is {prop_value.width} bits",
+                            field.inst.inst_src_ref,
+                        )
+
+            return self.get_value(prop_value, width)
 
         # Field Next
         if prop_name == "next":
@@ -134,7 +191,17 @@ class Dereferencer:
                 # unset by the user, points to the implied internal signal
                 return self.field_logic.get_field_combo_identifier(field, "next")
             else:
-                return self.get_value(prop_value, width)
+                # Validate that next value width matches field width
+                if (
+                    hasattr(prop_value, "width")
+                    and prop_value.width is not None
+                    and prop_value.width != field.width
+                ):
+                    field.env.msg.warning(
+                        f"Field '{field.inst_name}' next property width mismatch: field is {field.width} bits, but next value is {prop_value.width} bits",
+                        field.inst.inst_src_ref,
+                    )
+                return self.get_value(prop_value, field.width)
 
         # References to another component value, or an implied input
         if prop_name in {"hwclr", "hwset"}:
