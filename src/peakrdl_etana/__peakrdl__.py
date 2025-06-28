@@ -8,7 +8,7 @@ from peakrdl.plugins.exporter import (
 from peakrdl.config import schema  # pylint: disable=import-error
 
 from .exporter import RegblockExporter
-from .cpuif import CpuifBase, apb3, apb4, axi4lite, passthrough, avalon
+from .cpuif import CpuifBase, apb3, apb4, axi4lite, passthrough, avalon, ahb
 from .udps import ALL_UDPS
 from . import entry_points
 
@@ -56,6 +56,7 @@ class Exporter(ExporterSubcommandPlugin):
             "passthrough": passthrough.PassthroughCpuif,
             "apb3-flat": apb3.APB3_Cpuif_flattened,
             "apb4-flat": apb4.APB4_Cpuif_flattened,
+            "ahb-flat": ahb.AHB_Cpuif_flattened,
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
         }
