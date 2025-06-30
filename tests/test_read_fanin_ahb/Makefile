@@ -14,9 +14,11 @@ INT_VERILOG_SOURCES += \
 COCOTB_SOURCES = \
     ./dut.sv
 
-# GENERICS?= \
-#     REGWIDTH=32 \
-#     N_REGS=1
+GENERICS?= \
+    REGWIDTH=32 \
+    N_REGS=8
+
+default: clean ahb sim
 
 include ${WORK_BASE}/rtlflo/cocotb_helper.mak
 include ../regblock.mak
