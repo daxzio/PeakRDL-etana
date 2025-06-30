@@ -19,17 +19,20 @@ ${BASE}-axi:
 	@mkdir -p ${BASE}-axi
 
 apb4: ${BASE}-apb4
+	rm -rf ${BASE}-*/top.sv
 	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat --default-reset rst_n --in-str=i --out-str=o ${ELAB_ARGS}
 #      --hwif-report --rename top ${ELAB_ARGS}
 etana-lint:
 	verilator -Wall \
     -Wno-UNUSEDSIGNAL \
-    --lint-only ${BASE}-*/*
+    --lint-only ${BASE}-*/*.sv
 
 ahb: ${BASE}-ahb
+	rm -rf ${BASE}-*/top.sv
 	peakrdl etana ${RDL_FILE} -o ${BASE}-ahb/ --cpuif ahb-flat --default-reset rst_n --in-str=i --out-str=o ${ELAB_ARGS}
 
 axi: ${BASE}-axi
+	rm -rf ${BASE}-*/top.sv
 	peakrdl regblock ${RDL_FILE} -o ${BASE}-axi/ --cpuif axi4-lite-flat --default-reset rst_n --hwif-report ${ELAB_ARGS}
 
 apbx:

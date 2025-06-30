@@ -18,7 +18,7 @@ GENERICS?= \
     REGWIDTH=32 \
     N_REGS=8
 
-default: clean ahb sim
+default: clean ahb etana-lint sim
 
 include ${WORK_BASE}/rtlflo/cocotb_helper.mak
 include ../regblock.mak

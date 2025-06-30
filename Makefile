@@ -1,19 +1,19 @@
 SIM?=icarus
 
 default:
-	cd tests/test_read_fanin ; make clean apb4 sim ; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin ; make clean apb4 sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
-	cd tests/test_parity ; make clean apb4 sim  ; ../rtlflo/combine_results.py
-	cd tests/test_onread_onwrite ; make clean apb4 sim  ; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin ; make clean apb4 etana-lint sim ; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin ; make clean apb4 etana-lint sim  GENERICS="REGWIDTH=32 N_REGS=32" ; ../rtlflo/combine_results.py
+	cd tests/test_parity ; make clean apb4 etana-lint sim  ; ../rtlflo/combine_results.py
+	cd tests/test_onread_onwrite ; make clean apb4 etana-lint sim  ; ../rtlflo/combine_results.py
 # 	cd tests/test_external ; make clean apb4 sim  ; ../rtlflo/combine_results.py
-	cd tests/test_external_mem ; make clean apb4 sim  ; ../rtlflo/combine_results.py
-	cd tests/test_external_basic ; make clean ahb sim  ; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=8"; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=16"; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=32"; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=64"; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=128"; ../rtlflo/combine_results.py
-	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="N_REGS=8 REGWIDTH=256"; ../rtlflo/combine_results.py
+	cd tests/test_external_mem ; make clean apb4 etana-lint sim  ; ../rtlflo/combine_results.py
+	cd tests/test_external_basic ; make clean apb4 etana-lint sim  ; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=8"; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=16"; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=32"; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=64"; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=128"; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb etana-lint sim  GENERICS="N_REGS=8 REGWIDTH=256"; ../rtlflo/combine_results.py
 # 	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=512"; ../rtlflo/combine_results.py
 # 	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=1024"; ../rtlflo/combine_results.py
 

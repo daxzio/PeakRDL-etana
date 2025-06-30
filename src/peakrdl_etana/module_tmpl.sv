@@ -221,7 +221,9 @@ module {{ds.module_name}}
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
 {%- else %}
+{%- if ds.has_external_addressable %}
     assign external_wr_ack = 0;
+{%- endif %}
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
     // Writes are always granted with no error response

@@ -63,13 +63,10 @@ class AddressDecode:
                     p.path = "|decoded_reg_strb_" + p.path
                     return p
 
-        elif isinstance(node.parent, MemNode):
-            pass
-        #             print("yy", node)
         elif isinstance(node.parent, RegfileNode):
             p = IndexedPath(self.top_node, node)
-        #             if not node.external:
-        #                 raise
+        elif isinstance(node.parent, MemNode):
+            pass
         else:
             p = IndexedPath(self.top_node, node)
 
@@ -79,8 +76,6 @@ class AddressDecode:
     def get_external_block_access_strobe(self, node: "AddressableNode") -> str:
         assert node.external
         assert not isinstance(node, RegNode)
-        #         path = get_indexed_path(self.top_node, node)
-        #         raise
         p = IndexedPath(self.top_node, node)
         p.path = f"decoded_reg_strb_{p.path}"
         return p
@@ -124,10 +119,6 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> None:
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
-        #         if isinstance(node.parent, RegfileNode):
-        #             if self.printed:
-        #                 self.build_logic(node, n_subwords)
-        #         else:
 
         self.build_logic(node, n_subwords)
         self.printed = False
