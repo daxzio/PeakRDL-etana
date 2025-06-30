@@ -1,19 +1,13 @@
-import re
-from typing import TYPE_CHECKING, Optional, List, Type
+from typing import TYPE_CHECKING, Optional
 
-from systemrdl.node import FieldNode, RegNode, RegfileNode, AddrmapNode, MemNode
-from systemrdl.walker import WalkerAction
+from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode
 from systemrdl.walker import RDLListener, RDLWalker
 
-from ..utils import IndexedPath, clog2
-from ..struct_generator import RDLFlatStructGenerator
-from ..identifier_filter import kw_filter as kwf
-from ..sv_int import SVInt
+from ..utils import clog2
 
 if TYPE_CHECKING:
-    from systemrdl.node import Node, SignalNode, AddressableNode, RegfileNode
+    from systemrdl.node import Node, RegfileNode
     from . import Hwif
-    from systemrdl.rdltypes import UserEnum
 
 
 class InputLogicGenerator(RDLListener):

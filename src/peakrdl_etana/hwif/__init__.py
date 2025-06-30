@@ -1,4 +1,3 @@
-import re
 from typing import TYPE_CHECKING, Union, Optional, TextIO
 
 from systemrdl.node import (
@@ -12,7 +11,7 @@ from systemrdl.node import (
 )
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import IndexedPath, get_indexed_path
+from ..utils import IndexedPath
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 
@@ -375,5 +374,5 @@ class Hwif:
                 "intr",
                 "halt",
             }
-        path = get_indexed_path(self.top_node, node)
-        return f"{self.hwif_out_str}_{path}_{prop}"
+        p = IndexedPath(self.top_node, node)
+        return f"{self.hwif_out_str}_{p.path}_{prop}"

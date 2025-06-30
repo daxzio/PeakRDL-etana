@@ -1,8 +1,6 @@
 from typing import TYPE_CHECKING, List
 import enum
 
-from ..utils import get_indexed_path
-
 if TYPE_CHECKING:
     from systemrdl.node import FieldNode
 
@@ -82,8 +80,8 @@ class NextStateConditional:
         """
         raise NotImplementedError
 
-    def get_field_path(self, field: "FieldNode") -> str:
-        return get_indexed_path(self.exp.ds.top_node, field)
+    # def get_field_path(self, field: "FieldNode") -> str:
+    #     return get_indexed_path(self.exp.ds.top_node, field)
 
     def get_predicate(self, field: "FieldNode") -> str:
         """

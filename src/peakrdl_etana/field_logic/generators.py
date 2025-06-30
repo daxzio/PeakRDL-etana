@@ -1,21 +1,18 @@
 import re
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from collections import OrderedDict
 
 from systemrdl.walker import WalkerAction
 from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 
-from ..struct_generator import RDLStructGenerator
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import IndexedPath, clog2
-from ..identifier_filter import kw_filter as kwf
 from .bases import NextStateUnconditional
 
 if TYPE_CHECKING:
     from . import FieldLogic
     from systemrdl.node import FieldNode, AddressableNode
-    from .bases import SVLogic
 
 
 class FieldLogicGenerator(RDLForLoopGenerator):
@@ -180,7 +177,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if self.exp.hwif.has_value_output(node):
             output_identifier = self.exp.hwif.get_output_identifier(node)
             value = self.exp.dereferencer.get_value(node)
-            width = node.width
             self.add_content(f"assign {output_identifier} = {value};")
         # Inferred logical reduction outputs
         if node.get_property("anded"):
@@ -280,9 +276,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         for field in self.fields:
             # print(f"[{field.msb}:{field.lsb}]")
             x = IndexedPath(self.exp.ds.top_node, field)
-            y = field.get_rel_path(self.exp.ds.top_node)
             path = re.sub(p.path, "", x.path)
-            #             print("ss", x , path)
             if 1 == n_subwords:
                 vslice = f"[{field.msb}:{field.lsb}]"
             else:
@@ -320,16 +314,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         #         raise
         inst_names = []
         inst_names.append("")
-        for field in self.fields:
-            x = IndexedPath(self.exp.ds.top_node, field)
-        #             print("jj", x)
-        #         if 0 == len(p.inst_names):
-        #             inst_names.append("")
-        #         else:
-        #             for inst in p.inst_names:
-        #                 inst_names.append(f"_{inst}")
+        # for field in self.fields:
+        #     x = IndexedPath(self.exp.ds.top_node, field)
 
-        #         print('inst_names', inst_names)
         retime = False
         writable = False
         readable = False

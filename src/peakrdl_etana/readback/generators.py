@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
-from systemrdl.node import FieldNode, RegNode, RegfileNode, MemNode, AddressableNode
+from systemrdl.node import RegNode, MemNode, AddressableNode
 from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator, LoopBody
@@ -88,7 +88,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
         #         super().enter_AddressableComponent(node)
         if node.external:
-            memwidth = node.get_property("memwidth")
+            # memwidth = node.get_property("memwidth")
             #             regwidth = node.get_property("regwidth")
             #             print(memwidth)
             strb = self.exp.hwif.get_external_rd_ack(node, True)

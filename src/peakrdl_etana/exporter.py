@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Union, Any, Type, Optional, Set, List, TextIO
+from typing import Union, Any
 from collections import OrderedDict
 
 import jinja2 as jj
@@ -13,17 +13,12 @@ from .identifier_filter import kw_filter as kwf
 from .utils import clog2
 from .scan_design import DesignScanner
 from .validate_design import DesignValidator
-from .cpuif import CpuifBase
 from .cpuif.apb4 import APB4_Cpuif_flattened
 from .hwif import Hwif
 from .write_buffering import WriteBuffering
 from .read_buffering import ReadBuffering
 from .external_acks import ExternalWriteAckGenerator, ExternalReadAckGenerator
 from .parity import ParityErrorReduceGenerator
-
-if TYPE_CHECKING:
-    from systemrdl.node import SignalNode
-    from systemrdl.rdltypes import UserEnum
 
 
 class RegblockExporter:

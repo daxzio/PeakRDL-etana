@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, Optional
 
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 from systemrdl.rdltypes import PropertyReference

@@ -2,7 +2,7 @@ import re
 from typing import Match, Union
 
 from systemrdl.rdltypes.references import PropertyReference
-from systemrdl.node import Node, AddrmapNode, RegNode, RegfileNode, FieldNode
+from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
@@ -79,42 +79,42 @@ class IndexedPath:
         return s
 
 
-def get_indexed_path(top_node: Node, target_node: Node, index=True) -> str:
-    """
-    TODO: Add words about indexing and why i'm doing this. Copy from logbook
-    """
-    p = IndexedPath(top_node, target_node)
-    raise
-    path = target_node.get_rel_path(top_node, empty_array_suffix="[!]")
+# def get_indexed_path(top_node: Node, target_node: Node, index=True) -> str:
+#     """
+#     TODO: Add words about indexing and why i'm doing this. Copy from logbook
+#     """
+#     p = IndexedPath(top_node, target_node)
+#     raise
+#     path = target_node.get_rel_path(top_node, empty_array_suffix="[!]")
 
-    # replace unknown indexes with incrementing iterators i0, i1, ...
-    class ReplaceUnknown:
-        def __init__(self) -> None:
-            self.i = 0
+#     # replace unknown indexes with incrementing iterators i0, i1, ...
+#     class ReplaceUnknown:
+#         def __init__(self) -> None:
+#             self.i = 0
 
-        def __call__(self) -> str:
-            s = f"i{self.i}"
-            self.i += 1
-            return s
+#         def __call__(self) -> str:
+#             s = f"i{self.i}"
+#             self.i += 1
+#             return s
 
-    r = ReplaceUnknown()
-    index = ""
-    if g := re.search(r"!", path):
-        index = f"[{r.__call__()}]"
-        path = re.sub(r"\[!\]", "", path)
+#     r = ReplaceUnknown()
+#     index = ""
+#     if g := re.search(r"!", path):
+#         index = f"[{r.__call__()}]"
+#         path = re.sub(r"\[!\]", "", path)
 
-    # Sanitize any SV keywords
-    def kw_filter_repl(m: Match) -> str:
-        return kwf(m.group(0))
+#     # Sanitize any SV keywords
+#     def kw_filter_repl(m: Match) -> str:
+#         return kwf(m.group(0))
 
-    path = re.sub(r"\w+", kw_filter_repl, path)
+#     path = re.sub(r"\w+", kw_filter_repl, path)
 
-    path = re.sub(r"\.", "_", path).lower()
-    #     print(path)
+#     path = re.sub(r"\.", "_", path).lower()
+#     #     print(path)
 
-    path += index
+#     path += index
 
-    return path
+#     return path
 
 
 def clog2(n: int) -> int:

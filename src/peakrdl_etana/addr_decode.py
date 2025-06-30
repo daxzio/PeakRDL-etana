@@ -1,19 +1,18 @@
-import re
-from typing import TYPE_CHECKING, Union, List, Optional
+from typing import TYPE_CHECKING, Union, Optional
 
-from systemrdl.node import FieldNode, RegNode, RegfileNode, MemNode
+from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
 from .utils import IndexedPath
-from .struct_generator import RDLStructGenerator
 from .forloop_generator import RDLForLoopGenerator
-from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
 
 if TYPE_CHECKING:
     from .exporter import RegblockExporter
     from systemrdl.node import AddrmapNode, AddressableNode
+    from systemrdl.node import Node, RegfileNode, MemNode
+else:
     from systemrdl.node import RegfileNode, MemNode
 
 

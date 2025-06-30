@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, List, Union
+from typing import TYPE_CHECKING, Optional
 import textwrap
 
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
