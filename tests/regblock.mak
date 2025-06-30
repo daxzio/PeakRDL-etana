@@ -12,16 +12,25 @@ RDL_FILE?=./regblock.rdl
 ${BASE}-apb4:
 	@mkdir -p ${BASE}-apb4
 
+${BASE}-ahb:
+	@mkdir -p ${BASE}-ahb
+
+${BASE}-axi:
+	@mkdir -p ${BASE}-axi
+
 apb4: ${BASE}-apb4
 	peakrdl etana ${RDL_FILE} -o ${BASE}-apb4/ --cpuif apb4-flat --default-reset rst_n --in-str=i --out-str=o ${ELAB_ARGS}
 #      --hwif-report --rename top ${ELAB_ARGS}
-apb4-lint:
+etana-lint:
 	verilator -Wall \
     -Wno-UNUSEDSIGNAL \
-    --lint-only ${BASE}-apb4/*
-axi:
-	mkdir -p ./regblock-axi4-lite
-	peakrdl regblock ${RDL_FILE} -o ./regblock-axi4-lite/ --cpuif axi4-lite-flat --default-reset rst_n --hwif-report ${ELAB_ARGS}
+    --lint-only ${BASE}-*/*
+
+ahb: ${BASE}-ahb
+	peakrdl etana ${RDL_FILE} -o ${BASE}-ahb/ --cpuif ahb-flat --default-reset rst_n --in-str=i --out-str=o ${ELAB_ARGS}
+
+axi: ${BASE}-axi
+	peakrdl regblock ${RDL_FILE} -o ${BASE}-axi/ --cpuif axi4-lite-flat --default-reset rst_n --hwif-report ${ELAB_ARGS}
 
 apbx:
 	mkdir -p ./regblock-apbx
