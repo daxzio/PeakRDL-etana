@@ -1,0 +1,67 @@
+reg rx_fifo {
+    desc="Rx FIFO Receive data FIFO";
+    field {
+        sw=r; hw=w;
+    } fifo[8] = 0;
+//     field {
+//         sw=w; hw=r;
+//     } parity[12:10] = 0;
+} ;
+reg tx_fifo{
+    desc="Tx FIFO Transmit data FIFO";
+    field {
+        sw=w; hw=r;
+    } fifo[8] = 0;
+//     field {
+//         sw=r; hw=w;
+//     } parity[12:10] = 0;
+} ;
+regfile rf_fifo {
+    rx_fifo cx_fifo;
+//     tx_fifo dx_fifo;
+};
+regfile tf_fifo {
+    tx_fifo vx_fifo;
+//     tx_fifo dx_fifo;
+};
+
+// addrmap regblock {
+//     default regwidth = 32;
+//     rx_fifo frx_fifo;
+//     external rx_fifo rx_fifo;
+//
+//     external rx_fifo bx_fifo[6] @0x40;
+//
+//     external rf_fifo rf @ 0x1000;
+//
+//     external rf_fifo gf[2] @ 0x2000;
+//
+// };
+addrmap regblock {
+    default regwidth = 32;
+    external tx_fifo tx_fifo;
+//
+    external tx_fifo qx_fifo[9] @0x100;
+
+    external tf_fifo tf @ 0x1800;
+
+    external tf_fifo sf[6] @ 0x2800;
+
+};
+// addrmap regblock {
+//     default regwidth = 32;
+//     rx_fifo frx_fifo;
+//     tx_fifo ftx_fifo;
+//     external rx_fifo rx_fifo;
+//     external tx_fifo tx_fifo;
+//
+//     external rx_fifo bx_fifo[6] @0x40;
+//     external tx_fifo qx_fifo[9] @0x100;
+//
+//     external rf_fifo rf @ 0x1000;
+//     external tf_fifo tf @ 0x1800;
+//
+//     external rf_fifo gf[2] @ 0x2000;
+//     external tf_fifo sf[6] @ 0x2800;
+//
+// };

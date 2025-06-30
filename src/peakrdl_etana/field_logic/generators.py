@@ -39,26 +39,27 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
 
-    def enter_AddressableComponent(
-        self, node: "AddressableNode"
-    ) -> Optional[WalkerAction]:
-        super().enter_AddressableComponent(node)
-
-        # #         if node.external and not isinstance(node, RegNode):
-        #         if node.external and not isinstance(node, RegNode):
-        #             # Is an external block
-        #             self.assign_external_block_outputs(node)
-        #
-        #             # Do not recurse
-        #             return WalkerAction.SkipDescendants
-
-        return WalkerAction.Continue
+    #     def enter_AddressableComponent(
+    #         self, node: "AddressableNode"
+    #     ) -> Optional[WalkerAction]:
+    #         super().enter_AddressableComponent(node)
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
         self.msg = self.ds.top_node.env.msg
         self.fields = []
+
+    def enter_Mem(self, node: "MemNode") -> Optional[WalkerAction]:
+        # Memnode is always external so big problem if it isn't
+        if not node.external:
+            raise
+
+        # Is an external block
+        self.assign_external_block_outputs(node)
+
+        # Do not recurse
+        return WalkerAction.SkipDescendants
 
     def enter_Field(self, node: "FieldNode") -> None:
         if node.external:

@@ -160,16 +160,6 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             strides.reverse()
             self._array_stride_stack.extend(strides)
 
-        #         if node.external and not isinstance(node, RegNode):
-        #             # Is an external block
-        #             addr_str = self._get_address_str(node)
-        #             strb = self.addr_decode.get_external_block_access_strobe(node)
-        #             #             strb = self.addr_decode.get_access_strobe(node)
-        #             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
-        #             self.add_content(f"{strb.path} = {rhs};")
-        #             self.add_content(f"is_external |= {rhs};")
-        #             return WalkerAction.SkipDescendants
-
         return WalkerAction.Continue
 
     def _get_address_str(self, node: "AddressableNode", subword_offset: int = 0) -> str:
@@ -204,6 +194,15 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     #         for i, stride in enumerate(self._array_stride_stack):
     #             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
     #         return a
+
+    def enter_Mem(self, node: MemNode) -> None:
+        if node.external:
+            addr_str = self._get_address_str(node)
+            strb = self.addr_decode.get_external_block_access_strobe(node)
+            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"is_external |= {rhs};")
+            return WalkerAction.SkipDescendants
 
     def enter_Reg(self, node: RegNode) -> None:
         regwidth = node.get_property("regwidth")
