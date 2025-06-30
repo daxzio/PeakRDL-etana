@@ -7,17 +7,25 @@ default:
 	cd tests/test_onread_onwrite ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 # 	cd tests/test_external ; make clean apb4 sim  ; ../rtlflo/combine_results.py
 	cd tests/test_external_mem ; make clean apb4 sim  ; ../rtlflo/combine_results.py
-	cd tests/test_external_basic ; make clean apb4 sim  ; ../rtlflo/combine_results.py
+	cd tests/test_external_basic ; make clean ahb sim  ; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=8; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=16; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=32; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=64; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=128; ../rtlflo/combine_results.py
+	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=256; ../rtlflo/combine_results.py
+# 	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=512; ../rtlflo/combine_results.py
+# 	cd tests/test_read_fanin_ahb ; make clean ahb sim  GENERICS="REGWIDTH=8 N_REGS=1024; ../rtlflo/combine_results.py
 
 pre-commit:
 	pre-commit run --all-files
 
 lint:
-# 	pyflakes src
-	pyflakes cocotb
+	pyflakes src
+# 	pyflakes cocotb
 
 mypy:
-# 	mypy src
+	mypy src
 
 format:
 # 	black src
