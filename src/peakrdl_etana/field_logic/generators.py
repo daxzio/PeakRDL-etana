@@ -39,11 +39,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
 
-    #     def enter_AddressableComponent(
-    #         self, node: "AddressableNode"
-    #     ) -> Optional[WalkerAction]:
-    #         super().enter_AddressableComponent(node)
-
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
