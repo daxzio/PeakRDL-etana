@@ -26,9 +26,8 @@ class IndexedPath:
             self.width = None
 
         self.path = self.target_node.get_rel_path(
-            self.top_node, empty_array_suffix="[!]", hier_separator="_"
+            self.top_node, empty_array_suffix="[!]", hier_separator=":"
         )
-        #         print(self.path)
 
         def kw_filter_repl(m: Match) -> str:
             return kwf(m.group(0))
@@ -38,6 +37,18 @@ class IndexedPath:
         for i, g in enumerate(re.findall(r"\[!\]", self.path)):
             self.index.append(f"i{i}")
         self.path = re.sub(r"\[!\]", "", self.path)
+
+        # When a reg and a field have the same name it is redundant so we only use one
+        elem = self.path.split(":")
+        try:
+            if elem[-1] == elem[-2]:
+                self.path = "_".join(elem[:-1])
+            else:
+                self.path = "_".join(elem)
+        except IndexError:
+            pass
+
+        self.path = re.sub(r":", "", self.path)
 
     @property
     def index_str(self) -> str:
