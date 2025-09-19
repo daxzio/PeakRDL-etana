@@ -51,6 +51,7 @@ class WBufLogicGenerator(RDLForLoopGenerator):
         context = {
             "wbuf": self.wbuf,
             "wbuf_prefix": self.wbuf.get_wbuf_prefix(node),
+            "regwidth": regwidth,
             "segments": segments,
             "node": node,
             "cpuif": self.exp.cpuif,

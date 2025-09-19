@@ -42,7 +42,7 @@ class WriteBuffering:
 
     def get_write_strobe(self, node: Union[RegNode, FieldNode]) -> str:
         prefix = self.get_wbuf_prefix(node)
-        return f"{prefix}.pending && {self.get_trigger(node)}"
+        return f"{prefix}_pending && {self.get_trigger(node)}"
 
     def get_raw_trigger(self, node: "RegNode") -> Union[SVInt, str]:
         trigger = node.get_property("wbuffer_trigger")
@@ -79,6 +79,6 @@ class WriteBuffering:
         if isinstance(trigger, RegNode) and trigger == node:
             # register is its own trigger
             # use the delayed trigger signal
-            return self.get_wbuf_prefix(node) + ".trigger_q"
+            return self.get_wbuf_prefix(node) + "_trigger_q"
         else:
             return self.get_raw_trigger(node)
