@@ -7,7 +7,7 @@ name = "peakrdl-etana"
 dynamic = ["version"]
 requires-python = ">=3.6"
 dependencies = [
-    "systemrdl-compiler >= 1.27.0, < 2",
+    "systemrdl-compiler ~= 1.29",
     "Jinja2>=2.11",
 ]
 
