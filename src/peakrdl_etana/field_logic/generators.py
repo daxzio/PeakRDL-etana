@@ -137,6 +137,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                         f"  * {unconditional.unconditional_explanation}",
                         node.inst.inst_src_ref,
                     )
+                else:
+                    unconditional = conditional
             else:
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
