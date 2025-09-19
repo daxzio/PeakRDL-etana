@@ -115,10 +115,8 @@ class InputLogicGenerator(RDLListener):
     def enter_Field(self, node: "FieldNode") -> None:
         if not self.hwif.has_value_input(node) and not self.hwif.has_value_output(node):
             return
-        if 1 == self.n_subwords:
-            width = node.width
-        else:
-            width = node.parent.get_property("accesswidth")
+
+        width = node.width
         field_text = self.vector_text + f"[{width-1}:0]"
         if node.external:
             if node.is_sw_readable:
