@@ -5,6 +5,7 @@ from systemrdl.node import AddrmapNode, RegNode, FieldNode, SignalNode
 # from .storage_generator import WBufStorageStructGenerator
 from .implementation_generator import WBufLogicGenerator
 from ..sv_int import SVInt
+from ..utils import IndexedPath
 
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter
@@ -30,11 +31,14 @@ class WriteBuffering:
         assert s is not None
         return s
 
-    # def get_wbuf_prefix(self, node: Union[RegNode, FieldNode]) -> str:
-    #     if isinstance(node, FieldNode):
-    #         node = node.parent
-    #     wbuf_prefix = "wbuf_storage." + get_indexed_path(self.top_node, node)
-    #     return wbuf_prefix
+    def get_wbuf_prefix(self, node: Union[RegNode, FieldNode]) -> str:
+        if isinstance(node, FieldNode):
+            node = node.parent
+        p = IndexedPath(self.top_node, node)
+        wbuf_prefix = f"wbuf_storage_{p.path}"
+        if not 0 == len(p.index):
+            wbuf_prefix += f"{p.index_str}"
+        return wbuf_prefix
 
     def get_write_strobe(self, node: Union[RegNode, FieldNode]) -> str:
         prefix = self.get_wbuf_prefix(node)
@@ -54,9 +58,9 @@ class WriteBuffering:
 
             if accesswidth < regwidth:
                 n_subwords = regwidth // accesswidth
-                return f"{strb_prefix}[{n_subwords-1}] && decoded_req_is_wr"
+                return f"{strb_prefix.path}[{n_subwords-1}] && decoded_req_is_wr"
             else:
-                return f"{strb_prefix} && decoded_req_is_wr"
+                return f"{strb_prefix.path} && decoded_req_is_wr"
         elif isinstance(trigger, SignalNode):
             s = self.exp.dereferencer.get_value(trigger)
             if trigger.get_property("activehigh"):
