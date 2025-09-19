@@ -15,9 +15,6 @@ from ..utils import IndexedPath
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 
-# from .generators import InputStructGenerator_Hier, OutputStructGenerator_Hier
-# from .generators import InputStructGenerator_TypeScope, OutputStructGenerator_TypeScope
-# from .generators import EnumGenerator
 from .generators import InputLogicGenerator
 
 if TYPE_CHECKING:
@@ -42,8 +39,6 @@ class Hwif:
         self.exp = exp
         self.hwif_in_str = hwif_in_str
         self.hwif_out_str = hwif_out_str
-        #         self.hwif_in_str = "i"
-        #         self.hwif_out_str = "o"
         self.hwif_report_file = hwif_report_file
 
     @property
@@ -58,7 +53,7 @@ class Hwif:
         """
         Generate localparam declarations for user-defined parameters
         """
-        lines = []
+        lines = [""]
 
         for param in self.top_node.inst.parameters:
             value = param.get_value()
@@ -160,93 +155,6 @@ class Hwif:
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
-    def get_external_in_prefix(self, node: RegNode) -> str:
-        """
-        Returns the identifier string for an external component's rd_data signal
-        """
-        raise
-        p = IndexedPath(self.top_node, node.parent)
-        s = f"{self.hwif_in_str}_{p.path}"
-        return s
-
-    def get_external_in_prefix2(self, node: RegfileNode) -> str:
-        """
-        Returns the identifier string for an external component's rd_data signal
-        """
-        p = IndexedPath(self.top_node, node)
-        s = f"{self.hwif_in_str}_{p.path}"
-        return s
-
-    def get_external_out_prefix(self, node: RegNode) -> str:
-        """
-        Returns the identifier string for an external component's rd_data signal
-        """
-        raise
-        p = IndexedPath(self.top_node, node.parent)
-        s = f"{self.hwif_out_str}_{p.path}"
-        return s
-
-    def get_external_out_prefix2(self, node: RegfileNode) -> str:
-        """
-        Returns the identifier string for an external component's rd_data signal
-        """
-        p = IndexedPath(self.top_node, node)
-        s = f"{self.hwif_out_str}_{p.path}"
-        return s
-
-    #     def get_external_rd_data2(self, node: AddressableNode, index: bool = False) -> str:
-    #         """
-    #         Returns the identifier string for an external component's rd_data signal
-    #         """
-    #         raise
-    #         if isinstance(node, MemNode):
-    #             p = IndexedPath(self.top_node, node)
-    #             s = f"{self.hwif_in_str}_{p.path}_rd_data"
-    #             return s
-    #
-    #         p = IndexedPath(self.top_node, node)
-    #
-    #         if isinstance(node, FieldNode):
-    #             p = IndexedPath(self.top_node, node.parent)
-    #             # raise
-    #         #         if isinstance(node, RegNode):
-    #         #             print('ff', p.path)
-    #         if isinstance(node.parent, RegfileNode):
-    #             p = IndexedPath(self.top_node, node.parent)
-    #         #         if isinstance(node.parent.parent, RegfileNode):
-    #         #             p = IndexedPath(self.top_node, node.parent.parent)
-    #
-    #         pn = ""
-    #         #         if not 0 == len(p.pn):
-    #         #             pn = f"_{p.pn[0]}"
-    #         #         print(p.path, pn)
-    #         if not index:
-    #             #             print('ff', p.path)
-    #             x = []
-    #             for e in p.rd_elem:
-    #                 if not e[0] is None:
-    #                     x.append(f"{self.hwif_in_str}_{p.path}{pn}_{e[0]}_rd_data")
-    #             return x
-    #         else:
-    #             y = []
-    #             for e in p.rd_elem:
-    #                 if e[0] is None:
-    #                     x = e[2]
-    #                 else:
-    #                     x = f"{self.hwif_in_str}_{p.path}{pn}_{e[0]}_rd_data{p.index_str}"
-    #                 y.insert(0, x)
-    #
-    #         if 1 == len(y):
-    #             s = y[0]
-    #         elif 0 == len(y):
-    #             pass
-    #
-    #         #             raise
-    #         else:
-    #             s = f"{{{', '.join(y)}}}"
-    #         #         print(s)
-    #         return s
-
     def get_external_rd_data(self, node: AddressableNode, index: bool = False) -> str:
         """
         Returns the identifier string for an external component's rd_data signal
@@ -256,10 +164,7 @@ class Hwif:
                 raise
             p = IndexedPath(self.top_node, node)
             s = f"{self.hwif_in_str}_{p.path}_rd_data"
-        #             return s
         elif isinstance(node, RegfileNode):
-            #             if not node.is_sw_readable:
-            #                 raise
             p = IndexedPath(self.top_node, node)
             s = f"{self.hwif_in_str}_{p.path}_rd_data"
         elif isinstance(node, RegNode):
@@ -289,9 +194,6 @@ class Hwif:
         """
         Returns the identifier string for an external component's wr_ack signal
         """
-        #         if isinstance(node.parent, RegfileNode):
-        #             p = IndexedPath(self.top_node, node.parent)
-        #         else:
         p = IndexedPath(self.top_node, node)
         s = f"{self.hwif_in_str}_{p.path}_wr_ack"
         if index:
@@ -328,7 +230,6 @@ class Hwif:
         """
         if isinstance(obj, FieldNode):
             p = IndexedPath(self.top_node, obj)
-            #             hwif_out = f"{self.hwif_out_str}_{p.path}_value"
             hwif_out = f"{self.hwif_out_str}_{p.path}"
             if not 0 == len(p.index) and index:
                 hwif_out += f"[({p.width}*("
@@ -340,7 +241,6 @@ class Hwif:
             return hwif_out
         elif isinstance(obj, RegNode):
             p = IndexedPath(self.top_node, obj)
-            #             hwif_out = f"{self.hwif_out_str}_{p.path}_value"
             hwif_out = f"{self.hwif_out_str}_{p.path}"
             return hwif_out
         elif isinstance(obj, PropertyReference):

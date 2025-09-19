@@ -24,6 +24,8 @@ COCOTB_SOURCES = \
 
 GENERICS += \
 
+default: clean apb4 etana-lint sim
+
 include ${WORK_BASE}/rtlflo/cocotb_helper.mak
 include ../regblock.mak
 

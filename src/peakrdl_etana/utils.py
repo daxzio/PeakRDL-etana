@@ -26,9 +26,8 @@ class IndexedPath:
             self.width = None
 
         self.path = self.target_node.get_rel_path(
-            self.top_node, empty_array_suffix="[!]", hier_separator="_"
+            self.top_node, empty_array_suffix="[!]", hier_separator=":"
         )
-        #         print(self.path)
 
         def kw_filter_repl(m: Match) -> str:
             return kwf(m.group(0))
@@ -38,6 +37,18 @@ class IndexedPath:
         for i, g in enumerate(re.findall(r"\[!\]", self.path)):
             self.index.append(f"i{i}")
         self.path = re.sub(r"\[!\]", "", self.path)
+
+        # When a reg and a field have the same name it is redundant so we only use one
+        elem = self.path.split(":")
+        try:
+            if elem[-1] == elem[-2]:
+                self.path = "_".join(elem[:-1])
+            else:
+                self.path = "_".join(elem)
+        except IndexError:
+            pass
+
+        self.path = re.sub(r":", "", self.path)
 
     @property
     def index_str(self) -> str:
@@ -77,44 +88,6 @@ class IndexedPath:
             for i in self.array_dimensions:
                 s += f"[{i}]"
         return s
-
-
-# def get_indexed_path(top_node: Node, target_node: Node, index=True) -> str:
-#     """
-#     TODO: Add words about indexing and why i'm doing this. Copy from logbook
-#     """
-#     p = IndexedPath(top_node, target_node)
-#     raise
-#     path = target_node.get_rel_path(top_node, empty_array_suffix="[!]")
-
-#     # replace unknown indexes with incrementing iterators i0, i1, ...
-#     class ReplaceUnknown:
-#         def __init__(self) -> None:
-#             self.i = 0
-
-#         def __call__(self) -> str:
-#             s = f"i{self.i}"
-#             self.i += 1
-#             return s
-
-#     r = ReplaceUnknown()
-#     index = ""
-#     if g := re.search(r"!", path):
-#         index = f"[{r.__call__()}]"
-#         path = re.sub(r"\[!\]", "", path)
-
-#     # Sanitize any SV keywords
-#     def kw_filter_repl(m: Match) -> str:
-#         return kwf(m.group(0))
-
-#     path = re.sub(r"\w+", kw_filter_repl, path)
-
-#     path = re.sub(r"\.", "_", path).lower()
-#     #     print(path)
-
-#     path += index
-
-#     return path
 
 
 def clog2(n: int) -> int:

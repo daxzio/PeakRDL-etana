@@ -36,14 +36,14 @@ class WBufLogicGenerator(RDLForLoopGenerator):
         if accesswidth < regwidth:
             n_subwords = regwidth // accesswidth
             for i in range(n_subwords):
-                strobe = strb_prefix + f"[{i}]"
+                strobe = f"{strb_prefix.path}[{i}]"
                 if node.inst.is_msb0_order:
                     bslice = f"[{regwidth - (accesswidth * i) - 1}: {regwidth - (accesswidth * (i+1))}]"
                 else:
                     bslice = f"[{(accesswidth * (i + 1)) - 1}:{accesswidth * i}]"
                 segments.append(Segment(strobe, bslice))
         else:
-            segments.append(Segment(strb_prefix, ""))
+            segments.append(Segment(strb_prefix.path, ""))
 
         trigger = node.get_property("wbuffer_trigger")
         is_own_trigger = isinstance(trigger, RegNode) and trigger == node
@@ -51,6 +51,7 @@ class WBufLogicGenerator(RDLForLoopGenerator):
         context = {
             "wbuf": self.wbuf,
             "wbuf_prefix": self.wbuf.get_wbuf_prefix(node),
+            "regwidth": regwidth,
             "segments": segments,
             "node": node,
             "cpuif": self.exp.cpuif,

@@ -87,7 +87,7 @@ class _OnWrite(NextStateConditional):
             # accounts for it
             bslice = self._wbus_bitslice(field)
             wbuf_prefix = self.exp.write_buffering.get_wbuf_prefix(field)
-            return wbuf_prefix + ".data" + bslice
+            return wbuf_prefix + "_data" + bslice
         else:
             # Regular non-buffered register
             bslice = self._wbus_bitslice(field, subword_idx)
@@ -106,7 +106,7 @@ class _OnWrite(NextStateConditional):
             # accounts for it
             bslice = self._wbus_bitslice(field)
             wbuf_prefix = self.exp.write_buffering.get_wbuf_prefix(field)
-            return wbuf_prefix + ".biten" + bslice
+            return wbuf_prefix + "_biten" + bslice
         else:
             # Regular non-buffered register
             bslice = self._wbus_bitslice(field, subword_idx)

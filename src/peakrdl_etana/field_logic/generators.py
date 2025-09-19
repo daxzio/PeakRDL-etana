@@ -39,11 +39,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
 
-    #     def enter_AddressableComponent(
-    #         self, node: "AddressableNode"
-    #     ) -> Optional[WalkerAction]:
-    #         super().enter_AddressableComponent(node)
-
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
@@ -142,6 +137,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                         f"  * {unconditional.unconditional_explanation}",
                         node.inst.inst_src_ref,
                     )
+                else:
+                    unconditional = conditional
             else:
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
@@ -258,13 +255,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"assign {output_identifier} = {value};")
 
     def assign_external_reg_outputs(self, node: "RegNode") -> None:
-        #         print(self.fields)
         p = IndexedPath(self.exp.ds.top_node, node)
         prefix = self.hwif_out_str + "_" + p.path
         strb = self.exp.dereferencer.get_access_strobe(node)
         index_str = strb.index_str
         strb = f"{strb.path}"
-        #         print("tr", p.path, strb)
 
         width = min(self.exp.cpuif.data_width, node.get_property("regwidth"))
         if width != self.exp.cpuif.data_width:
@@ -275,7 +270,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
         inst_names = []
         for field in self.fields:
-            # print(f"[{field.msb}:{field.lsb}]")
             x = IndexedPath(self.exp.ds.top_node, field)
             path = re.sub(p.path, "", x.path)
             if 1 == n_subwords:
@@ -285,8 +279,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 vslice = f"[{node.get_property('accesswidth')-1}:0]"
             inst_names.append([path, vslice])
 
-        #         print("j", prefix, inst_names)
-        #         print(p.wr_elem)
         context = {
             "has_sw_writable": node.has_sw_writable,
             "has_sw_readable": node.has_sw_readable,
@@ -306,24 +298,18 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def assign_external_block_outputs(self, node: "AddressableNode") -> None:
         p = IndexedPath(self.exp.ds.top_node, node)
-        #         print('ex', node)
         prefix = self.hwif_out_str + "_" + p.path
         strb = self.exp.dereferencer.get_external_block_access_strobe(node)
-        #         print('prefix', prefix, 'strb', strb.path)
         index_str = p.index_str
         addr_width = clog2(node.size)
-        #         raise
         inst_names = []
         inst_names.append("")
-        # for field in self.fields:
-        #     x = IndexedPath(self.exp.ds.top_node, field)
 
         retime = False
         writable = False
         readable = False
         if isinstance(node, RegfileNode):
             retime = self.ds.retime_external_regfile
-        #             readable = node.is_sw_readable
         elif isinstance(node, MemNode):
             retime = self.ds.retime_external_mem
             writable = node.is_sw_writable
@@ -344,5 +330,4 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "get_resetsignal": self.exp.dereferencer.get_resetsignal,
             "resetsignal": self.exp.ds.top_node.cpuif_reset,
         }
-        #         print(context)
         self.add_content(self.external_block_template.render(context))

@@ -42,23 +42,20 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
-        print("enter_Addrmap")
-        raise Exception("enter_Addrmap")
-        if node.external:
-            # AddrmapNode doesn't have is_sw_writable - skip for now
-            # if node.is_sw_writable:
-            #     x = self.exp.hwif.get_external_wr_ack(node, True)
-            #     self.ext_wacks.append(x)
-            pass
-        # Don't raise exception - return None to continue walking
-        return None
+    #     def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
+    #         print("enter_Addrmap")
+    #         raise Exception("enter_Addrmap")
+    #         if node.external:
+    #             # AddrmapNode doesn't have is_sw_writable - skip for now
+    #             # if node.is_sw_writable:
+    #             #     x = self.exp.hwif.get_external_wr_ack(node, True)
+    #             #     self.ext_wacks.append(x)
+    #             pass
+    #         # Don't raise exception - return None to continue walking
+    #         return None
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        #         print("enter_Regfile")
-        #         raise Exception("enter_Regfile")
         if node.external:
-            # print(dir(node))
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
             # print(x)
@@ -102,7 +99,6 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         return None
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
-        # print('enter_Mem')
         if not node.external:
             raise
         if node.is_sw_readable:

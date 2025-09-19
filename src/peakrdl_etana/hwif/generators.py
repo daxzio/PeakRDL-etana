@@ -34,21 +34,21 @@ class InputLogicGenerator(RDLListener):
         #         self.lines.extend(self.hwif_out)
         return self.lines
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> None:
-        raise
-        width = node.total_size
-        # addr_width = node.size.bit_length()
-        addr_width = clog2(node.size)
-        ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
-        ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
-        self.hwif_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
-        self.hwif_port.append(f"input logic [0:0] {ext_in}_rd_ack")
-        self.hwif_port.append(f"input logic [0:0] {ext_in}_wr_ack")
-        self.hwif_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
-        self.hwif_port.append(f"output logic [0:0] {ext_out}_req")
-        self.hwif_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
-        self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
-        self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+    #     def enter_Addrmap(self, node: "AddrmapNode") -> None:
+    #         raise
+    #         width = node.total_size
+    #         # addr_width = node.size.bit_length()
+    #         addr_width = clog2(node.size)
+    #         ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
+    #         ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
+    #         self.hwif_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
+    #         self.hwif_port.append(f"input logic [0:0] {ext_in}_rd_ack")
+    #         self.hwif_port.append(f"input logic [0:0] {ext_in}_wr_ack")
+    #         self.hwif_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
+    #         self.hwif_port.append(f"output logic [0:0] {ext_out}_req")
+    #         self.hwif_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
+    #         self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
+    #         self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
 
     def enter_Mem(self, node: "MemNode") -> None:
         width = node.get_property("memwidth")
@@ -75,7 +75,6 @@ class InputLogicGenerator(RDLListener):
         self.regfile_array = []
 
     def enter_Reg(self, node: "RegNode") -> None:
-        #         print('xenter_Reg', node.is_array, node.array_dimensions)
         self.n_subwords = node.get_property("regwidth") // node.get_property(
             "accesswidth"
         )
@@ -116,10 +115,8 @@ class InputLogicGenerator(RDLListener):
     def enter_Field(self, node: "FieldNode") -> None:
         if not self.hwif.has_value_input(node) and not self.hwif.has_value_output(node):
             return
-        if 1 == self.n_subwords:
-            width = node.width
-        else:
-            width = node.parent.get_property("accesswidth")
+
+        width = node.width
         field_text = self.vector_text + f"[{width-1}:0]"
         if node.external:
             if node.is_sw_readable:
