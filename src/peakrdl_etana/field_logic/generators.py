@@ -9,6 +9,7 @@ from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import IndexedPath, clog2
 from .bases import NextStateUnconditional
+from .wide_field import WideFieldSubwordWrite
 
 if TYPE_CHECKING:
     from . import FieldLogic
@@ -199,111 +200,53 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         # Get the access strobe for the register
         strb = self.exp.dereferencer.get_access_strobe(node.parent)
 
-        # Generate field storage signals
-        self.add_content(f"// Field: {node.get_path()}")
-        self.add_content(
-            f"logic [{node.width-1}:0] {self.field_logic.get_storage_identifier(node)};"
-        )
-        self.add_content(
-            f"logic [{node.width-1}:0] {self.field_logic.get_field_combo_identifier(node, 'next')};"
-        )
-        self.add_content(
-            f"logic {self.field_logic.get_field_combo_identifier(node, 'load_next')};"
-        )
+        # Mark this field as wide for conditional matching
+        node._is_wide_field = True
 
-        # Generate the combinational logic
-        self.add_content("always @(*) begin")
-        self.add_content(f"    logic [{node.width-1}:0] next_c;")
-        self.add_content("    logic load_next_c;")
-        self.add_content(
-            f"    next_c = {self.field_logic.get_storage_identifier(node)};"
-        )
-        self.add_content("    load_next_c = '0;")
-
-        # Generate write logic for each subword
+        # Create conditionals for each subword
+        conditionals = []
         for subword_idx in range(n_subwords):
-            subword_start = subword_idx * accesswidth
-            subword_end = (subword_idx + 1) * accesswidth - 1
+            conditional = WideFieldSubwordWrite(
+                self.exp, subword_idx, accesswidth, regwidth, strb.path
+            )
+            if conditional.is_match(node):
+                conditionals.append(conditional)
 
-            # Check if field overlaps with this subword
-            if node.low <= subword_end and node.high >= subword_start:
-                # Calculate the slice within this subword
-                field_low_in_subword = max(node.low - subword_start, 0)
-                field_high_in_subword = min(node.high - subword_start, accesswidth - 1)
+        # No extra combo signals for wide fields
+        extra_combo_signals = {}
 
-                # Generate the write condition for this subword
-                strb_condition = f"({strb.path}[{subword_idx}] && decoded_req_is_wr)"
+        # No unconditional actions for wide fields
+        unconditional = None
 
-                # Generate the write logic
-                # self.add_content(f"    if({strb_condition}) begin // SW write to subword {subword_idx}")
-                if subword_idx == 0:
-                    self.add_content(
-                        f"    if({strb_condition}) begin // SW write to subword {subword_idx}"
-                    )
-                else:
-                    self.add_content(
-                        f"    end else if({strb_condition}) begin // SW write to subword {subword_idx}"
-                    )
-
-                # Calculate the field slice in the full field
-                field_low_in_full = subword_start + field_low_in_subword
-                field_high_in_full = subword_start + field_high_in_subword
-
-                # Generate the bit enable and data slices
-                biten_slice = (
-                    f"decoded_wr_biten[{field_high_in_subword}:{field_low_in_subword}]"
-                )
-                data_slice = (
-                    f"decoded_wr_data[{field_high_in_subword}:{field_low_in_subword}]"
-                )
-
-                # Generate the assignment
-                self.add_content(
-                    f"        next_c[{field_high_in_full}:{field_low_in_full}] = (next_c[{field_high_in_full}:{field_low_in_full}] & ~{biten_slice}) | ({data_slice} & {biten_slice});"
-                )
-                self.add_content("        load_next_c = '1;")
-        self.add_content("    end")
-
-        self.add_content(
-            f"    {self.field_logic.get_field_combo_identifier(node, 'next')} = next_c;"
-        )
-        self.add_content(
-            f"    {self.field_logic.get_field_combo_identifier(node, 'load_next')} = load_next_c;"
-        )
-        self.add_content("end")
-
-        # Generate the sequential logic
+        # Get reset information (same pattern as standard field storage)
+        resetsignal = node.get_property("resetsignal", default=None)
         reset_value = node.get_property("reset", default=None)
-        self.add_content(
-            f"always_ff {self.exp.dereferencer.get_always_ff_event(self.exp.cpuif.reset)} begin"
-        )
-        # print(f"{reset_value}")
-        # print(f"{self.exp.dereferencer.get_always_ff_event(self.exp.cpuif.reset)}")
         if reset_value is not None:
             reset_value_str = self.exp.dereferencer.get_value(reset_value, node.width)
-            self.add_content(
-                f"    if({self.exp.dereferencer.get_resetsignal(reset_value)}) begin"
-            )
-            self.add_content(
-                f"        {self.field_logic.get_storage_identifier(node)} <= {reset_value_str};"
-            )
-            self.add_content(
-                f"    end else if({self.field_logic.get_field_combo_identifier(node, 'load_next')}) begin"
-            )
-            self.add_content(
-                f"        {self.field_logic.get_storage_identifier(node)} <= {self.field_logic.get_field_combo_identifier(node, 'next')};"
-            )
-            self.add_content("    end")
         else:
-            raise
-            self.add_content(
-                f"    if({self.field_logic.get_field_combo_identifier(node, 'load_next')}) begin"
-            )
-            self.add_content(
-                f"        {self.field_logic.get_storage_identifier(node)} <= {self.field_logic.get_field_combo_identifier(node, 'next')};"
-            )
-            self.add_content("    end")
-        self.add_content("end")
+            # 5.9.1-g: If no reset value given, the field is not reset, even if it has a resetsignal.
+            reset_value_str = None
+            resetsignal = None
+
+        # Prepare context for template (same as standard field storage)
+        context = {
+            "node": node,
+            "reset": reset_value_str,
+            "field_logic": self.field_logic,
+            "extra_combo_signals": extra_combo_signals,
+            "conditionals": conditionals,
+            "unconditional": unconditional,
+            "resetsignal": resetsignal,
+            "get_always_ff_event": self.exp.dereferencer.get_always_ff_event,
+            "get_value": self.exp.dereferencer.get_value,
+            "get_resetsignal": self.exp.dereferencer.get_resetsignal,
+            "get_input_identifier": self.exp.hwif.get_input_identifier,
+            "ds": self.ds,
+        }
+
+        # Use the same pattern as standard field storage
+        self.push_top(self.field_storage_sig_template.render(context))
+        self.add_content(self.field_storage_template.render(context))
 
     def assign_field_outputs(self, node: "FieldNode") -> None:
         # Field value output
