@@ -96,10 +96,10 @@ class DesignScanner(RDLListener):
         self.ds.cpuif_data_width = max(self.ds.cpuif_data_width, accesswidth)
 
         self.ds.has_buffered_write_regs = self.ds.has_buffered_write_regs or bool(
-            node.get_property("buffer_writes")
+            node.get_property("buffer_writes", default=False)
         )
         self.ds.has_buffered_read_regs = self.ds.has_buffered_read_regs or bool(
-            node.get_property("buffer_reads")
+            node.get_property("buffer_reads", default=False)
         )
 
     def enter_Signal(self, node: "SignalNode") -> None:
@@ -114,7 +114,7 @@ class DesignScanner(RDLListener):
         if node.get_property("paritycheck") and node.implements_storage:
             self.ds.has_paritycheck = True
 
-            if node.get_property("reset") is None:
+            if node.get_property("reset", default=None) is None:
                 self.msg.warning(
                     f"Field '{node.inst_name}' includes parity check logic, but "
                     "its reset value was not defined. Will result in an undefined "

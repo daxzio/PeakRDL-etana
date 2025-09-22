@@ -15,7 +15,7 @@ class _OnRead(NextStateConditional):
         return field.get_property("onread") == self.onreadtype
 
     def get_predicate(self, field: "FieldNode") -> str:
-        if field.parent.get_property("buffer_reads"):
+        if field.parent.get_property("buffer_reads", default=False):
             # Is buffered read. Use alternate strobe
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
             return rstrb

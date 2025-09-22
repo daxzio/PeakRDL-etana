@@ -138,13 +138,17 @@ class DesignValidator(RDLListener):
                 # Skip remaining validation rules for external fields
                 return
 
-            if node.is_sw_writable and not node.parent.get_property("buffer_writes"):
+            if (
+                node.is_sw_writable
+                and not node.parent.get_property("buffer_writes", default=False)
+                and not self.exp.ds.allow_wide_field_subwords
+            ):
                 # ... and is writable without the protection of double-buffering
                 # Enforce 10.6.1-f
                 self.msg.error(
                     f"Software-writable field '{node.inst_name}' shall not span"
                     " multiple software-accessible subwords. Consider enabling"
-                    " write double-buffering.\n"
+                    " write double-buffering or setting allow_wide_field_subwords=True.\n"
                     "For more details, see: https://peakrdl-regblock.readthedocs.io/en/latest/udps/write_buffering.html",
                     node.inst.inst_src_ref,
                 )

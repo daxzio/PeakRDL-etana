@@ -129,7 +129,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         accesswidth = node.get_property("accesswidth")
         regwidth = node.get_property("regwidth")
-        rbuf = node.get_property("buffer_reads")
+        rbuf = node.get_property("buffer_reads", default=False)
         if rbuf:
             trigger = node.get_property("rbuffer_trigger")
             is_own_trigger = isinstance(trigger, RegNode) and trigger == node

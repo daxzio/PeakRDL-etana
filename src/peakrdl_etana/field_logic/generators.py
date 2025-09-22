@@ -66,9 +66,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
         self.assign_field_outputs(node)
 
-        if node.get_property("intr"):
+        if node.get_property("intr", default=False):
             self.intr_fields.append(node)
-            if node.get_property("haltenable") or node.get_property("haltmask"):
+            if node.get_property("haltenable", default=False) or node.get_property(
+                "haltmask", default=False
+            ):
                 self.halt_fields.append(node)
 
     def exit_Reg(self, node: "RegNode") -> None:
@@ -79,8 +81,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if self.intr_fields:
             strs = []
             for field in self.intr_fields:
-                enable = field.get_property("enable")
-                mask = field.get_property("mask")
+                enable = field.get_property("enable", default=False)
+                mask = field.get_property("mask", default=False)
                 F = self.exp.dereferencer.get_value(field)
                 if enable:
                     E = self.exp.dereferencer.get_value(enable)
@@ -101,8 +103,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if self.halt_fields:
             strs = []
             for field in self.halt_fields:
-                enable = field.get_property("haltenable")
-                mask = field.get_property("haltmask")
+                enable = field.get_property("haltenable", default=False)
+                mask = field.get_property("haltmask", default=False)
                 F = self.exp.dereferencer.get_value(field)
                 if enable:
                     E = self.exp.dereferencer.get_value(enable)
@@ -120,6 +122,24 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             self.add_content("    " + "\n    || ".join(strs) + ";")
 
     def generate_field_storage(self, node: "FieldNode") -> None:
+        # Check if this is a wide register field that spans multiple subwords
+        accesswidth = node.parent.get_property("accesswidth")
+        regwidth = node.parent.get_property("regwidth")
+        is_wide_field = (
+            accesswidth < regwidth
+            and node.is_sw_writable
+            and self.exp.ds.allow_wide_field_subwords
+            and (node.low // accesswidth) != (node.high // accesswidth)
+        )
+
+        if is_wide_field:
+            # Generate custom wide register field logic
+            self.generate_wide_field_storage(node)
+        else:
+            # Generate standard field logic
+            self.generate_standard_field_storage(node)
+
+    def generate_standard_field_storage(self, node: "FieldNode") -> None:
         conditionals = self.field_logic.get_conditionals(node)
         extra_combo_signals = OrderedDict()
         unconditional: Optional[NextStateUnconditional] = None
@@ -143,9 +163,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
 
-        resetsignal = node.get_property("resetsignal")
+        resetsignal = node.get_property("resetsignal", default=None)
 
-        reset_value = node.get_property("reset")
+        reset_value = node.get_property("reset", default=None)
         if reset_value is not None:
             reset_value_str = self.exp.dereferencer.get_value(reset_value, node.width)
         else:
@@ -170,6 +190,121 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.push_top(self.field_storage_sig_template.render(context))
         self.add_content(self.field_storage_template.render(context))
 
+    def generate_wide_field_storage(self, node: "FieldNode") -> None:
+        """Generate field storage logic for wide register fields that span multiple subwords."""
+        accesswidth = node.parent.get_property("accesswidth")
+        regwidth = node.parent.get_property("regwidth")
+        n_subwords = regwidth // accesswidth
+
+        # Get the access strobe for the register
+        strb = self.exp.dereferencer.get_access_strobe(node.parent)
+
+        # Generate field storage signals
+        self.add_content(f"// Field: {node.get_path()}")
+        self.add_content(
+            f"logic [{node.width-1}:0] {self.field_logic.get_storage_identifier(node)};"
+        )
+        self.add_content(
+            f"logic [{node.width-1}:0] {self.field_logic.get_field_combo_identifier(node, 'next')};"
+        )
+        self.add_content(
+            f"logic {self.field_logic.get_field_combo_identifier(node, 'load_next')};"
+        )
+
+        # Generate the combinational logic
+        self.add_content("always @(*) begin")
+        self.add_content(f"    logic [{node.width-1}:0] next_c;")
+        self.add_content("    logic load_next_c;")
+        self.add_content(
+            f"    next_c = {self.field_logic.get_storage_identifier(node)};"
+        )
+        self.add_content("    load_next_c = '0;")
+
+        # Generate write logic for each subword
+        for subword_idx in range(n_subwords):
+            subword_start = subword_idx * accesswidth
+            subword_end = (subword_idx + 1) * accesswidth - 1
+
+            # Check if field overlaps with this subword
+            if node.low <= subword_end and node.high >= subword_start:
+                # Calculate the slice within this subword
+                field_low_in_subword = max(node.low - subword_start, 0)
+                field_high_in_subword = min(node.high - subword_start, accesswidth - 1)
+
+                # Generate the write condition for this subword
+                strb_condition = f"({strb.path}[{subword_idx}] && decoded_req_is_wr)"
+
+                # Generate the write logic
+                # self.add_content(f"    if({strb_condition}) begin // SW write to subword {subword_idx}")
+                if subword_idx == 0:
+                    self.add_content(
+                        f"    if({strb_condition}) begin // SW write to subword {subword_idx}"
+                    )
+                else:
+                    self.add_content(
+                        f"    end else if({strb_condition}) begin // SW write to subword {subword_idx}"
+                    )
+
+                # Calculate the field slice in the full field
+                field_low_in_full = subword_start + field_low_in_subword
+                field_high_in_full = subword_start + field_high_in_subword
+
+                # Generate the bit enable and data slices
+                biten_slice = (
+                    f"decoded_wr_biten[{field_high_in_subword}:{field_low_in_subword}]"
+                )
+                data_slice = (
+                    f"decoded_wr_data[{field_high_in_subword}:{field_low_in_subword}]"
+                )
+
+                # Generate the assignment
+                self.add_content(
+                    f"        next_c[{field_high_in_full}:{field_low_in_full}] = (next_c[{field_high_in_full}:{field_low_in_full}] & ~{biten_slice}) | ({data_slice} & {biten_slice});"
+                )
+                self.add_content("        load_next_c = '1;")
+        self.add_content("    end")
+
+        self.add_content(
+            f"    {self.field_logic.get_field_combo_identifier(node, 'next')} = next_c;"
+        )
+        self.add_content(
+            f"    {self.field_logic.get_field_combo_identifier(node, 'load_next')} = load_next_c;"
+        )
+        self.add_content("end")
+
+        # Generate the sequential logic
+        reset_value = node.get_property("reset", default=None)
+        self.add_content(
+            f"always_ff {self.exp.dereferencer.get_always_ff_event(self.exp.cpuif.reset)} begin"
+        )
+        # print(f"{reset_value}")
+        # print(f"{self.exp.dereferencer.get_always_ff_event(self.exp.cpuif.reset)}")
+        if reset_value is not None:
+            reset_value_str = self.exp.dereferencer.get_value(reset_value, node.width)
+            self.add_content(
+                f"    if({self.exp.dereferencer.get_resetsignal(reset_value)}) begin"
+            )
+            self.add_content(
+                f"        {self.field_logic.get_storage_identifier(node)} <= {reset_value_str};"
+            )
+            self.add_content(
+                f"    end else if({self.field_logic.get_field_combo_identifier(node, 'load_next')}) begin"
+            )
+            self.add_content(
+                f"        {self.field_logic.get_storage_identifier(node)} <= {self.field_logic.get_field_combo_identifier(node, 'next')};"
+            )
+            self.add_content("    end")
+        else:
+            raise
+            self.add_content(
+                f"    if({self.field_logic.get_field_combo_identifier(node, 'load_next')}) begin"
+            )
+            self.add_content(
+                f"        {self.field_logic.get_storage_identifier(node)} <= {self.field_logic.get_field_combo_identifier(node, 'next')};"
+            )
+            self.add_content("    end")
+        self.add_content("end")
+
     def assign_field_outputs(self, node: "FieldNode") -> None:
         # Field value output
         if self.exp.hwif.has_value_output(node):
@@ -177,19 +312,19 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             value = self.exp.dereferencer.get_value(node)
             self.add_content(f"assign {output_identifier} = {value};")
         # Inferred logical reduction outputs
-        if node.get_property("anded"):
+        if node.get_property("anded", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "anded"
             )
             value = self.exp.dereferencer.get_field_propref_value(node, "anded")
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("ored"):
+        if node.get_property("ored", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "ored"
             )
             value = self.exp.dereferencer.get_field_propref_value(node, "ored")
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("xored"):
+        if node.get_property("xored", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "xored"
             )
@@ -197,25 +332,25 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"assign {output_identifier} = {value};")
 
         # Software access strobes
-        if node.get_property("swmod"):
+        if node.get_property("swmod", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "swmod"
             )
             value = self.field_logic.get_swmod_identifier(node)
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("swacc"):
+        if node.get_property("swacc", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "swacc"
             )
             value = self.field_logic.get_swacc_identifier(node)
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("rd_swacc"):
+        if node.get_property("rd_swacc", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "rd_swacc"
             )
             value = self.field_logic.get_rd_swacc_identifier(node)
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("wr_swacc"):
+        if node.get_property("wr_swacc", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "wr_swacc"
             )
@@ -224,7 +359,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
         # Counter thresholds
         if (
-            node.get_property("incrthreshold") is not False
+            node.get_property("incrthreshold", default=False) is not False
         ):  # (explicitly not False. Not 0)
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "incrthreshold"
@@ -232,7 +367,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             value = self.field_logic.get_field_combo_identifier(node, "incrthreshold")
             self.add_content(f"assign {output_identifier} = {value};")
         if (
-            node.get_property("decrthreshold") is not False
+            node.get_property("decrthreshold", default=False) is not False
         ):  # (explicitly not False. Not 0)
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "decrthreshold"
@@ -241,13 +376,13 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"assign {output_identifier} = {value};")
 
         # Counter events
-        if node.get_property("overflow"):
+        if node.get_property("overflow", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "overflow"
             )
             value = self.field_logic.get_field_combo_identifier(node, "overflow")
             self.add_content(f"assign {output_identifier} = {value};")
-        if node.get_property("underflow"):
+        if node.get_property("underflow", default=False):
             output_identifier = self.exp.hwif.get_implied_prop_output_identifier(
                 node, "underflow"
             )
@@ -268,6 +403,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             bslice = ""
 
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
+        accesswidth = node.get_property("accesswidth")
         inst_names = []
         for field in self.fields:
             x = IndexedPath(self.exp.ds.top_node, field)
@@ -275,9 +411,25 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             if 1 == n_subwords:
                 vslice = f"[{field.msb}:{field.lsb}]"
             else:
-                raise
-                vslice = f"[{node.get_property('accesswidth')-1}:0]"
-            inst_names.append([path, vslice])
+                # For wide registers, we need to handle fields that may span multiple subwords
+                # For now, we'll create a slice for each subword that the field touches
+                for subword_idx in range(n_subwords):
+                    subword_start = subword_idx * accesswidth
+                    subword_end = (subword_idx + 1) * accesswidth - 1
+
+                    # Check if field overlaps with this subword
+                    if field.low <= subword_end and field.high >= subword_start:
+                        # Calculate the slice within this subword
+                        field_low_in_subword = max(field.low - subword_start, 0)
+                        field_high_in_subword = min(
+                            field.high - subword_start, accesswidth - 1
+                        )
+                        vslice = f"[{field_high_in_subword}:{field_low_in_subword}]"
+                    else:
+                        # Field doesn't overlap with this subword, add empty slice
+                        vslice = f"[{accesswidth-1}:0]"
+
+                    inst_names.append([path, vslice])
 
         context = {
             "has_sw_writable": node.has_sw_writable,

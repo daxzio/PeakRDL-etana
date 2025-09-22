@@ -76,7 +76,7 @@ class Dereferencer:
 
             # Field does not have a storage element, nor does it have a HW input
             # must be a constant value as defined by its reset value
-            reset_value = obj.get_property("reset")
+            reset_value = obj.get_property("reset", default=None)
             if reset_value is not None:
                 return self.get_value(reset_value, obj.width)
             else:

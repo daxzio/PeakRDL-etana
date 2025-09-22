@@ -19,7 +19,7 @@ class _OnWrite(NextStateConditional):
         )
 
     def get_predicate(self, field: "FieldNode") -> str:
-        if field.parent.get_property("buffer_writes"):
+        if field.parent.get_property("buffer_writes", default=False):
             # Is buffered write. Use alternate strobe
             wstrb = self.exp.write_buffering.get_write_strobe(field)
 
@@ -42,7 +42,7 @@ class _OnWrite(NextStateConditional):
 
     def _wbus_bitslice(self, field: "FieldNode", subword_idx: int = 0) -> str:
         # Get the source bitslice range from the internal cpuif's data bus
-        if field.parent.get_property("buffer_writes"):
+        if field.parent.get_property("buffer_writes", default=False):
             # register is buffered.
             # write buffer is the full width of the register. no need to deal with subwords
             high = field.high
@@ -81,7 +81,7 @@ class _OnWrite(NextStateConditional):
         return f"[{high}:{low}]"
 
     def _wr_data(self, field: "FieldNode", subword_idx: int = 0) -> str:
-        if field.parent.get_property("buffer_writes"):
+        if field.parent.get_property("buffer_writes", default=False):
             # Is buffered. Use value from write buffer
             # No need to check msb0 ordering. Bus is pre-swapped, and bitslice
             # accounts for it
@@ -100,7 +100,7 @@ class _OnWrite(NextStateConditional):
             return value
 
     def _wr_biten(self, field: "FieldNode", subword_idx: int = 0) -> str:
-        if field.parent.get_property("buffer_writes"):
+        if field.parent.get_property("buffer_writes", default=False):
             # Is buffered. Use value from write buffer
             # No need to check msb0 ordering. Bus is pre-swapped, and bitslice
             # accounts for it

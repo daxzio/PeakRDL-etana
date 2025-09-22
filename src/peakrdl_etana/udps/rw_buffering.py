@@ -94,7 +94,7 @@ class WBufferTrigger(xBufferTrigger):
 
     def get_unassigned_default(self, node: "Node") -> Any:
         # If buffering is enabled, trigger is the register itself
-        if node.get_property("buffer_writes"):
+        if node.get_property("buffer_writes", default=False):
             return node
         return None
 
@@ -132,6 +132,6 @@ class RBufferTrigger(xBufferTrigger):
 
     def get_unassigned_default(self, node: "Node") -> Any:
         # If buffering is enabled, trigger is the register itself
-        if node.get_property("buffer_reads"):
+        if node.get_property("buffer_reads", default=False):
             return node
         return None

@@ -19,12 +19,6 @@ class WriteBuffering:
     def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
 
-    # def get_storage_struct(self) -> str:
-    #     struct_gen = WBufStorageStructGenerator(self)
-    #     s = struct_gen.get_struct(self.top_node, "wbuf_storage_t")
-    #     assert s is not None
-    #     return s + "\nwbuf_storage_t wbuf_storage;"
-
     def get_implementation(self) -> str:
         gen = WBufLogicGenerator(self)
         s = gen.get_content(self.top_node)

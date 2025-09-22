@@ -112,6 +112,10 @@ class RegblockExporter:
             Retime outputs to external ``mem`` components.
         retime_external_addrmap: bool
             Retime outputs to external ``addrmap`` components.
+        allow_wide_field_subwords: bool
+            Allow software-writable fields to span multiple subwords in wide registers.
+            This violates SystemRDL specification 10.6.1-f but may be acceptable for
+            non-atomic write scenarios. Defaults to False.
         generate_hwif_report: bool
             If set, generates a hwif report that can help designers understand
             the flattened signal interface. Each line contains the full hierarchical
@@ -256,6 +260,9 @@ class DesignState:
         )  # type: bool
         self.default_reset_async = kwargs.pop(
             "default_reset_async", False
+        )  # type: bool
+        self.allow_wide_field_subwords = kwargs.pop(
+            "allow_wide_field_subwords", False
         )  # type: bool
         self.hwif_in_str = kwargs.pop("in_str", "hwif_in")  # type: str
         self.hwif_out_str = kwargs.pop("out_str", "hwif_out")  # type: str

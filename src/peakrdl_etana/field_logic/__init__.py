@@ -127,7 +127,7 @@ class FieldLogic:
         return field.get_property("incrsaturate") is not False
 
     def get_counter_incrthreshold_value(self, field: "FieldNode") -> Union[SVInt, str]:
-        prop_value = field.get_property("incrthreshold")
+        prop_value = field.get_property("incrthreshold", default=False)
         if isinstance(prop_value, bool):
             # No explicit value set. use max
             return self.exp.dereferencer.get_value(2**field.width - 1, field.width)
@@ -168,7 +168,7 @@ class FieldLogic:
         return field.get_property("decrsaturate") is not False
 
     def get_counter_decrthreshold_value(self, field: "FieldNode") -> Union[SVInt, str]:
-        prop_value = field.get_property("decrthreshold")
+        prop_value = field.get_property("decrthreshold", default=False)
         if isinstance(prop_value, bool):
             # No explicit value set. use min
             return f"{field.width}'d0"
@@ -178,8 +178,8 @@ class FieldLogic:
         """
         Asserted when field is software accessed (read or write)
         """
-        buffer_reads = field.parent.get_property("buffer_reads")
-        buffer_writes = field.parent.get_property("buffer_writes")
+        buffer_reads = field.parent.get_property("buffer_reads", default=False)
+        buffer_writes = field.parent.get_property("buffer_writes", default=False)
         if buffer_reads and buffer_writes:
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
             wstrb = self.exp.write_buffering.get_write_strobe(field)
@@ -200,7 +200,7 @@ class FieldLogic:
         """
         Asserted when field is software accessed (read)
         """
-        buffer_reads = field.parent.get_property("buffer_reads")
+        buffer_reads = field.parent.get_property("buffer_reads", default=False)
         if buffer_reads:
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
             return rstrb
@@ -212,7 +212,7 @@ class FieldLogic:
         """
         Asserted when field is software accessed (write)
         """
-        buffer_writes = field.parent.get_property("buffer_writes")
+        buffer_writes = field.parent.get_property("buffer_writes", default=False)
         if buffer_writes:
             wstrb = self.exp.write_buffering.get_write_strobe(field)
             return wstrb
@@ -227,8 +227,8 @@ class FieldLogic:
         """
         w_modifiable = field.is_sw_writable
         r_modifiable = field.get_property("onread") is not None
-        buffer_writes = field.parent.get_property("buffer_writes")
-        buffer_reads = field.parent.get_property("buffer_reads")
+        buffer_writes = field.parent.get_property("buffer_writes", default=False)
+        buffer_reads = field.parent.get_property("buffer_reads", default=False)
 
         if w_modifiable and not r_modifiable:
             # assert swmod only on sw write
@@ -294,7 +294,7 @@ class FieldLogic:
         """
         Get the bitslice range string from the internal cpuif's data bus for this field.
         """
-        if field.parent.get_property("buffer_writes"):
+        if field.parent.get_property("buffer_writes", default=False):
             # register is buffered.
             # write buffer is the full width of the register. no need to deal with subwords
             high = field.high

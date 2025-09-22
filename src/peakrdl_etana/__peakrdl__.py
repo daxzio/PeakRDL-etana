@@ -181,6 +181,14 @@ class Exporter(ExporterSubcommandPlugin):
             help="""Head of output port name, default \"hwif_out\"""",
         )
 
+        arg_group.add_argument(
+            "--allow-wide-field-subwords",
+            action="store_true",
+            default=False,
+            help="""Allow software-writable fields to span multiple subwords without write buffering.
+            This bypasses SystemRDL specification rule 10.6.1-f and enables non-atomic writes to wide registers.""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -247,4 +255,5 @@ class Exporter(ExporterSubcommandPlugin):
             default_reset_async=default_reset_async,
             in_str=options.in_str,
             out_str=options.out_str,
+            allow_wide_field_subwords=options.allow_wide_field_subwords,
         )
