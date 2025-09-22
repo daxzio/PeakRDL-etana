@@ -224,7 +224,7 @@ class Hwif:
 
         if obj is:
             Field: the fields hw output value port
-            Property ref: this is also part of the struct
+            Property ref: this is also part of the flattened signal interface
 
         raises an exception if obj is invalid
         """

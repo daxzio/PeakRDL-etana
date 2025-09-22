@@ -85,7 +85,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def __init__(self, addr_decode: AddressDecode) -> None:
         self.addr_decode = addr_decode
         super().__init__()
-        self._logic_stack = []  # type: List[_StructBase]
+        self._logic_stack = []  # type: List[object]
         self.printed = False
 
     def get_logic(self, node: "Node") -> Optional[str]:

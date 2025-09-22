@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Union
 
 from systemrdl.node import AddrmapNode, RegNode, FieldNode, SignalNode
 
-# from .storage_generator import WBufStorageStructGenerator
 from .implementation_generator import WBufLogicGenerator
 from ..sv_int import SVInt
 from ..utils import IndexedPath
