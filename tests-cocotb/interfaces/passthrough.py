@@ -248,10 +248,12 @@ class PTMaster:
                     self.bus.wr_biten.value = self.wdata_mask
                 else:
                     self.bus.wr_biten.value = strb
+                await RisingEdge(self.clock)
                 while not self.bus.wr_ack.value or self.bus.req_stall_wr.value:
                     await RisingEdge(self.clock)
             else:
                 self.log.info(f"Read addr: 0x{addr:08x}")
+                await RisingEdge(self.clock)
                 while not self.bus.rd_ack.value or self.bus.req_stall_rd.value:
                     await RisingEdge(self.clock)
                 #                 ret = resolve_x_int(self.bus.rd_data)
