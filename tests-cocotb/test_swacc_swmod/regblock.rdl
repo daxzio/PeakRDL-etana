@@ -1,0 +1,43 @@
+addrmap top {
+    default regwidth = 8;
+
+    reg {
+        field {
+            sw=r; hw=w;
+            swacc;
+            swmod;
+        } f[8];
+    } r1;
+
+    reg {
+        field {
+            sw=rw; hw=r;
+            swmod;
+        } f[8] = 20;
+    } r2;
+
+    reg {
+        field {
+            sw=rw; hw=r;
+            swmod;
+            rclr;
+        } f[8] = 30;
+    } r3;
+
+    reg {
+        field {
+            sw=rw; hw=r;
+            swacc;
+            swmod;
+        } f[8] = 0x12;
+    } r4;
+
+    reg {
+        field {
+            sw=r; hw=rw;
+            we;
+            swmod;
+            rclr;
+        } f[8] = 30;
+    } r5;
+};
