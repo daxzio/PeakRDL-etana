@@ -239,12 +239,8 @@ class Hwif:
             p = IndexedPath(self.top_node, obj)
             hwif_out = f"{self.hwif_out_str}_{p.path}"
             if not 0 == len(p.index) and index:
-                hwif_out += f"[({p.width}*("
-                for i in range(len(p.array_dimensions) - 1, -1, -1):
-                    if not i == len(p.array_dimensions) - 1:
-                        hwif_out += f"+{p.array_dimensions[i-1]}*"
-                    hwif_out += f"{p.index[i]}"
-                hwif_out += f"))+:{p.width}]"
+                # For unpacked arrays, use array indices directly
+                hwif_out += p.index_str
             return hwif_out
         elif isinstance(obj, RegNode):
             p = IndexedPath(self.top_node, obj)

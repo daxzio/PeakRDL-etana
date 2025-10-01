@@ -97,15 +97,16 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def build_logic(self, node: "RegNode", active=1) -> None:
         p = self.addr_decode.get_access_strobe(node)
-        if isinstance(node.parent, RegfileNode):
-            array_dimensions = node.parent.array_dimensions
-        else:
-            array_dimensions = node.array_dimensions
+        # Use IndexedPath to get ALL nested array dimensions
+        full_path = IndexedPath(self.addr_decode.top_node, node)
+        array_dimensions = full_path.array_dimensions
 
         if array_dimensions is None:
             s = f"logic [{active-1}:0] {p.path};"
         else:
-            s = f"logic [{active-1}:0] {p.path} {array_dimensions};"
+            # Format array dimensions as [dim1][dim2][dim3] for SystemVerilog
+            array_suffix = "".join(f"[{dim}]" for dim in array_dimensions)
+            s = f"logic [{active-1}:0] {p.path} {array_suffix};"
 
         self._logic_stack.append(s)
 

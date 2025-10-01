@@ -76,21 +76,22 @@ class InputLogicGenerator(RDLListener):
         self.regfile_array = []
 
     def enter_Reg(self, node: "RegNode") -> None:
+        from ..utils import IndexedPath
+
         self.n_subwords = node.get_property("regwidth") // node.get_property(
             "accesswidth"
         )
 
         self.vector = 1
         self.vector_text = ""
-        array_dimensions = []
-        if node.is_array:
-            array_dimensions.extend(node.array_dimensions)
 
-        #         if node.parent.is_array and isinstance(node.parent, RegfileNode):
-        array_dimensions.extend(self.regfile_array)
+        # Use IndexedPath to get ALL nested array dimensions
+        p = IndexedPath(self.hwif.top_node, node)
+        array_dimensions = p.array_dimensions if p.array_dimensions is not None else []
 
+        # Build dimension text - dimensions should be in order (outer to inner)
         for i in array_dimensions:
-            self.vector_text = f"[{i-1}:0] " + self.vector_text
+            self.vector_text += f"[{i-1}:0] "
             self.vector *= i
 
         if node.external:

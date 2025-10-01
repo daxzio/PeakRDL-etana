@@ -10,15 +10,41 @@ from .sv_int import SVInt
 
 class IndexedPath:
     def __init__(self, top_node: Node, target_node: Node) -> None:
+        from systemrdl.node import RegfileNode
+
         self.top_node = top_node
         self.target_node = target_node
         self.index = []
-        if isinstance(self.target_node, RegNode):
-            self.array_dimensions = self.target_node.parent.array_dimensions
-        elif isinstance(self.target_node, FieldNode):
-            self.array_dimensions = self.target_node.parent.array_dimensions
-        #             print(True, self.array_dimensions)
-        #         self.array_dimensions = self.target_node.parent.array_dimensions
+
+        # Collect ALL array dimensions from target up to top
+        # Walk up the hierarchy and collect array dimensions from all regfiles
+        self.array_dimensions = []
+        current = target_node
+
+        # For FieldNodes, start from the parent (the register)
+        if isinstance(target_node, FieldNode):
+            current = target_node.parent
+
+        # Walk up the hierarchy collecting array dimensions
+        while current is not None and current != top_node:
+            if (
+                hasattr(current, "array_dimensions")
+                and current.array_dimensions is not None
+            ):
+                # Prepend dimensions (outer dimensions come first)
+                self.array_dimensions = (
+                    list(current.array_dimensions) + self.array_dimensions
+                )
+
+            # Move to parent
+            if hasattr(current, "parent"):
+                current = current.parent
+            else:
+                break
+
+        # Convert to None if empty
+        if not self.array_dimensions:
+            self.array_dimensions = None
 
         try:
             self.width = self.target_node.width
