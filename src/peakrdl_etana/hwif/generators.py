@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode
+from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
 
 from ..utils import clog2
@@ -113,7 +113,30 @@ class InputLogicGenerator(RDLListener):
                 )
 
     def enter_Field(self, node: "FieldNode") -> None:
-        if not self.hwif.has_value_input(node) and not self.hwif.has_value_output(node):
+        # Check for implied property inputs
+        implied_props = []
+        for prop in [
+            "hwclr",
+            "hwset",
+            "swwe",
+            "swwel",
+            "we",
+            "wel",
+            "incr",
+            "decr",
+            "incrvalue",
+            "decrvalue",
+        ]:
+            prop_value = node.get_property(prop)
+            if prop_value is True:
+                # This property uses an implied input signal
+                implied_props.append(prop)
+
+        if (
+            not self.hwif.has_value_input(node)
+            and not self.hwif.has_value_output(node)
+            and not implied_props
+        ):
             return
 
         width = node.width
@@ -133,8 +156,36 @@ class InputLogicGenerator(RDLListener):
                 )
         else:
             if self.hwif.has_value_input(node):
-                input_identifier = self.hwif.get_input_identifier(node)
-                self.hwif_port.append(f"input wire {field_text} {input_identifier}")
+                # Check if field has 'next' property - if so, the signal provides the input
+                if node.get_property("next") is None:
+                    input_identifier = self.hwif.get_input_identifier(node)
+                    self.hwif_port.append(f"input wire {field_text} {input_identifier}")
             if self.hwif.has_value_output(node):
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
                 self.hwif_port.append(f"output logic {field_text} {output_identifier}")
+
+            # Add implied property input signals
+            for prop in implied_props:
+                prop_identifier = self.hwif.get_implied_prop_input_identifier(
+                    node, prop
+                )
+                # Determine width based on property type
+                if prop in ["incrvalue", "decrvalue"]:
+                    # These are value properties, use field width
+                    prop_field_text = self.vector_text + f"[{width-1}:0]"
+                else:
+                    # These are single-bit control signals
+                    prop_field_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(f"input wire {prop_field_text} {prop_identifier}")
+
+    def enter_Signal(self, node: "SignalNode") -> None:
+        # Signals that are not promoted to top-level need to be added as ports
+        if node.get_path() not in self.hwif.ds.out_of_hier_signals:
+            width = node.width if node.width is not None else 1
+            signal_text = (
+                self.vector_text + f"[{width-1}:0]"
+                if width > 1
+                else self.vector_text + "[0:0]"
+            )
+            input_identifier = self.hwif.get_input_identifier(node)
+            self.hwif_port.append(f"input wire {signal_text} {input_identifier}")
