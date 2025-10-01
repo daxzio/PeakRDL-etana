@@ -166,9 +166,20 @@ module {{ds.module_name}}
     // bitswap for use by fields with msb0 ordering
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data_bswap;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten_bswap;
-    assign decoded_wr_data_bswap = {<<{decoded_wr_data}};
-    assign decoded_wr_biten_bswap = {<<{decoded_wr_biten}};
+    // Explicit bit reversal for Icarus Verilog compatibility
+    genvar bitswap_i;
+    generate
+        for(bitswap_i = 0; bitswap_i < {{cpuif.data_width}}; bitswap_i = bitswap_i + 1) begin : gen_bitswap
+            assign decoded_wr_data_bswap[bitswap_i] = decoded_wr_data[{{cpuif.data_width-1}} - bitswap_i];
+            assign decoded_wr_biten_bswap[bitswap_i] = decoded_wr_biten[{{cpuif.data_width-1}} - bitswap_i];
+        end
+    endgenerate
 {%- endif %}
+
+    //--------------------------------------------------------------------------
+    // Field storage declarations
+    //--------------------------------------------------------------------------
+    {{field_logic.get_declarations()|indent}}
 
 {%- if ds.has_buffered_write_regs %}
 

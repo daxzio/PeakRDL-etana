@@ -39,6 +39,20 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         )
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
+        self.declarations_only = False  # Flag to control what gets generated
+
+    def get_declarations(self, node: "Node") -> Optional[str]:
+        """Walk the tree and generate only field storage declarations."""
+        from systemrdl.walker import RDLWalker
+
+        self.declarations_only = True
+        self.start()
+        walker = RDLWalker()
+        walker.walk(node, self, skip_top=True)
+        # Return only the top section (declarations)
+        if not self.top:
+            return None
+        return self.top
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         self.intr_fields = []  # type: List[FieldNode]
@@ -188,8 +202,12 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "get_input_identifier": self.exp.hwif.get_input_identifier,
             "ds": self.ds,
         }
-        self.push_top(self.field_storage_sig_template.render(context))
-        self.add_content(self.field_storage_template.render(context))
+        if self.declarations_only:
+            # Generate only declarations
+            self.push_top(self.field_storage_sig_template.render(context))
+        else:
+            # Generate only implementation (declarations are generated separately)
+            self.add_content(self.field_storage_template.render(context))
 
     def generate_wide_field_storage(self, node: "FieldNode") -> None:
         """Generate field storage logic for wide register fields that span multiple subwords."""

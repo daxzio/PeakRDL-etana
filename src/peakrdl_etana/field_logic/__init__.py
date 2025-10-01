@@ -38,6 +38,14 @@ class FieldLogic:
     def top_node(self) -> "AddrmapNode":
         return self.exp.ds.top_node
 
+    def get_declarations(self) -> str:
+        """Generate field storage declarations only."""
+        gen = FieldLogicGenerator(self)
+        declarations = gen.get_declarations(self.top_node)
+        if declarations is None:
+            return ""
+        return declarations
+
     def get_implementation(self) -> str:
         gen = FieldLogicGenerator(self)
         s = gen.get_content(self.top_node)
@@ -194,7 +202,7 @@ class FieldLogic:
             return f"{wstrb} || ({p.path} && !decoded_req_is_wr)"
         else:
             p = self.exp.dereferencer.get_access_strobe(field)
-            return p
+            return f"{p.path}{p.index_str}"
 
     def get_rd_swacc_identifier(self, field: "FieldNode") -> str:
         """

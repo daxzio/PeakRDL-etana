@@ -1,5 +1,5 @@
 import re
-from typing import Match, Union
+from typing import Match, Union, Optional
 
 from systemrdl.rdltypes.references import PropertyReference
 from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode
@@ -152,10 +152,37 @@ def do_slice(value: Union[SVInt, str], high: int, low: int) -> Union[SVInt, str]
         return SVInt(v, w)
 
 
-def do_bitswap(value: Union[SVInt, str]) -> Union[SVInt, str]:
+def do_bitswap(
+    value: Union[SVInt, str], width: Optional[int] = None
+) -> Union[SVInt, str]:
     if isinstance(value, str):
-        # If string, assume this is an identifier. Wrap in a streaming operator
-        return "{<<{" + value + "}}"
+        # If string, assume this is an identifier
+        # Generate explicit bit reversal for Icarus Verilog compatibility
+        if width is not None and width > 0:
+            # Generate explicit concatenation {value[0], value[1], ..., value[width-1]}
+            if width == 1:
+                return value
+
+            # Check if value is already a slice like "signal_name[high:low]"
+            # If so, we need to expand the individual bit indices
+            if "[" in value and ":" in value:
+                # Parse out the slice
+                # Format: "name[high:low]"
+                match = re.match(r"(.+)\[(\d+):(\d+)\]", value)
+                if match:
+                    base_name = match.group(1)
+                    high = int(match.group(2))
+                    low = int(match.group(3))
+                    # Reverse order: generate {base[low], base[low+1], ..., base[high]}
+                    bits = [f"{base_name}[{low + i}]" for i in range(width)]
+                    return "{" + ", ".join(bits) + "}"
+
+            # Not a slice, just a plain identifier
+            bits = [f"{value}[{i}]" for i in range(width)]
+            return "{" + ", ".join(bits) + "}"
+        else:
+            # Fallback to streaming concatenation (won't work in Icarus)
+            return "{<<{" + value + "}}"
     else:
         # it is an SVInt literal. bitswap it
         assert value.width is not None  # width must be known!

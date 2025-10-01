@@ -266,7 +266,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 value = self.exp.dereferencer.get_value(field)
             if field.msb < field.lsb:
                 # Field gets bitswapped since it is in [low:high] orientation
-                value = do_bitswap(value)
+                value = do_bitswap(value, field.width)
 
             self.add_content(
                 f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"
@@ -360,7 +360,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     f_high = field.width - 1 - f_high
                     f_low, f_high = f_high, f_low
                     value = do_bitswap(
-                        do_slice(self.exp.dereferencer.get_value(field), f_high, f_low)
+                        do_slice(self.exp.dereferencer.get_value(field), f_high, f_low),
+                        f_high - f_low + 1,
                     )
                 else:
                     value = do_slice(
@@ -376,7 +377,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 value = self.exp.dereferencer.get_value(field)
                 if field.msb < field.lsb:
                     # Field gets bitswapped since it is in [low:high] orientation
-                    value = do_bitswap(value)
+                    value = do_bitswap(value, field.width)
                 self.add_content(
                     f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"
                 )
@@ -454,7 +455,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     value = self.exp.dereferencer.get_value(field)
                     if field.msb < field.lsb:
                         # Field gets bitswapped since it is in [low:high] orientation
-                        value = do_bitswap(value)
+                        value = do_bitswap(value, field.width)
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{high}:{low}] = {rd_strb} ? {value} : '0;"
@@ -488,7 +489,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         value = do_bitswap(
                             do_slice(
                                 self.exp.dereferencer.get_value(field), f_high, f_low
-                            )
+                            ),
+                            f_high - f_low + 1,
                         )
                     else:
                         value = do_slice(
@@ -526,7 +528,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         value = do_bitswap(
                             do_slice(
                                 self.exp.dereferencer.get_value(field), f_high, f_low
-                            )
+                            ),
+                            f_high - f_low + 1,
                         )
                     else:
                         value = do_slice(

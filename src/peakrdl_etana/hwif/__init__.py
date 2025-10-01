@@ -75,9 +75,16 @@ class Hwif:
 
     @property
     def has_hwif_ports(self) -> bool:
-        hwif_ports = InputLogicGenerator(self.exp.hwif)
-        self.logic = hwif_ports.get_logic(self.top_node)
-        return False if 0 == len(self.logic) else True
+        try:
+            hwif_ports = InputLogicGenerator(self)
+            self.logic = hwif_ports.get_logic(self.top_node)
+            return False if 0 == len(self.logic) else True
+        except Exception as e:
+            import traceback
+
+            print(f"\n\nERROR in has_hwif_ports: {e}")
+            traceback.print_exc()
+            raise
 
     @property
     def port_declaration(self) -> str:

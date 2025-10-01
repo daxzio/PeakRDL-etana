@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
-from systemrdl.node import AddrmapNode, RegNode, SignalNode
+from systemrdl.node import AddrmapNode, RegNode, SignalNode, FieldNode
 
 from .implementation_generator import RBufLogicGenerator
+from ..utils import IndexedPath
 
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter
@@ -22,6 +23,16 @@ class ReadBuffering:
         assert s is not None
         return s
 
+    def get_rbuf_data(self, node: Union[RegNode, FieldNode]) -> str:
+        """Get the name of the read buffer storage signal for a register."""
+        if isinstance(node, FieldNode):
+            node = node.parent
+        p = IndexedPath(self.top_node, node)
+        rbuf_data = f"rbuf_storage_{p.path}"
+        if not 0 == len(p.index):
+            rbuf_data += f"{p.index_str}"
+        return rbuf_data
+
     def get_trigger(self, node: RegNode) -> str:
         trigger = node.get_property("rbuffer_trigger")
 
@@ -35,9 +46,9 @@ class ReadBuffering:
             )
 
             if accesswidth < regwidth:
-                return f"{strb_prefix}[0] && !decoded_req_is_wr"
+                return f"{strb_prefix.path}[0] && !decoded_req_is_wr"
             else:
-                return f"{strb_prefix} && !decoded_req_is_wr"
+                return f"{strb_prefix.path} && !decoded_req_is_wr"
         elif isinstance(trigger, SignalNode):
             s = self.exp.dereferencer.get_value(trigger)
             if trigger.get_property("activehigh"):

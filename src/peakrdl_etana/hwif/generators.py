@@ -20,6 +20,7 @@ class InputLogicGenerator(RDLListener):
         self.in_port = []
         self.out_port = []
         self.regfile_array = []
+        self.vector_text = ""  # Initialize to empty string
 
     def get_logic(self, node: "Node") -> Optional[str]:
 
@@ -180,12 +181,16 @@ class InputLogicGenerator(RDLListener):
 
     def enter_Signal(self, node: "SignalNode") -> None:
         # Signals that are not promoted to top-level need to be added as ports
-        if node.get_path() not in self.hwif.ds.out_of_hier_signals:
-            width = node.width if node.width is not None else 1
-            signal_text = (
-                self.vector_text + f"[{width-1}:0]"
-                if width > 1
-                else self.vector_text + "[0:0]"
-            )
-            input_identifier = self.hwif.get_input_identifier(node)
-            self.hwif_port.append(f"input wire {signal_text} {input_identifier}")
+        # Check if signal is out-of-hierarchy (promoted to top-level)
+        if hasattr(self.hwif, "ds") and hasattr(self.hwif.ds, "out_of_hier_signals"):
+            if node.get_path() in self.hwif.ds.out_of_hier_signals:
+                return
+
+        width = node.width if node.width is not None else 1
+        signal_text = (
+            self.vector_text + f"[{width-1}:0]"
+            if width > 1
+            else self.vector_text + "[0:0]"
+        )
+        input_identifier = self.hwif.get_input_identifier(node)
+        self.hwif_port.append(f"input wire {signal_text} {input_identifier}")

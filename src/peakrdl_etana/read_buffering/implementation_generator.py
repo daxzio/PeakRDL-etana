@@ -4,6 +4,7 @@ from systemrdl.component import Reg
 from systemrdl.node import RegNode
 
 from ..forloop_generator import RDLForLoopGenerator
+from ..utils import do_bitswap
 
 if TYPE_CHECKING:
     from . import ReadBuffering
@@ -44,7 +45,7 @@ class RBufLogicGenerator(RDLForLoopGenerator):
             value = self.exp.dereferencer.get_value(field)
             if field.msb < field.lsb:
                 # Field gets bitswapped since it is in [low:high] orientation
-                value = f"{{<<{{{value}}}}}"
+                value = do_bitswap(value, field.width)
             s.append(f"{data}[{field.high}:{field.low}] <= {value};")
 
             bidx = field.high + 1
