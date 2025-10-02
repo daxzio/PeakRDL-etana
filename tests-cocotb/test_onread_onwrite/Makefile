@@ -1,4 +1,4 @@
 VERILOG_SOURCES += \
-    ./rdl-rtl/regblock.sv \
+    ./rdl-rtl/*.sv \
 
 include ../tests.mak

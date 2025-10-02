@@ -11,18 +11,14 @@ async def test_dut_pipelined_cpuif(dut):
     tb = testbench(dut)
     await tb.clk.wait_clkn(200)
 
-    # Write all 64 registers in parallel burst
-    async def write_all():
-        for i in range(64):
-            await tb.intf.write(i * 4, i + 0x12340000)
-
-    await write_all()
+    for i in range(64):
+        await tb.intf.write(i * 4, i + 0x12340000)
 
     # Verify HW values
     await RisingEdge(tb.clk.clk)
     for i in range(64):
         expected = i + 0x12340000
-        actual = (int(tb.hwif_out_x_x.value) >> i * 32) & 0xFFFFFFFF
+        actual = (int(tb.hwif_out_x.value) >> (i * 32)) & 0xFFFFFFFF
         assert (
             actual == expected
         ), f"hwif_out.x[{i}] = 0x{actual:08x}, expected 0x{expected:08x}"

@@ -34,8 +34,10 @@ class testbench:
         #         else:
         for attr in dir(dut):
             if attr.startswith("hwif_"):
-                #                 print(attr)
-                setattr(self, attr, getattr(dut, attr))
+                sig = getattr(dut, attr)
+                setattr(self, attr, sig)
+                sig.value = 0
+                # print(f"setattr(self, {attr}, {sig})")
 
 
 #         exit()

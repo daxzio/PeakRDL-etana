@@ -1,5 +1,5 @@
 VERILOG_SOURCES += \
-    ./rdl-rtl/regblock.sv
+    ./rdl-rtl/*.sv
 
 CPUIF?=passthrough
 
