@@ -113,12 +113,44 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def enter_AddressableComponent(self, node: "AddressableNode") -> None:
         super().enter_AddressableComponent(node)
 
+    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+        if node.external:
+            # Declare strobe signal for external regfile
+            p = self.addr_decode.get_external_block_access_strobe(node)
+            s = f"logic {p.path};"
+            self._logic_stack.append(s)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+        # Skip top-level
+        if node == self.addr_decode.top_node:
+            return WalkerAction.Continue
+
+        if node.external:
+            # Declare strobe signal for external addrmap
+            p = self.addr_decode.get_external_block_access_strobe(node)
+            s = f"logic {p.path};"
+            self._logic_stack.append(s)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
     def enter_Mem(self, node: "MemNode") -> None:
         if not node.external:
             raise
-        self.build_logic(node)
+        # Declare strobe signal for external mem
+        p = self.addr_decode.get_external_block_access_strobe(node)
+        s = f"logic {p.path};"
+        self._logic_stack.append(s)
 
-    def enter_Reg(self, node: "RegNode") -> None:
+    def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
+        # Skip registers inside external blocks
+        parent = node.parent
+        while parent is not None and parent != self.addr_decode.top_node:
+            if hasattr(parent, "external") and parent.external:
+                return WalkerAction.SkipDescendants
+            parent = parent.parent if hasattr(parent, "parent") else None
+
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
 
         self.build_logic(node, n_subwords)
@@ -187,6 +219,30 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     #             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
     #         return a
 
+    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+        if node.external:
+            addr_str = self._get_address_str(node)
+            strb = self.addr_decode.get_external_block_access_strobe(node)
+            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"is_external |= {rhs};")
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+        # Skip top-level addrmap
+        if node == self.addr_decode.top_node:
+            return WalkerAction.Continue
+
+        if node.external:
+            addr_str = self._get_address_str(node)
+            strb = self.addr_decode.get_external_block_access_strobe(node)
+            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"is_external |= {rhs};")
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
     def enter_Mem(self, node: MemNode) -> None:
         if node.external:
             addr_str = self._get_address_str(node)
@@ -196,7 +252,14 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"is_external |= {rhs};")
             return WalkerAction.SkipDescendants
 
-    def enter_Reg(self, node: RegNode) -> None:
+    def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
+        # Skip registers inside external blocks
+        parent = node.parent
+        while parent is not None and parent != self.addr_decode.top_node:
+            if hasattr(parent, "external") and parent.external:
+                return WalkerAction.SkipDescendants
+            parent = parent.parent if hasattr(parent, "parent") else None
+
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
 

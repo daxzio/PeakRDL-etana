@@ -55,10 +55,37 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         return self.top
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
+        # Check if this register is inside an external regfile/addrmap
+        # If so, skip it - the parent external block handles the interface
+        parent = node.parent
+        while parent is not None and parent != self.ds.top_node:
+            if hasattr(parent, "external") and parent.external:
+                # Inside an external block - skip this register
+                return WalkerAction.SkipDescendants
+            parent = parent.parent if hasattr(parent, "parent") else None
+
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
         self.msg = self.ds.top_node.env.msg
         self.fields = []
+
+    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+        # For external regfiles, generate bus interface and skip descendants
+        if node.external:
+            self.assign_external_block_outputs(node)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+        # Skip top-level addrmap
+        if node == self.ds.top_node:
+            return WalkerAction.Continue
+
+        # For external addrmaps, generate bus interface and skip descendants
+        if node.external:
+            self.assign_external_block_outputs(node)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> Optional[WalkerAction]:
         # Memnode is always external so big problem if it isn't
@@ -380,32 +407,24 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
         accesswidth = node.get_property("accesswidth")
+        regwidth = node.get_property("regwidth")
         inst_names = []
-        for field in self.fields:
-            x = IndexedPath(self.exp.ds.top_node, field)
-            path = re.sub(p.path, "", x.path)
-            if 1 == n_subwords:
+
+        # For wide external registers with only ONE field,
+        # regblock generates per-register signals without field name suffix at accesswidth
+        if n_subwords > 1 and len(self.fields) == 1:
+            # Generate per-register signal without field name, using accesswidth
+            vslice = f"[{accesswidth-1}:0]"
+            inst_names.append(["", vslice])  # Empty string for field name
+        else:
+            # Not a wide register or multiple fields - use per-field naming
+            for field in self.fields:
+                x = IndexedPath(self.exp.ds.top_node, field)
+                path = re.sub(p.path, "", x.path)
+                # For external registers, always use the full field width
+                # The external module handles wide register access internally.
                 vslice = f"[{field.msb}:{field.lsb}]"
-            else:
-                # For wide registers, we need to handle fields that may span multiple subwords
-                # For now, we'll create a slice for each subword that the field touches
-                for subword_idx in range(n_subwords):
-                    subword_start = subword_idx * accesswidth
-                    subword_end = (subword_idx + 1) * accesswidth - 1
-
-                    # Check if field overlaps with this subword
-                    if field.low <= subword_end and field.high >= subword_start:
-                        # Calculate the slice within this subword
-                        field_low_in_subword = max(field.low - subword_start, 0)
-                        field_high_in_subword = min(
-                            field.high - subword_start, accesswidth - 1
-                        )
-                        vslice = f"[{field_high_in_subword}:{field_low_in_subword}]"
-                    else:
-                        # Field doesn't overlap with this subword, add empty slice
-                        vslice = f"[{accesswidth-1}:0]"
-
-                    inst_names.append([path, vslice])
+                inst_names.append([path, vslice])
 
         context = {
             "has_sw_writable": node.has_sw_writable,
@@ -438,12 +457,21 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         readable = False
         if isinstance(node, RegfileNode):
             retime = self.ds.retime_external_regfile
+            # Check if regfile has sw-writable/readable registers
+            writable = any(reg.has_sw_writable for reg in node.registers())
+            readable = any(reg.has_sw_readable for reg in node.registers())
         elif isinstance(node, MemNode):
             retime = self.ds.retime_external_mem
             writable = node.is_sw_writable
             readable = node.is_sw_readable
         elif isinstance(node, AddrmapNode):
             retime = self.ds.retime_external_addrmap
+            # Check if addrmap has sw-writable/readable registers
+            for desc in node.descendants():
+                if hasattr(desc, "has_sw_writable"):
+                    writable = writable or desc.has_sw_writable
+                if hasattr(desc, "has_sw_readable"):
+                    readable = readable or desc.has_sw_readable
 
         context = {
             "is_sw_writable": writable,

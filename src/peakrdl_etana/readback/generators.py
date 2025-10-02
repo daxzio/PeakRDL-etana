@@ -117,15 +117,35 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     #         #             self.current_offset += 1
     #         self.regfile = False
 
+    def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
+        # For external regfiles, use bus interface readback
+        if node.external:
+            self.process_external_block(node)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
+        # Skip top-level
+        if node == self.exp.ds.top_node:
+            return WalkerAction.Continue
+
+        # For external addrmaps, use bus interface readback
+        if node.external:
+            self.process_external_block(node)
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
     def enter_Reg(self, node: RegNode) -> WalkerAction:
         if not node.has_sw_readable:
             return WalkerAction.SkipDescendants
 
-        #         if node.external:
-        #             self.process_reg(node)
-        #             return
-        #             self.process_external_reg(node)
-        #             #return WalkerAction.SkipDescendants
+        # Check if this register is inside an external regfile/addrmap
+        # If so, skip it - the parent external block handles the readback
+        parent = node.parent
+        while parent is not None and parent != self.exp.ds.top_node:
+            if hasattr(parent, "external") and parent.external:
+                return WalkerAction.SkipDescendants
+            parent = parent.parent if hasattr(parent, "parent") else None
 
         accesswidth = node.get_property("accesswidth")
         regwidth = node.get_property("regwidth")
@@ -188,6 +208,17 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     #
     # #             self.process_external_reg(node)
     #             self.process_reg(node)
+
+    def process_external_block(self, node: "AddressableNode") -> None:
+        """Handle readback for external regfile, addrmap, or mem blocks."""
+        # Use the bus interface rd_data and rd_ack signals
+        rd_data = self.exp.hwif.get_external_rd_data(node, True)
+        rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
+
+        self.add_content(
+            f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data} : '0;"
+        )
+        self.current_offset += 1
 
     def process_external_reg(self, node: RegNode) -> None:
         regwidth = node.get_property("regwidth")
@@ -404,6 +435,20 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def process_wide_reg(self, node: RegNode, accesswidth: int) -> None:
         bus_width = self.exp.cpuif.data_width
 
+        # For external wide registers, use simpler bus interface readback
+        if node.external:
+            n_subwords = node.get_property("regwidth") // accesswidth
+            rd_data = self.exp.hwif.get_external_rd_data(node, True)
+            rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
+
+            for subword_idx in range(n_subwords):
+                # Each subword gets its own readback entry
+                self.add_content(
+                    f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data} : '0;"
+                )
+                self.current_offset += 1
+            return
+
         subword_idx = 0
         current_bit = 0  # Bit-offset within the wide register
         access_strb = self.exp.dereferencer.get_access_strobe(
@@ -444,7 +489,13 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             field_pos = field.low
             while current_bit <= field.high:
                 # Assign the field
-                rd_strb = f"({access_strb.path}[{subword_idx}] && !decoded_req_is_wr)"
+                # For external registers, use rd_ack; for internal, use access strobe
+                if node.external:
+                    rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
+                else:
+                    rd_strb = (
+                        f"({access_strb.path}[{subword_idx}] && !decoded_req_is_wr)"
+                    )
                 if (field_pos == field.low) and (
                     field.high < accesswidth * (subword_idx + 1)
                 ):
@@ -452,7 +503,11 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     low = field.low - accesswidth * subword_idx
                     high = field.high - accesswidth * subword_idx
 
-                    value = self.exp.dereferencer.get_value(field)
+                    # For external registers, use external rd_data; for internal, use dereferencer
+                    if node.external:
+                        value = self.exp.hwif.get_external_rd_data(field, True)
+                    else:
+                        value = self.exp.dereferencer.get_value(field)
                     if field.msb < field.lsb:
                         # Field gets bitswapped since it is in [low:high] orientation
                         value = do_bitswap(value, field.width)
@@ -486,16 +541,26 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_high = field.width - 1 - f_high
                         f_low, f_high = f_high, f_low
 
+                        # For external registers, use external rd_data; for internal, use dereferencer
+                        if node.external:
+                            field_value = self.exp.hwif.get_external_rd_data(
+                                field, True
+                            )
+                        else:
+                            field_value = self.exp.dereferencer.get_value(field)
                         value = do_bitswap(
-                            do_slice(
-                                self.exp.dereferencer.get_value(field), f_high, f_low
-                            ),
+                            do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
                     else:
-                        value = do_slice(
-                            self.exp.dereferencer.get_value(field), f_high, f_low
-                        )
+                        # For external registers, use external rd_data; for internal, use dereferencer
+                        if node.external:
+                            field_value = self.exp.hwif.get_external_rd_data(
+                                field, True
+                            )
+                        else:
+                            field_value = self.exp.dereferencer.get_value(field)
+                        value = do_slice(field_value, f_high, f_low)
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"
@@ -525,16 +590,26 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_high = field.width - 1 - f_high
                         f_low, f_high = f_high, f_low
 
+                        # For external registers, use external rd_data; for internal, use dereferencer
+                        if node.external:
+                            field_value = self.exp.hwif.get_external_rd_data(
+                                field, True
+                            )
+                        else:
+                            field_value = self.exp.dereferencer.get_value(field)
                         value = do_bitswap(
-                            do_slice(
-                                self.exp.dereferencer.get_value(field), f_high, f_low
-                            ),
+                            do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
                     else:
-                        value = do_slice(
-                            self.exp.dereferencer.get_value(field), f_high, f_low
-                        )
+                        # For external registers, use external rd_data; for internal, use dereferencer
+                        if node.external:
+                            field_value = self.exp.hwif.get_external_rd_data(
+                                field, True
+                            )
+                        else:
+                            field_value = self.exp.dereferencer.get_value(field)
+                        value = do_slice(field_value, f_high, f_low)
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"

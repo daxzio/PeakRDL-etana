@@ -169,8 +169,22 @@ class Hwif:
         if isinstance(node, FieldNode):
             if not node.is_sw_readable:
                 raise
-            p = IndexedPath(self.top_node, node)
-            s = f"{self.hwif_in_str}_{p.path}_rd_data"
+            # Check if this is a wide register with only ONE field
+            regwidth = node.parent.get_property("regwidth")
+            accesswidth = node.parent.get_property("accesswidth")
+            n_subwords = regwidth // accesswidth
+            is_wide_single_field = (
+                n_subwords > 1 and len(list(node.parent.fields())) == 1
+            )
+
+            # Match regblock naming: {reg}_rd_data_{field} for normal fields
+            # For wide registers with single field: {reg}_rd_data (no field suffix)
+            p_reg = IndexedPath(self.top_node, node.parent)
+            if is_wide_single_field:
+                s = f"{self.hwif_in_str}_{p_reg.path}_rd_data"
+            else:
+                s = f"{self.hwif_in_str}_{p_reg.path}_rd_data_{node.inst_name}"
+            p = p_reg  # For index handling below
         elif isinstance(node, RegfileNode):
             p = IndexedPath(self.top_node, node)
             s = f"{self.hwif_in_str}_{p.path}_rd_data"
@@ -180,8 +194,13 @@ class Hwif:
         elif isinstance(node, MemNode):
             p = IndexedPath(self.top_node, node)
             s = f"{self.hwif_in_str}_{p.path}_rd_data"
+        elif isinstance(node, AddrmapNode):
+            p = IndexedPath(self.top_node, node)
+            s = f"{self.hwif_in_str}_{p.path}_rd_data"
         else:
-            raise
+            raise RuntimeError(
+                f"Unhandled node type in get_external_rd_data: {type(node)}"
+            )
         if index:
             s += p.index_str
         #             print(p.index_vector)

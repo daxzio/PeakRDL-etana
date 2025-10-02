@@ -7,8 +7,8 @@ always_ff {{get_always_ff_event(resetsignal)}} begin
         {{prefix}}_req_is_wr <= '0;
     {%- if has_sw_writable %}
     {%- for inst_name in inst_names %}
-        {{prefix}}{{inst_name[0]}}_wr_data <= '0;
-        {{prefix}}{{inst_name[0]}}_wr_biten <= '0;
+        {{prefix}}_wr_data{{inst_name[0]}} <= '0;
+        {{prefix}}_wr_biten{{inst_name[0]}} <= '0;
     {%- endfor %}
     {%- endif %}
     end else begin
@@ -22,8 +22,8 @@ always_ff {{get_always_ff_event(resetsignal)}} begin
         {{prefix}}_req_is_wr{{index_str}} <= decoded_req_is_wr;
     {%- if has_sw_writable %}
     {%- for inst_name in inst_names %}
-        {{prefix}}{{inst_name[0]}}_wr_data{{index_str}} = decoded_wr_data{{inst_name[1]}};
-        {{prefix}}{{inst_name[0]}}_wr_biten{{index_str}} = decoded_wr_biten{{inst_name[1]}};
+        {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
+        {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
     {%- endfor %}
     {%- endif %}
     end
@@ -40,11 +40,11 @@ assign {{prefix}}_req{{index_str}} = !decoded_req_is_wr ? {{strb}}{{index_str}}:
 {%- elif not has_sw_readable and has_sw_writable %}
 assign {{prefix}}_req{{index_str}} = decoded_req_is_wr ? {{strb}}{{index_str}} : '0;
 {%- endif %}
-{%- if has_sw_writable %}
 assign {{prefix}}_req_is_wr{{index_str}} = decoded_req_is_wr;
+{%- if has_sw_writable %}
 {%- for inst_name in inst_names %}
-assign {{prefix}}{{inst_name[0]}}_wr_data{{index_str}} = decoded_wr_data{{inst_name[1]}};
-assign {{prefix}}{{inst_name[0]}}_wr_biten{{index_str}} = decoded_wr_biten{{inst_name[1]}};
+assign {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
+assign {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
 {%- endfor %}
 {%- endif %}
 
