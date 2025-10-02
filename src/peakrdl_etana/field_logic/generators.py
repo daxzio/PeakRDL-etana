@@ -178,7 +178,14 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
 
+        # Get reset signal - check for field_reset signal in parent register first
         resetsignal = node.get_property("resetsignal", default=None)
+        if resetsignal is None:
+            # Check if parent register has a field_reset signal
+            for signal in node.parent.signals():
+                if signal.get_property("field_reset", default=False):
+                    resetsignal = signal
+                    break
 
         reset_value = node.get_property("reset", default=None)
         if reset_value is not None:
@@ -237,7 +244,15 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         unconditional = None
 
         # Get reset information (same pattern as standard field storage)
+        # Get reset signal - check for field_reset signal in parent register first
         resetsignal = node.get_property("resetsignal", default=None)
+        if resetsignal is None:
+            # Check if parent register has a field_reset signal
+            for signal in node.parent.signals():
+                if signal.get_property("field_reset", default=False):
+                    resetsignal = signal
+                    break
+
         reset_value = node.get_property("reset", default=None)
         if reset_value is not None:
             reset_value_str = self.exp.dereferencer.get_value(reset_value, node.width)
