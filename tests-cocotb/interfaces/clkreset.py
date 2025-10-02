@@ -1,7 +1,6 @@
 from cocotb.clock import Clock
 from cocotb import start_soon
 from cocotb.triggers import RisingEdge, Timer
-from .diff_clock import DiffClock
 
 
 class Clk:
@@ -19,18 +18,6 @@ class Clk:
 
     async def end_test(self, length=10):
         await self.wait_clkn(length)
-
-
-class DClk(Clk):
-    def __init__(self, dut, period=10, units="ns", clkname="clk"):
-        self.clk_p = getattr(dut, clkname + "_p")
-        self.clk_n = getattr(dut, clkname + "_n")
-        self.period = period
-        start_soon(DiffClock(self.clk_p, self.clk_n, self.period, units=units).start())
-
-    @property
-    def clk(self):
-        return self.clk_p
 
 
 class Reset:

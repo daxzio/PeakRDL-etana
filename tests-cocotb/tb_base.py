@@ -36,7 +36,9 @@ class testbench:
             if attr.startswith("hwif_"):
                 sig = getattr(dut, attr)
                 setattr(self, attr, sig)
-                sig.value = 0
+                # Only initialize inputs, not outputs
+                if attr.startswith("hwif_in_"):
+                    sig.value = 0
                 # print(f"setattr(self, {attr}, {sig})")
 
 
