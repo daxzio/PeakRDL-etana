@@ -177,6 +177,37 @@ class InputLogicGenerator(RDLListener):
                 return  # Skip this register
             parent = parent.parent if hasattr(parent, "parent") else None
 
+        # Check for register-level interrupt outputs
+        # Interrupt and halt are field properties, so check if any field in the register has them
+        has_intr = any(
+            field.get_property("intr") is not None for field in node.fields()
+        )
+        has_halt = any(
+            field.get_property("haltenable") is not None
+            or field.get_property("haltmask") is not None
+            for field in node.fields()
+        )
+
+        if has_intr:
+            # Register has interrupt output
+            from ..utils import IndexedPath
+
+            p = IndexedPath(self.hwif.top_node, node)
+            intr_identifier = f"{self.hwif.hwif_out_str}_{p.path}_intr"
+            self.hwif_port.append(
+                f"output logic {self.vector_text}[0:0] {intr_identifier}"
+            )
+
+        if has_halt:
+            # Register has halt output
+            from ..utils import IndexedPath
+
+            p = IndexedPath(self.hwif.top_node, node)
+            halt_identifier = f"{self.hwif.hwif_out_str}_{p.path}_halt"
+            self.hwif_port.append(
+                f"output logic {self.vector_text}[0:0] {halt_identifier}"
+            )
+
         if node.external:
             vector_extend = ""
             if not 1 == self.n_subwords:
@@ -300,6 +331,72 @@ class InputLogicGenerator(RDLListener):
             if self.hwif.has_value_output(node):
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
                 self.hwif_port.append(f"output logic {field_text} {output_identifier}")
+
+            # Add implied property output signals (bitwise reductions, access strobes, counter events)
+            for prop in ["anded", "ored", "xored", "swmod", "swacc"]:
+                if node.get_property(prop, default=False):
+                    prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                        node, prop
+                    )
+                    # These outputs are single-bit
+                    prop_output_text = self.vector_text + "[0:0]"
+                    self.hwif_port.append(
+                        f"output logic {prop_output_text} {prop_identifier}"
+                    )
+
+            # Access strobe outputs
+            if node.get_property("rd_swacc", default=False):
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "rd_swacc"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
+            if node.get_property("wr_swacc", default=False):
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "wr_swacc"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
+
+            # Counter event outputs
+            if node.get_property("overflow", default=False):
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "overflow"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
+            if node.get_property("underflow", default=False):
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "underflow"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
+
+            # Counter threshold outputs
+            if node.get_property("incrthreshold") is not None:
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "incrthreshold"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
+            if node.get_property("decrthreshold") is not None:
+                prop_identifier = self.hwif.get_implied_prop_output_identifier(
+                    node, "decrthreshold"
+                )
+                prop_output_text = self.vector_text + "[0:0]"
+                self.hwif_port.append(
+                    f"output logic {prop_output_text} {prop_identifier}"
+                )
 
             # Add implied property input signals
             for prop in implied_props:
