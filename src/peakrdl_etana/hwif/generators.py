@@ -124,15 +124,34 @@ class InputLogicGenerator(RDLListener):
             "swwel",
             "we",
             "wel",
-            "incr",
-            "decr",
-            "incrvalue",
-            "decrvalue",
         ]:
             prop_value = node.get_property(prop)
             if prop_value is True:
                 # This property uses an implied input signal
                 implied_props.append(prop)
+
+        # Special handling for counter properties
+        # For counters, if incr/decr is not explicitly set to a reference, it needs an implied input
+        if node.is_up_counter or node.is_down_counter:
+            if node.is_up_counter:
+                incr_prop = node.get_property("incr")
+                if incr_prop is None or incr_prop is True:
+                    # Needs implied incr signal
+                    implied_props.append("incr")
+
+                # Check if incrvalue needs an implied signal
+                if node.get_property("incrwidth"):
+                    implied_props.append("incrvalue")
+
+            if node.is_down_counter:
+                decr_prop = node.get_property("decr")
+                if decr_prop is None or decr_prop is True:
+                    # Needs implied decr signal
+                    implied_props.append("decr")
+
+                # Check if decrvalue needs an implied signal
+                if node.get_property("decrwidth"):
+                    implied_props.append("decrvalue")
 
         if (
             not self.hwif.has_value_input(node)
