@@ -5,6 +5,7 @@
 REGBLOCK=0
 SIM="icarus"
 COCOTB_REV="2.0.0"
+YOSYS=0
 
 for arg in "$@"; do
     case $arg in
@@ -17,9 +18,12 @@ for arg in "$@"; do
         COCOTB_REV=*)
             COCOTB_REV="${arg#*=}"
             ;;
+        YOSYS=*)
+            YOSYS="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=Icarus|Verilator] [COCOTB_REV=2.0.0|1.9.2]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1]"
             exit 1
             ;;
     esac
@@ -32,7 +36,14 @@ else
     TARGET_NAME="etana"
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME SIM=$SIM COCOTB_REV=$COCOTB_REV ==="
+# Add synthesis indicator if YOSYS is enabled
+if [ "$YOSYS" -eq 1 ]; then
+    SYNTH_INDICATOR=" (synthesized)"
+else
+    SYNTH_INDICATOR=""
+fi
+
+echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV ==="
 echo ""
 
 PASS_COUNT=0
@@ -50,6 +61,11 @@ for dir in test_*/; do
             target="etana"
         fi
 
+        # Add yosys target if enabled
+        if [ "$YOSYS" -eq 1 ]; then
+            target="$target yosys"
+        fi
+
         # Build make command
         make_cmd="timeout 60 make clean $target sim"
         if [ -n "$SIM" ]; then
@@ -60,6 +76,9 @@ for dir in test_*/; do
         fi
         if [ -n "$COCOTB_REV" ]; then
             make_cmd="$make_cmd COCOTB_REV=$COCOTB_REV"
+        fi
+        if [ "$YOSYS" -eq 1 ]; then
+            make_cmd="$make_cmd YOSYS=$YOSYS"
         fi
 
         (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)
