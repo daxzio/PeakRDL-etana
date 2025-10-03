@@ -6,6 +6,7 @@ REGBLOCK=0
 SIM="icarus"
 COCOTB_REV="2.0.0"
 YOSYS=0
+CPUIF="apb4-flat"
 
 for arg in "$@"; do
     case $arg in
@@ -21,9 +22,12 @@ for arg in "$@"; do
         YOSYS=*)
             YOSYS="${arg#*=}"
             ;;
+        CPUIF=*)
+            CPUIF="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc]"
             exit 1
             ;;
     esac
@@ -43,7 +47,7 @@ else
     SYNTH_INDICATOR=""
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV ==="
+echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF ==="
 echo ""
 
 PASS_COUNT=0
@@ -79,6 +83,9 @@ for dir in test_*/; do
         fi
         if [ "$YOSYS" -eq 1 ]; then
             make_cmd="$make_cmd YOSYS=$YOSYS"
+        fi
+        if [ -n "$CPUIF" ]; then
+            make_cmd="$make_cmd CPUIF=$CPUIF"
         fi
 
         (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)

@@ -20,10 +20,21 @@ class testbench:
 
             apb_bus = ApbBus.from_prefix(dut, "s_apb")
             self.intf = ApbMaster(apb_bus, getattr(dut, "clk"))
+        elif hasattr(dut, "s_ahb_hsel"):
+            from cocotbext.ahb import AHBBus
+
+            # from cocotbext.ahb import AHBMaster
+            from interfaces.ahb_wrapper import AHBLiteMasterDX
+
+            ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
+            self.intf = AHBLiteMasterDX(
+                ahb_bus, getattr(dut, "clk"), getattr(dut, "rst")
+            )
+
+            # self.intf = AHBMaster(ahb_bus, getattr(dut, "clk"), getattr(dut, "rst"))
         elif hasattr(dut, "s_axil_awvalid"):
             from interfaces.axi_driver import AxiDriver
 
-            apb_bus = ApbBus.from_prefix(dut, "s_apb")
             self.intf = AxiDriver(dut, "s_axil", "clk")
         else:
             raise Exception("Unsupported interface")
