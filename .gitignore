@@ -26,3 +26,6 @@ sim_build/
 synth_yosys.v
 cocotbext
 top_edit.sv
+etana-rtl/
+regblock-rtl/
+rdl-rtl
