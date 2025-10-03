@@ -38,11 +38,11 @@ class HwifSignal:
         # Remove prefix
         name = self.struct_path.replace(f"{self.prefix}.", "")
 
-        # Remove array ranges [N:M]
-        name = re.sub(r"\[(\d+):(\d+)\]", "", name)
+        # Remove array ranges [N:M] including negative indices (e.g., [7:-8])
+        name = re.sub(r"\[(-?\d+):(-?\d+)\]", "", name)
 
-        # Convert single indices [N] to _N
-        name = re.sub(r"\[(\d+)\]", r"_\1", name)
+        # Convert single indices [N] to _N (including negative like [-7] to _7)
+        name = re.sub(r"\[(-?\d+)\]", lambda m: f"_{abs(int(m.group(1)))}", name)
 
         # Replace dots with underscores
         name = name.replace(".", "_")
@@ -134,19 +134,22 @@ def parse_signal_line(line: str) -> HwifSignal:
     path = line
 
     # Check if line ends with a bit range [MSB:LSB] or [BIT]
-    match = re.search(r"\[(\d+)(?::(\d+))?\]$", line)
+    # Handle both positive and negative numbers (e.g., [7:-8], [31:12], [-9:-32])
+    match = re.search(r"\[(-?\d+)(?::(-?\d+))?\]$", line)
     if match:
         # Extract the path without the bit range
         path = line[: match.start()]
 
         if match.group(2):
-            # Range [MSB:LSB]
+            # Range [MSB:LSB] - can have negative values
             msb = int(match.group(1))
             lsb = int(match.group(2))
-            width = msb - lsb + 1
+            width = abs(msb - lsb) + 1
+            # Use the smaller absolute value as lsb for port declaration
+            lsb = min(abs(msb), abs(lsb))
         else:
-            # Single bit [BIT]
-            lsb = int(match.group(1))
+            # Single bit [BIT] - can be negative
+            lsb = abs(int(match.group(1)))
             width = 1
 
     # Extract array dimensions from the path

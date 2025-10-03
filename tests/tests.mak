@@ -26,7 +26,7 @@ VERILOG_SOURCES?= \
 ifeq ($(REGBLOCK),1)
 	SIM=verilator
     TOPLEVEL=regblock_wrapper
-	COMPILE_ARGS += -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER
+	COMPILE_ARGS += -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER -Wno-WIDTHTRUNC
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 endif
