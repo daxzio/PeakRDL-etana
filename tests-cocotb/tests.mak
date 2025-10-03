@@ -9,16 +9,24 @@ ETANA_DIR=/mnt/sda/projects/PeakRDL-etana
 REGBLOCK_DIR=/mnt/sda/projects/PeakRDL-regblock
 REGBLOCK=0
 
+# MULTIDRIVEN test_counter_basics
+# ALWCOMBORDER test_counter_basics
 ifeq ($(REGBLOCK),1)
 	SIM=verilator
     TOPLEVEL=regblock_wrapper
+	COMPILE_ARGS += -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER
+    VERILOG_SOURCES?= \
+        ./regblock-rtl/*.sv
+else
+    VERILOG_SOURCES?= \
+        ./etana-rtl/*.sv
 endif
+
+# WIDTHEXPAND test_counter_basics
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 ifeq ($(SIM),verilator)
-	COMPILE_ARGS += --no-timing -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-STMTDLY -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER -Wno-UNOPTFLAT
-	COMPILE_ARGS += --public-flat-rw  # Make struct members accessible to cocotb
-	COMPILE_ARGS += --trace-structs   # Preserve struct hierarchy
+	COMPILE_ARGS += --no-timing -Wno-UNOPTFLAT -Wno-WIDTHEXPAND
 endif
 ifeq ($(WAVES),1)
 	ifeq ($(SIM),verilator)
@@ -31,16 +39,12 @@ endif
 
 etana:
 	peakrdl etana ${ETANA_DIR}/hdl-src/regblock_udps.rdl regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
-	rm -rf rdl-rtl
-	ln -s etana-rtl rdl-rtl
 
 regblock:
 	peakrdl regblock ${REGBLOCK_DIR}/hdl-src/regblock_udps.rdl regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
-	rm -rf rf rdl-rtl
-	ln -s regblock-rtl rdl-rtl
 
 clean::
-	rm -rf *-rtl sim_build/ __pycache__/ results.xml
+	rm -rf sim_build/ __pycache__/ results.xml *.fst rdl-rtl
 
 waves:
 	gtkwave sim_build/regblock.fst &
