@@ -7,3 +7,4 @@ pyflakes
 cocotb_bus
 cocotbext-apb
 cocotbext-ahb
+cocotbext-axi
