@@ -15,7 +15,7 @@ description into synthesizable SystemVerilog RTL with individual signal ports in
 **Features:**
 
 * Generates fully synthesizable SystemVerilog RTL (IEEE 1800-2012)
-* Options for many popular CPU interface protocols (AMBA APB, AXI4-Lite, and more)
+* Options for many popular CPU interface protocols (AMBA APB, AHB, AXI4-Lite, and more)
 * Configurable pipelining options for designs with fast clock rates
 * Broad support for SystemRDL 2.0 features
 * Fully synthesizable SystemVerilog. Tested on Xilinx/AMD's Vivado & Intel Quartus
@@ -81,6 +81,7 @@ Links
 
     cpuif/introduction
     cpuif/apb
+    cpuif/ahb
     cpuif/axi4lite
     cpuif/avalon
     cpuif/passthrough

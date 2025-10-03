@@ -24,7 +24,7 @@ SYNTH_OUTPUT?=synth-rtl
 VERILOG_SOURCES?= \
     ./etana-rtl/*.sv
 ifeq ($(REGBLOCK),1)
-	SIM=verilator
+	override SIM=verilator
     TOPLEVEL=regblock_wrapper
 	COMPILE_ARGS += -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER -Wno-WIDTHTRUNC
     VERILOG_SOURCES= \
@@ -56,8 +56,8 @@ etana:
 	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
 
 regblock:
-	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
 	rm -rf regblock-rtl/*
+	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
 	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 # Synthesize the design using Yosys

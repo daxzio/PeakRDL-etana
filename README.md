@@ -35,7 +35,7 @@ This approach eliminates the need for complex struct hierarchies and provides:
 
 - **Flattened signal interface** - Individual ports for clean integration
 - **Full SystemRDL 2.0 support** - Complete standard compliance
-- **Multiple CPU interfaces** - AMBA APB, AXI4-Lite, Avalon, and more
+- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, and more
 - **Configurable pipelining** - Optimization options for high-speed designs
 - **Enhanced safety checks** - Width validation and assertion guards
 - **Optimized field logic** - Improved reset handling and interrupt management
@@ -128,11 +128,24 @@ module my_block (
 
 ## Command Line Options
 
-- `--cpuif <interface>` - Select CPU interface (apb, axi4-lite, avalon, etc.)
-- `--pipeline` - Enable pipeline optimizations
-- `--reset-active-low` - Use active-low reset
-- `--output <dir>` - Specify output directory
-- `--top-name <name>` - Override top-level module name
+### CPU Interface
+- `--cpuif <interface>` - Select CPU interface (apb3, apb4, ahb-flat, axi4-lite, avalon-mm, etc.)
+
+### Hardware Interface Customization
+- `--in-str <prefix>` - Customize input signal prefix (default: `hwif_in`)
+- `--out-str <prefix>` - Customize output signal prefix (default: `hwif_out`)
+
+### Reset Configuration
+- `--default-reset <style>` - Set default reset style (rst, rst_n, arst, arst_n)
+
+### Pipeline Optimization
+- `--rt-read-response` - Enable additional retiming stage
+- `--rt-external <targets>` - Retime outputs to external components
+
+### Other Options
+- `-o, --output <dir>` - Specify output directory
+- `--rename <name>` - Override top-level module name
+- `--allow-wide-field-subwords` - Allow non-atomic writes to wide registers
 
 ## Documentation
 
@@ -141,6 +154,50 @@ Detailed documentation is available in the `docs/` directory, including:
 - Signal naming conventions
 - Integration guidelines
 - Advanced configuration options
+
+## Testing
+
+PeakRDL-etana includes comprehensive test frameworks:
+
+### Test Frameworks
+
+- **tests-cocotb/** - Modern Python-based testing framework using cocotb
+- **tests-regblock/** - Legacy framework using Jinja2 + SystemVerilog templates
+
+### Testing Documentation
+
+**📚 [TESTING_MIGRATION_README.md](TESTING_MIGRATION_README.md)** - Start here for overview and quick start
+**📖 [COCOTB_MIGRATION_GUIDE.md](COCOTB_MIGRATION_GUIDE.md)** - Complete step-by-step migration guide
+
+### Quick Start (cocotb)
+
+```bash
+# Activate virtual environment
+source venv.2.0.0/bin/activate
+cd tests-cocotb/test_simple
+
+# Test with regblock reference (recommended)
+make clean regblock sim SIM=verilator REGBLOCK=1
+
+# Test with etana
+make clean etana sim SIM=verilator REGBLOCK=0
+
+# Simple run (etana by default)
+make
+```
+
+**All 26 tests migrated (100% coverage) ✅**
+
+### Quick Start (tests-regblock)
+
+```bash
+# Install dependencies
+cd tests-regblock
+pip install -r requirements.txt
+
+# Run tests
+pytest
+```
 
 ## Contributing
 

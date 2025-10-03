@@ -115,7 +115,6 @@ class AHBLiteMasterDX(AHBLiteMaster):
         address: Union[int, Sequence[int]],
         value: Union[int, Sequence[int]],
         length: Optional[int] = 1,
-        #         size : Optional[Union[int, Sequence[int]]] = None,
         **kwargs,
     ) -> Sequence[dict]:
         self.prepare_addresses(address, value, length)

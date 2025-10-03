@@ -15,9 +15,27 @@ This flattened approach has the following benefits:
 
 Signals follow the pattern: ``{direction}_{hierarchical_path}_{feature}``
 
-* **Direction**: ``hwif_in`` for inputs to the register block, ``hwif_out`` for outputs
+* **Direction**: ``hwif_in`` for inputs to the register block, ``hwif_out`` for outputs (customizable via ``--in-str`` and ``--out-str``)
 * **Hierarchical path**: Underscore-separated path through the design hierarchy
 * **Feature**: Signal purpose (value, we, wr_ack, etc.)
+
+### Customizing Signal Prefixes
+
+The default prefixes (``hwif_in`` and ``hwif_out``) can be customized using command-line options:
+
+.. code-block:: bash
+
+    # Use custom prefixes
+    peakrdl etana design.rdl --in-str my_in --out-str my_out -o output/
+
+    # Results in signals like:
+    # input wire [7:0] my_in_reg_field,
+    # output logic [7:0] my_out_reg_data,
+
+**Options:**
+
+* ``--in-str <prefix>`` - Customize the prefix for input signals (default: ``hwif_in``)
+* ``--out-str <prefix>`` - Customize the prefix for output signals (default: ``hwif_out``)
 
 ## Example
 

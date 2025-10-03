@@ -43,3 +43,84 @@ All regblock-specific options are defined under the ``[regblock]`` TOML heading.
 
         [regblock]
         default_reset = "arst"
+
+
+Command Line Options
+====================
+
+The following command-line options are available when using the PeakRDL command line tool:
+
+CPU Interface Selection
+-----------------------
+
+.. option:: --cpuif <interface>
+
+    Select the CPU interface protocol. Available options include:
+
+    * ``apb3`` / ``apb3-flat`` - AMBA APB3 interface
+    * ``apb4`` / ``apb4-flat`` - AMBA APB4 interface
+    * ``ahb-flat`` - AMBA AHB interface
+    * ``axi4-lite`` / ``axi4-lite-flat`` - AMBA AXI4-Lite interface
+    * ``avalon-mm`` / ``avalon-mm-flat`` - Avalon Memory-Mapped interface
+    * ``passthrough`` - Direct internal protocol passthrough
+
+    The ``-flat`` suffix indicates flattened input/output ports instead of SystemVerilog interfaces.
+
+Hardware Interface Customization
+---------------------------------
+
+.. option:: --in-str <prefix>
+
+    Customize the prefix for hardware interface input signals. Default is ``hwif_in``.
+
+    Example:
+
+    .. code-block:: bash
+
+        peakrdl etana design.rdl --in-str my_hw_in -o output/
+
+.. option:: --out-str <prefix>
+
+    Customize the prefix for hardware interface output signals. Default is ``hwif_out``.
+
+    Example:
+
+    .. code-block:: bash
+
+        peakrdl etana design.rdl --out-str my_hw_out -o output/
+
+Reset Configuration
+-------------------
+
+.. option:: --default-reset <style>
+
+    Choose the default style of reset signal if not explicitly specified by the SystemRDL design.
+
+    Choices:
+
+    * ``rst`` - Synchronous, active-high (default)
+    * ``rst_n`` - Synchronous, active-low
+    * ``arst`` - Asynchronous, active-high
+    * ``arst_n`` - Asynchronous, active-low
+
+Pipeline Optimization
+---------------------
+
+.. option:: --rt-read-response
+
+    Enable additional retiming stage between readback fan-in and CPU interface.
+    This can improve timing for high-speed designs.
+
+.. option:: --rt-external <targets>
+
+    Retime outputs to external components. Specify a comma-separated list of targets:
+    ``reg``, ``regfile``, ``mem``, ``addrmap``, or ``all``.
+
+Advanced Options
+----------------
+
+.. option:: --allow-wide-field-subwords
+
+    Allow software-writable fields to span multiple subwords without write buffering.
+    This bypasses SystemRDL specification rule 10.6.1-f and enables non-atomic writes
+    to wide registers.
