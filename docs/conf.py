@@ -19,9 +19,12 @@ import datetime
 
 # -- Project information -----------------------------------------------------
 
-project = "PeakRDL-regblock"
-copyright = "%d, Alex Mykyta" % datetime.datetime.now().year
-author = "Alex Mykyta"
+project = "PeakRDL-etana"
+copyright = (
+    "%d, Dave Keeshan (based on PeakRDL-regblock by Alex Mykyta)"
+    % datetime.datetime.now().year
+)
+author = "Dave Keeshan"
 
 
 # -- General configuration ---------------------------------------------------

@@ -1,7 +1,7 @@
 .. _peakrdl_cfg:
 
-Configuring PeakRDL-regblock
-============================
+Configuring PeakRDL-etana
+=========================
 
 If using the `PeakRDL command line tool <https://peakrdl.readthedocs.io/>`_,
 some aspects of the ``regblock`` command have additional configuration options

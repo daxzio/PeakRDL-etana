@@ -26,7 +26,8 @@ description into synthesizable SystemVerilog RTL with individual signal ports in
     This is a specialized fork with flattened signal architecture. For the original
     struct-based implementation, see `PeakRDL-regblock <https://github.com/SystemRDL/PeakRDL-regblock>`_.
 
-## Upstream Sync Status
+Upstream Sync Status
+--------------------
 
 This fork is based on **PeakRDL-regblock v0.22.0** (December 2024) and includes all applicable
 fixes from **v1.1.0**. See ``UPSTREAM_SYNC_STATUS.md`` in the repository root for detailed information.

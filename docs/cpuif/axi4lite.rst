@@ -12,13 +12,13 @@ The AXI4-Lite CPU interface comes in two i/o port flavors:
 SystemVerilog Interface
     * Command line: ``--cpuif axi4-lite``
     * Interface Definition: :download:`axi4lite_intf.sv <../../hdl-src/axi4lite_intf.sv>`
-    * Class: :class:`peakrdl_regblock.cpuif.axi4lite.AXI4Lite_Cpuif`
+    * Class: :class:`peakrdl_etana.cpuif.axi4lite.AXI4Lite_Cpuif`
 
 Flattened inputs/outputs
     Flattens the interface into discrete input and output ports.
 
     * Command line: ``--cpuif axi4-lite-flat``
-    * Class: :class:`peakrdl_regblock.cpuif.axi4lite.AXI4Lite_Cpuif_flattened`
+    * Class: :class:`peakrdl_etana.cpuif.axi4lite.AXI4Lite_Cpuif_flattened`
 
 
 Pipelined Performance
