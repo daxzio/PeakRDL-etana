@@ -4,6 +4,7 @@
 # Parse command-line arguments
 REGBLOCK=0
 SIM="icarus"
+COCOTB_REV="2.0.0"
 
 for arg in "$@"; do
     case $arg in
@@ -13,9 +14,12 @@ for arg in "$@"; do
         SIM=*)
             SIM="${arg#*=}"
             ;;
+        COCOTB_REV=*)
+            COCOTB_REV="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=Icarus|Verilator]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=Icarus|Verilator] [COCOTB_REV=2.0.0|1.9.2]"
             exit 1
             ;;
     esac
@@ -28,7 +32,7 @@ else
     TARGET_NAME="etana"
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME SIM=$SIM ==="
+echo "=== Testing All Tests with target=$TARGET_NAME SIM=$SIM COCOTB_REV=$COCOTB_REV ==="
 echo ""
 
 PASS_COUNT=0
@@ -53,6 +57,9 @@ for dir in test_*/; do
         fi
         if [ "$REGBLOCK" -eq 1 ]; then
             make_cmd="$make_cmd REGBLOCK=$REGBLOCK"
+        fi
+        if [ -n "$COCOTB_REV" ]; then
+            make_cmd="$make_cmd COCOTB_REV=$COCOTB_REV"
         fi
 
         (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)

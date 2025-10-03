@@ -4,7 +4,7 @@ from cocotb.triggers import RisingEdge, Timer
 
 
 class Clk:
-    def __init__(self, dut, period=10, unit="ns", clkname="clk"):
+    def __init__(self, dut, period=10, unit="ns", units="ns", clkname="clk"):
         self.clk = getattr(dut, clkname)
         self.period = period
         try:

@@ -1,8 +1,13 @@
 SIM?=icarus
 TOPLEVEL_LANG?=verilog
+COCOTB_REV?=2.0.0
 
 TOPLEVEL?=regblock
-COCOTB_TEST_MODULES?=test_dut
+ifeq ($(COCOTB_REV),2.0.0)
+	COCOTB_TEST_MODULES?=test_dut
+else
+	MODULE?=test_dut
+endif
 
 CPUIF?=apb4-flat
 #UDPS?=../regblock_udps.rdl
