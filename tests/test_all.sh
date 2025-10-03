@@ -33,7 +33,6 @@ echo ""
 
 PASS_COUNT=0
 FAIL_COUNT=0
-FAILED_TESTS=()
 
 for dir in test_*/; do
     if [ -f "$dir/Makefile" ] && [ -f "$dir/test_dut.py" ]; then
@@ -62,10 +61,12 @@ for dir in test_*/; do
             echo "  ✅ PASS"
             PASS_COUNT=$((PASS_COUNT + 1))
         else
-            echo "  ❌ FAIL - Check /tmp/${test_name}.log"
+            echo "  ❌ FAIL"
             FAIL_COUNT=$((FAIL_COUNT + 1))
-            FAILED_TESTS+=("$test_name")
-            grep -E "Error|FAIL|Exception" "/tmp/${test_name}.log" | head -3
+            echo ""
+            echo "========== Log for $test_name =========="
+            cat "/tmp/${test_name}.log"
+            echo "========== End of $test_name log =========="
         fi
         echo ""
     fi
@@ -77,19 +78,5 @@ echo "FAIL: $FAIL_COUNT"
 echo "Total: $((PASS_COUNT + FAIL_COUNT))"
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
-    echo ""
-    echo "========================================"
-    echo "❌ Tests failed! Displaying failed logs:"
-    echo "========================================"
-    echo ""
-
-    for test_name in "${FAILED_TESTS[@]}"; do
-        echo "========== Log for $test_name =========="
-        cat "/tmp/${test_name}.log"
-        echo ""
-        echo "========== End of $test_name log =========="
-        echo ""
-    done
-
     exit 1
 fi

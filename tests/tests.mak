@@ -5,8 +5,8 @@ TOPLEVEL?=regblock
 COCOTB_TEST_MODULES?=test_dut
 
 CPUIF?=apb4-flat
-ETANA_DIR=/mnt/sda/projects/PeakRDL-etana
-REGBLOCK_DIR=/mnt/sda/projects/PeakRDL-regblock
+ETANA_DIR=$(shell python -c "import peakrdl_etana; import os; print(os.path.dirname(os.path.dirname(peakrdl_etana.__file__)))")
+REGBLOCK_DIR=$(shell python -c "import peakrdl_regblock; import os; print(os.path.dirname(os.path.dirname(peakrdl_regblock.__file__)))")
 REGBLOCK=0
 
 # MULTIDRIVEN test_counter_basics
@@ -38,10 +38,10 @@ ifeq ($(WAVES),1)
 endif
 
 etana:
-	peakrdl etana ${ETANA_DIR}/hdl-src/regblock_udps.rdl regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
+	peakrdl etana ${ETANA_DIR}/../hdl-src/regblock_udps.rdl regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
 
 regblock:
-	peakrdl regblock ${REGBLOCK_DIR}/hdl-src/regblock_udps.rdl regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
+	peakrdl regblock ${REGBLOCK_DIR}/../hdl-src/regblock_udps.rdl regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
 
 clean::
 	rm -rf sim_build/ __pycache__/ results.xml *.fst rdl-rtl
