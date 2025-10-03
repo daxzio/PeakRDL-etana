@@ -1,3 +1,3 @@
-CPUIF?=apb4-flat
+UDPS?=../regblock_udps.rdl
 
 include ../tests.mak
