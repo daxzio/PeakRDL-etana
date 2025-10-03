@@ -52,13 +52,18 @@ ifeq ($(WAVES),1)
 endif
 
 etana:
+	rm -rf etana-rtl/*
 	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
 
 regblock:
-	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
+	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
+	rm -rf regblock-rtl/*
+	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
+	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 # Synthesize the design using Yosys
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)
+	rm -rf $(SYNTH_OUTPUT)/*
 	yosys -q -s ../synthesis.ys
 
 clean::

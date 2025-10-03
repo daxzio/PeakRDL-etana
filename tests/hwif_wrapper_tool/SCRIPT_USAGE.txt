@@ -1,0 +1,80 @@
+================================================================================
+HWIF Wrapper Generator - Direct Script Usage (No Installation!)
+================================================================================
+
+SIMPLEST METHOD - Just run the script directly:
+
+    cd /home/gomez/projects/PeakRDL-regblock/hwif_wrapper_tool
+    source ../venv/bin/activate
+    python3 generate_wrapper.py <design.rdl> -o <output_dir>
+
+REQUIREMENTS:
+    - peakrdl-regblock installed (already in ../venv)
+    - No package installation needed!
+
+NOTE:
+    - Script ONLY generates the wrapper file (<module>_wrapper.sv)
+    - Package and module files are NOT copied (use peakrdl regblock separately)
+    - Wrapper assumes package and module already exist or will be generated separately
+
+EXAMPLES:
+
+    # Basic usage
+    python3 generate_wrapper.py ../tests/test_field_types/regblock.rdl -o /tmp/output
+
+    # With APB4 interface
+    python3 generate_wrapper.py design.rdl -o output/ --cpuif apb4
+
+    # With AXI4-Lite
+    python3 generate_wrapper.py design.rdl -o output/ --cpuif axi4-lite
+
+    # Multiple files
+    python3 generate_wrapper.py file1.rdl file2.rdl -o output/
+
+    # Custom names
+    python3 generate_wrapper.py design.rdl -o output/ \
+        --module-name my_regs --cpuif apb3-flat
+
+    # Using shell variable (like in Makefiles)
+    CPUIF=apb4-flat
+    python3 generate_wrapper.py design.rdl -o output/ --cpuif ${CPUIF}
+
+    # With rename (common in PeakRDL-etana tests)
+    CPUIF=apb4-flat
+    python3 generate_wrapper.py design.rdl -o output/ --cpuif ${CPUIF} --rename regblock
+
+OPTIONS:
+    -o, --output DIR       Output directory (required)
+    --cpuif TYPE          CPU interface: passthrough, apb3, apb4, axi4-lite,
+                          avalon-mm (add -flat for flat variants)
+                          Default: apb3
+    --rename NAME         Override the top-component's instantiated name
+    --module-name NAME    Override module name
+    --package-name NAME   Override package name
+    --type-style STYLE    lexical or hier (default: lexical)
+    -h, --help            Show help
+
+OUTPUT FILE:
+    <module>_wrapper.sv    Wrapper with flat hwif signals
+                           (always generated, even if no hwif signals)
+
+IMPORTANT:
+    This script ONLY generates the wrapper file!
+
+    To get all files, use peakrdl regblock first, then run this script:
+        peakrdl regblock design.rdl -o output/
+        python3 generate_wrapper.py design.rdl -o output/ --cpuif ${CPUIF}
+
+    Result: output/<module>_pkg.sv, <module>.sv, <module>_wrapper.sv
+
+TEST THE SCRIPT:
+    ./test_standalone.sh
+
+GET HELP:
+    python3 generate_wrapper.py --help
+
+MORE INFO:
+    See QUICK_START.md for detailed guide
+    See INDEX.md for all documentation
+
+================================================================================
