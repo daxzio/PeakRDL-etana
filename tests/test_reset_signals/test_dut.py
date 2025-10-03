@@ -82,9 +82,15 @@ async def test_dut_reset_signals(dut):
 
     # Test r3 async reset (my_areset) - async so use Timer
     await tb.clk.wait_clkn(1)
-    await Timer(2, unit="ns")
+    try:
+        await Timer(2, unit="ns")
+    except TypeError:
+        await Timer(2, units="ns")
     tb.hwif_in_r3_my_areset.value = 1
-    await Timer(1, unit="ns")
+    try:
+        await Timer(1, unit="ns")
+    except TypeError:
+        await Timer(1, units="ns")
     tb.hwif_in_r3_my_areset.value = 0
     await tb.clk.wait_clkn(1)
 
@@ -116,9 +122,15 @@ async def test_dut_reset_signals(dut):
 
     # Test r5 active-low async reset (my_areset_n)
     await tb.clk.wait_clkn(1)
-    await Timer(2, unit="ns")
+    try:
+        await Timer(2, unit="ns")
+    except TypeError:
+        await Timer(2, units="ns")
     tb.hwif_in_r5_my_areset_n.value = 0
-    await Timer(1, unit="ns")
+    try:
+        await Timer(1, unit="ns")
+    except TypeError:
+        await Timer(1, units="ns")
     tb.hwif_in_r5_my_areset_n.value = 1
     await tb.clk.wait_clkn(1)
 

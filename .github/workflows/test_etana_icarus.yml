@@ -61,4 +61,4 @@ jobs:
       - name: Run Tests
         run: |
           unset PYTHONHOME
-          cd tests ; ./test_all.sh
+          cd tests ; ./test_all.sh COCOTB_REV=1.9.2
