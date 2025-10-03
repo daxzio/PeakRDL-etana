@@ -39,6 +39,20 @@ module regblock (
         input wire [0:0] hwif_in_level_irqs_3_irq1,
         output logic [0:0] hwif_out_level_irqs_3_irq1_incrthreshold,
         output logic [0:0] hwif_out_level_irqs_3_irq1_decrthreshold,
+        output logic [0:0] hwif_out_level_irqs_we_intr,
+        input wire [7:0] hwif_in_level_irqs_we_irq0,
+        output logic [0:0] hwif_out_level_irqs_we_irq0_incrthreshold,
+        output logic [0:0] hwif_out_level_irqs_we_irq0_decrthreshold,
+        input wire [0:0] hwif_in_level_irqs_we_irq1,
+        output logic [0:0] hwif_out_level_irqs_we_irq1_incrthreshold,
+        output logic [0:0] hwif_out_level_irqs_we_irq1_decrthreshold,
+        output logic [0:0] hwif_out_level_irqs_wel_intr,
+        input wire [7:0] hwif_in_level_irqs_wel_irq0,
+        output logic [0:0] hwif_out_level_irqs_wel_irq0_incrthreshold,
+        output logic [0:0] hwif_out_level_irqs_wel_irq0_decrthreshold,
+        input wire [0:0] hwif_in_level_irqs_wel_irq1,
+        output logic [0:0] hwif_out_level_irqs_wel_irq1_incrthreshold,
+        output logic [0:0] hwif_out_level_irqs_wel_irq1_decrthreshold,
         output logic [0:0] hwif_out_posedge_irqs_intr,
         input wire [7:0] hwif_in_posedge_irqs_irq0,
         output logic [0:0] hwif_out_posedge_irqs_irq0_incrthreshold,
@@ -46,6 +60,20 @@ module regblock (
         input wire [0:0] hwif_in_posedge_irqs_irq1,
         output logic [0:0] hwif_out_posedge_irqs_irq1_incrthreshold,
         output logic [0:0] hwif_out_posedge_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_posedge_we_irqs_intr,
+        input wire [7:0] hwif_in_posedge_we_irqs_irq0,
+        output logic [0:0] hwif_out_posedge_we_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_posedge_we_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_posedge_we_irqs_irq1,
+        output logic [0:0] hwif_out_posedge_we_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_posedge_we_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_posedge_wel_irqs_intr,
+        input wire [7:0] hwif_in_posedge_wel_irqs_irq0,
+        output logic [0:0] hwif_out_posedge_wel_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_posedge_wel_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_posedge_wel_irqs_irq1,
+        output logic [0:0] hwif_out_posedge_wel_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_posedge_wel_irqs_irq1_decrthreshold,
         output logic [0:0] hwif_out_negedge_irqs_intr,
         input wire [7:0] hwif_in_negedge_irqs_irq0,
         output logic [0:0] hwif_out_negedge_irqs_irq0_incrthreshold,
@@ -53,6 +81,20 @@ module regblock (
         input wire [0:0] hwif_in_negedge_irqs_irq1,
         output logic [0:0] hwif_out_negedge_irqs_irq1_incrthreshold,
         output logic [0:0] hwif_out_negedge_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_negedge_we_irqs_intr,
+        input wire [7:0] hwif_in_negedge_we_irqs_irq0,
+        output logic [0:0] hwif_out_negedge_we_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_negedge_we_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_negedge_we_irqs_irq1,
+        output logic [0:0] hwif_out_negedge_we_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_negedge_we_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_negedge_wel_irqs_intr,
+        input wire [7:0] hwif_in_negedge_wel_irqs_irq0,
+        output logic [0:0] hwif_out_negedge_wel_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_negedge_wel_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_negedge_wel_irqs_irq1,
+        output logic [0:0] hwif_out_negedge_wel_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_negedge_wel_irqs_irq1_decrthreshold,
         output logic [0:0] hwif_out_bothedge_irqs_intr,
         input wire [7:0] hwif_in_bothedge_irqs_irq0,
         output logic [0:0] hwif_out_bothedge_irqs_irq0_incrthreshold,
@@ -60,6 +102,20 @@ module regblock (
         input wire [0:0] hwif_in_bothedge_irqs_irq1,
         output logic [0:0] hwif_out_bothedge_irqs_irq1_incrthreshold,
         output logic [0:0] hwif_out_bothedge_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_bothedge_we_irqs_intr,
+        input wire [7:0] hwif_in_bothedge_we_irqs_irq0,
+        output logic [0:0] hwif_out_bothedge_we_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_bothedge_we_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_bothedge_we_irqs_irq1,
+        output logic [0:0] hwif_out_bothedge_we_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_bothedge_we_irqs_irq1_decrthreshold,
+        output logic [0:0] hwif_out_bothedge_wel_irqs_intr,
+        input wire [7:0] hwif_in_bothedge_wel_irqs_irq0,
+        output logic [0:0] hwif_out_bothedge_wel_irqs_irq0_incrthreshold,
+        output logic [0:0] hwif_out_bothedge_wel_irqs_irq0_decrthreshold,
+        input wire [0:0] hwif_in_bothedge_wel_irqs_irq1,
+        output logic [0:0] hwif_out_bothedge_wel_irqs_irq1_incrthreshold,
+        output logic [0:0] hwif_out_bothedge_wel_irqs_irq1_decrthreshold,
         output logic [0:0] hwif_out_top_irq_intr,
         output logic [0:0] hwif_out_top_irq_level_active_incrthreshold,
         output logic [0:0] hwif_out_top_irq_level_active_decrthreshold,
@@ -78,7 +134,9 @@ module regblock (
         output logic [0:0] hwif_out_ctrl_enable_intr,
         output logic [0:0] hwif_out_ctrl_mask_intr,
         output logic [0:0] hwif_out_ctrl_haltenable_intr,
-        output logic [0:0] hwif_out_ctrl_haltmask_intr
+        output logic [0:0] hwif_out_ctrl_haltmask_intr,
+        output logic [0:0] hwif_out_ctrl_we_intr,
+        output logic [0:0] hwif_out_ctrl_wel_intr
     );
 
     //--------------------------------------------------------------------------
@@ -151,15 +209,25 @@ module regblock (
     logic [0:0] decoded_reg_strb_level_irqs_1;
     logic [0:0] decoded_reg_strb_level_irqs_2;
     logic [0:0] decoded_reg_strb_level_irqs_3;
+    logic [0:0] decoded_reg_strb_level_irqs_we;
+    logic [0:0] decoded_reg_strb_level_irqs_wel;
     logic [0:0] decoded_reg_strb_posedge_irqs;
+    logic [0:0] decoded_reg_strb_posedge_we_irqs;
+    logic [0:0] decoded_reg_strb_posedge_wel_irqs;
     logic [0:0] decoded_reg_strb_negedge_irqs;
+    logic [0:0] decoded_reg_strb_negedge_we_irqs;
+    logic [0:0] decoded_reg_strb_negedge_wel_irqs;
     logic [0:0] decoded_reg_strb_bothedge_irqs;
+    logic [0:0] decoded_reg_strb_bothedge_we_irqs;
+    logic [0:0] decoded_reg_strb_bothedge_wel_irqs;
     logic [0:0] decoded_reg_strb_top_irq;
     logic [0:0] decoded_reg_strb_stickyreg;
     logic [0:0] decoded_reg_strb_ctrl_enable;
     logic [0:0] decoded_reg_strb_ctrl_mask;
     logic [0:0] decoded_reg_strb_ctrl_haltenable;
     logic [0:0] decoded_reg_strb_ctrl_haltmask;
+    logic [0:0] decoded_reg_strb_ctrl_we;
+    logic [0:0] decoded_reg_strb_ctrl_wel;
     logic decoded_req;
     logic decoded_req_is_wr;
     /* verilator lint_off UNUSEDSIGNAL */
@@ -174,15 +242,25 @@ module regblock (
         decoded_reg_strb_level_irqs_1 = cpuif_req_masked & (cpuif_addr == 9'h0);
         decoded_reg_strb_level_irqs_2 = cpuif_req_masked & (cpuif_addr == 9'h4);
         decoded_reg_strb_level_irqs_3 = cpuif_req_masked & (cpuif_addr == 9'h8);
-        decoded_reg_strb_posedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h10);
-        decoded_reg_strb_negedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h20);
-        decoded_reg_strb_bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h30);
-        decoded_reg_strb_top_irq = cpuif_req_masked & (cpuif_addr == 9'h40);
-        decoded_reg_strb_stickyreg = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb_level_irqs_we = cpuif_req_masked & (cpuif_addr == 9'h10);
+        decoded_reg_strb_level_irqs_wel = cpuif_req_masked & (cpuif_addr == 9'h14);
+        decoded_reg_strb_posedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h20);
+        decoded_reg_strb_posedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h24);
+        decoded_reg_strb_posedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h28);
+        decoded_reg_strb_negedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h30);
+        decoded_reg_strb_negedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h34);
+        decoded_reg_strb_negedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h38);
+        decoded_reg_strb_bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h40);
+        decoded_reg_strb_bothedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h44);
+        decoded_reg_strb_bothedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h48);
+        decoded_reg_strb_top_irq = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb_stickyreg = cpuif_req_masked & (cpuif_addr == 9'h60);
         decoded_reg_strb_ctrl_enable = cpuif_req_masked & (cpuif_addr == 9'h100);
         decoded_reg_strb_ctrl_mask = cpuif_req_masked & (cpuif_addr == 9'h104);
         decoded_reg_strb_ctrl_haltenable = cpuif_req_masked & (cpuif_addr == 9'h108);
         decoded_reg_strb_ctrl_haltmask = cpuif_req_masked & (cpuif_addr == 9'h10c);
+        decoded_reg_strb_ctrl_we = cpuif_req_masked & (cpuif_addr == 9'h110);
+        decoded_reg_strb_ctrl_wel = cpuif_req_masked & (cpuif_addr == 9'h114);
     end
 
     // Pass down signals to next stage
@@ -220,6 +298,22 @@ module regblock (
     logic [0:0] field_storage_level_irqs_3_irq1_value;
     logic [0:0] field_combo_level_irqs_3_irq1_next;
     logic field_combo_level_irqs_3_irq1_load_next;
+    // Field: regblock.level_irqs_we.irq0
+    logic [7:0] field_storage_level_irqs_we_irq0_value;
+    logic [7:0] field_combo_level_irqs_we_irq0_next;
+    logic field_combo_level_irqs_we_irq0_load_next;
+    // Field: regblock.level_irqs_we.irq1
+    logic [0:0] field_storage_level_irqs_we_irq1_value;
+    logic [0:0] field_combo_level_irqs_we_irq1_next;
+    logic field_combo_level_irqs_we_irq1_load_next;
+    // Field: regblock.level_irqs_wel.irq0
+    logic [7:0] field_storage_level_irqs_wel_irq0_value;
+    logic [7:0] field_combo_level_irqs_wel_irq0_next;
+    logic field_combo_level_irqs_wel_irq0_load_next;
+    // Field: regblock.level_irqs_wel.irq1
+    logic [0:0] field_storage_level_irqs_wel_irq1_value;
+    logic [0:0] field_combo_level_irqs_wel_irq1_next;
+    logic field_combo_level_irqs_wel_irq1_load_next;
     // Field: regblock.posedge_irqs.irq0
     logic [7:0] field_storage_posedge_irqs_irq0_value;
     logic [7:0] field_storage_posedge_irqs_irq0_next_q;
@@ -230,6 +324,26 @@ module regblock (
     logic [0:0] field_storage_posedge_irqs_irq1_next_q;
     logic [0:0] field_combo_posedge_irqs_irq1_next;
     logic field_combo_posedge_irqs_irq1_load_next;
+    // Field: regblock.posedge_we_irqs.irq0
+    logic [7:0] field_storage_posedge_we_irqs_irq0_value;
+    logic [7:0] field_storage_posedge_we_irqs_irq0_next_q;
+    logic [7:0] field_combo_posedge_we_irqs_irq0_next;
+    logic field_combo_posedge_we_irqs_irq0_load_next;
+    // Field: regblock.posedge_we_irqs.irq1
+    logic [0:0] field_storage_posedge_we_irqs_irq1_value;
+    logic [0:0] field_storage_posedge_we_irqs_irq1_next_q;
+    logic [0:0] field_combo_posedge_we_irqs_irq1_next;
+    logic field_combo_posedge_we_irqs_irq1_load_next;
+    // Field: regblock.posedge_wel_irqs.irq0
+    logic [7:0] field_storage_posedge_wel_irqs_irq0_value;
+    logic [7:0] field_storage_posedge_wel_irqs_irq0_next_q;
+    logic [7:0] field_combo_posedge_wel_irqs_irq0_next;
+    logic field_combo_posedge_wel_irqs_irq0_load_next;
+    // Field: regblock.posedge_wel_irqs.irq1
+    logic [0:0] field_storage_posedge_wel_irqs_irq1_value;
+    logic [0:0] field_storage_posedge_wel_irqs_irq1_next_q;
+    logic [0:0] field_combo_posedge_wel_irqs_irq1_next;
+    logic field_combo_posedge_wel_irqs_irq1_load_next;
     // Field: regblock.negedge_irqs.irq0
     logic [7:0] field_storage_negedge_irqs_irq0_value;
     logic [7:0] field_storage_negedge_irqs_irq0_next_q;
@@ -240,6 +354,26 @@ module regblock (
     logic [0:0] field_storage_negedge_irqs_irq1_next_q;
     logic [0:0] field_combo_negedge_irqs_irq1_next;
     logic field_combo_negedge_irqs_irq1_load_next;
+    // Field: regblock.negedge_we_irqs.irq0
+    logic [7:0] field_storage_negedge_we_irqs_irq0_value;
+    logic [7:0] field_storage_negedge_we_irqs_irq0_next_q;
+    logic [7:0] field_combo_negedge_we_irqs_irq0_next;
+    logic field_combo_negedge_we_irqs_irq0_load_next;
+    // Field: regblock.negedge_we_irqs.irq1
+    logic [0:0] field_storage_negedge_we_irqs_irq1_value;
+    logic [0:0] field_storage_negedge_we_irqs_irq1_next_q;
+    logic [0:0] field_combo_negedge_we_irqs_irq1_next;
+    logic field_combo_negedge_we_irqs_irq1_load_next;
+    // Field: regblock.negedge_wel_irqs.irq0
+    logic [7:0] field_storage_negedge_wel_irqs_irq0_value;
+    logic [7:0] field_storage_negedge_wel_irqs_irq0_next_q;
+    logic [7:0] field_combo_negedge_wel_irqs_irq0_next;
+    logic field_combo_negedge_wel_irqs_irq0_load_next;
+    // Field: regblock.negedge_wel_irqs.irq1
+    logic [0:0] field_storage_negedge_wel_irqs_irq1_value;
+    logic [0:0] field_storage_negedge_wel_irqs_irq1_next_q;
+    logic [0:0] field_combo_negedge_wel_irqs_irq1_next;
+    logic field_combo_negedge_wel_irqs_irq1_load_next;
     // Field: regblock.bothedge_irqs.irq0
     logic [7:0] field_storage_bothedge_irqs_irq0_value;
     logic [7:0] field_storage_bothedge_irqs_irq0_next_q;
@@ -250,6 +384,26 @@ module regblock (
     logic [0:0] field_storage_bothedge_irqs_irq1_next_q;
     logic [0:0] field_combo_bothedge_irqs_irq1_next;
     logic field_combo_bothedge_irqs_irq1_load_next;
+    // Field: regblock.bothedge_we_irqs.irq0
+    logic [7:0] field_storage_bothedge_we_irqs_irq0_value;
+    logic [7:0] field_storage_bothedge_we_irqs_irq0_next_q;
+    logic [7:0] field_combo_bothedge_we_irqs_irq0_next;
+    logic field_combo_bothedge_we_irqs_irq0_load_next;
+    // Field: regblock.bothedge_we_irqs.irq1
+    logic [0:0] field_storage_bothedge_we_irqs_irq1_value;
+    logic [0:0] field_storage_bothedge_we_irqs_irq1_next_q;
+    logic [0:0] field_combo_bothedge_we_irqs_irq1_next;
+    logic field_combo_bothedge_we_irqs_irq1_load_next;
+    // Field: regblock.bothedge_wel_irqs.irq0
+    logic [7:0] field_storage_bothedge_wel_irqs_irq0_value;
+    logic [7:0] field_storage_bothedge_wel_irqs_irq0_next_q;
+    logic [7:0] field_combo_bothedge_wel_irqs_irq0_next;
+    logic field_combo_bothedge_wel_irqs_irq0_load_next;
+    // Field: regblock.bothedge_wel_irqs.irq1
+    logic [0:0] field_storage_bothedge_wel_irqs_irq1_value;
+    logic [0:0] field_storage_bothedge_wel_irqs_irq1_next_q;
+    logic [0:0] field_combo_bothedge_wel_irqs_irq1_next;
+    logic field_combo_bothedge_wel_irqs_irq1_load_next;
     // Field: regblock.top_irq.level_active
     logic [0:0] field_storage_top_irq_level_active_value;
     logic [0:0] field_combo_top_irq_level_active_next;
@@ -306,6 +460,22 @@ module regblock (
     logic [0:0] field_storage_ctrl_haltmask_irq1_value;
     logic [0:0] field_combo_ctrl_haltmask_irq1_next;
     logic field_combo_ctrl_haltmask_irq1_load_next;
+    // Field: regblock.ctrl_we.irq0
+    logic [0:0] field_storage_ctrl_we_irq0_value;
+    logic [0:0] field_combo_ctrl_we_irq0_next;
+    logic field_combo_ctrl_we_irq0_load_next;
+    // Field: regblock.ctrl_we.irq1
+    logic [0:0] field_storage_ctrl_we_irq1_value;
+    logic [0:0] field_combo_ctrl_we_irq1_next;
+    logic field_combo_ctrl_we_irq1_load_next;
+    // Field: regblock.ctrl_wel.irq0
+    logic [0:0] field_storage_ctrl_wel_irq0_value;
+    logic [0:0] field_combo_ctrl_wel_irq0_next;
+    logic field_combo_ctrl_wel_irq0_load_next;
+    // Field: regblock.ctrl_wel.irq1
+    logic [0:0] field_storage_ctrl_wel_irq1_value;
+    logic [0:0] field_combo_ctrl_wel_irq1_next;
+    logic field_combo_ctrl_wel_irq1_load_next;
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
@@ -466,6 +636,104 @@ module regblock (
     always @(*) begin
         logic [7:0] next_c;
         logic load_next_c;
+        next_c = field_storage_level_irqs_we_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_level_irqs_we && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_level_irqs_we_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(hwif_in_level_irqs_we_irq0 != '0 && field_storage_ctrl_we_irq0_value) begin // stickybit with WE
+            next_c = field_storage_level_irqs_we_irq0_value | hwif_in_level_irqs_we_irq0;
+            load_next_c = '1;
+        end
+        field_combo_level_irqs_we_irq0_next = next_c;
+        field_combo_level_irqs_we_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_level_irqs_we_irq0_value <= 8'h0;
+        end else if(field_combo_level_irqs_we_irq0_load_next) begin
+            field_storage_level_irqs_we_irq0_value <= field_combo_level_irqs_we_irq0_next;
+        end
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_level_irqs_we_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_level_irqs_we && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_level_irqs_we_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(hwif_in_level_irqs_we_irq1 && field_storage_ctrl_we_irq1_value) begin // stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_level_irqs_we_irq1_next = next_c;
+        field_combo_level_irqs_we_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_level_irqs_we_irq1_value <= 1'h0;
+        end else if(field_combo_level_irqs_we_irq1_load_next) begin
+            field_storage_level_irqs_we_irq1_value <= field_combo_level_irqs_we_irq1_next;
+        end
+    end
+    assign hwif_out_level_irqs_we_intr =
+        |field_storage_level_irqs_we_irq0_value
+        || |field_storage_level_irqs_we_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_level_irqs_wel_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_level_irqs_wel && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_level_irqs_wel_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(hwif_in_level_irqs_wel_irq0 != '0 && !field_storage_ctrl_wel_irq0_value) begin // stickybit with WEL
+            next_c = field_storage_level_irqs_wel_irq0_value | hwif_in_level_irqs_wel_irq0;
+            load_next_c = '1;
+        end
+        field_combo_level_irqs_wel_irq0_next = next_c;
+        field_combo_level_irqs_wel_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_level_irqs_wel_irq0_value <= 8'h0;
+        end else if(field_combo_level_irqs_wel_irq0_load_next) begin
+            field_storage_level_irqs_wel_irq0_value <= field_combo_level_irqs_wel_irq0_next;
+        end
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_level_irqs_wel_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_level_irqs_wel && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_level_irqs_wel_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(hwif_in_level_irqs_wel_irq1 && !field_storage_ctrl_wel_irq1_value) begin // stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_level_irqs_wel_irq1_next = next_c;
+        field_combo_level_irqs_wel_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_level_irqs_wel_irq1_value <= 1'h0;
+        end else if(field_combo_level_irqs_wel_irq1_load_next) begin
+            field_storage_level_irqs_wel_irq1_value <= field_combo_level_irqs_wel_irq1_next;
+        end
+    end
+    assign hwif_out_level_irqs_wel_intr =
+        |field_storage_level_irqs_wel_irq0_value
+        || |field_storage_level_irqs_wel_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
         next_c = field_storage_posedge_irqs_irq0_value;
         load_next_c = '0;
         if(decoded_reg_strb_posedge_irqs && decoded_req_is_wr) begin // SW write 1 clear
@@ -515,6 +783,112 @@ module regblock (
     assign hwif_out_posedge_irqs_intr =
         |field_storage_posedge_irqs_irq0_value
         || |field_storage_posedge_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_posedge_we_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_posedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_posedge_we_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((~field_storage_posedge_we_irqs_irq0_next_q & hwif_in_posedge_we_irqs_irq0) != '0 && field_storage_ctrl_we_irq0_value) begin // posedge stickybit with WE
+            next_c = field_storage_posedge_we_irqs_irq0_value | (~field_storage_posedge_we_irqs_irq0_next_q & hwif_in_posedge_we_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_posedge_we_irqs_irq0_next = next_c;
+        field_combo_posedge_we_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_posedge_we_irqs_irq0_value <= 8'h0;
+            field_storage_posedge_we_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_posedge_we_irqs_irq0_load_next) begin
+            field_storage_posedge_we_irqs_irq0_value <= field_combo_posedge_we_irqs_irq0_next;
+        end
+        field_storage_posedge_we_irqs_irq0_next_q <= hwif_in_posedge_we_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_posedge_we_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_posedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_posedge_we_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(~field_storage_posedge_we_irqs_irq1_next_q & hwif_in_posedge_we_irqs_irq1 && field_storage_ctrl_we_irq1_value) begin // posedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_posedge_we_irqs_irq1_next = next_c;
+        field_combo_posedge_we_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_posedge_we_irqs_irq1_value <= 1'h0;
+            field_storage_posedge_we_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_posedge_we_irqs_irq1_load_next) begin
+            field_storage_posedge_we_irqs_irq1_value <= field_combo_posedge_we_irqs_irq1_next;
+        end
+        field_storage_posedge_we_irqs_irq1_next_q <= hwif_in_posedge_we_irqs_irq1;
+    end
+    assign hwif_out_posedge_we_irqs_intr =
+        |field_storage_posedge_we_irqs_irq0_value
+        || |field_storage_posedge_we_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_posedge_wel_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_posedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_posedge_wel_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((~field_storage_posedge_wel_irqs_irq0_next_q & hwif_in_posedge_wel_irqs_irq0) != '0 && !field_storage_ctrl_wel_irq0_value) begin // posedge stickybit with WEL
+            next_c = field_storage_posedge_wel_irqs_irq0_value | (~field_storage_posedge_wel_irqs_irq0_next_q & hwif_in_posedge_wel_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_posedge_wel_irqs_irq0_next = next_c;
+        field_combo_posedge_wel_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_posedge_wel_irqs_irq0_value <= 8'h0;
+            field_storage_posedge_wel_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_posedge_wel_irqs_irq0_load_next) begin
+            field_storage_posedge_wel_irqs_irq0_value <= field_combo_posedge_wel_irqs_irq0_next;
+        end
+        field_storage_posedge_wel_irqs_irq0_next_q <= hwif_in_posedge_wel_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_posedge_wel_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_posedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_posedge_wel_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(~field_storage_posedge_wel_irqs_irq1_next_q & hwif_in_posedge_wel_irqs_irq1 && !field_storage_ctrl_wel_irq1_value) begin // posedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_posedge_wel_irqs_irq1_next = next_c;
+        field_combo_posedge_wel_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_posedge_wel_irqs_irq1_value <= 1'h0;
+            field_storage_posedge_wel_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_posedge_wel_irqs_irq1_load_next) begin
+            field_storage_posedge_wel_irqs_irq1_value <= field_combo_posedge_wel_irqs_irq1_next;
+        end
+        field_storage_posedge_wel_irqs_irq1_next_q <= hwif_in_posedge_wel_irqs_irq1;
+    end
+    assign hwif_out_posedge_wel_irqs_intr =
+        |field_storage_posedge_wel_irqs_irq0_value
+        || |field_storage_posedge_wel_irqs_irq1_value;
     // always_comb begin
     always @(*) begin
         logic [7:0] next_c;
@@ -572,6 +946,112 @@ module regblock (
     always @(*) begin
         logic [7:0] next_c;
         logic load_next_c;
+        next_c = field_storage_negedge_we_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_negedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_negedge_we_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((field_storage_negedge_we_irqs_irq0_next_q & ~hwif_in_negedge_we_irqs_irq0) != '0 && field_storage_ctrl_we_irq0_value) begin // negedge stickybit with WE
+            next_c = field_storage_negedge_we_irqs_irq0_value | (field_storage_negedge_we_irqs_irq0_next_q & ~hwif_in_negedge_we_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_negedge_we_irqs_irq0_next = next_c;
+        field_combo_negedge_we_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_negedge_we_irqs_irq0_value <= 8'h0;
+            field_storage_negedge_we_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_negedge_we_irqs_irq0_load_next) begin
+            field_storage_negedge_we_irqs_irq0_value <= field_combo_negedge_we_irqs_irq0_next;
+        end
+        field_storage_negedge_we_irqs_irq0_next_q <= hwif_in_negedge_we_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_negedge_we_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_negedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_negedge_we_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage_negedge_we_irqs_irq1_next_q & ~hwif_in_negedge_we_irqs_irq1 && field_storage_ctrl_we_irq1_value) begin // negedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_negedge_we_irqs_irq1_next = next_c;
+        field_combo_negedge_we_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_negedge_we_irqs_irq1_value <= 1'h0;
+            field_storage_negedge_we_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_negedge_we_irqs_irq1_load_next) begin
+            field_storage_negedge_we_irqs_irq1_value <= field_combo_negedge_we_irqs_irq1_next;
+        end
+        field_storage_negedge_we_irqs_irq1_next_q <= hwif_in_negedge_we_irqs_irq1;
+    end
+    assign hwif_out_negedge_we_irqs_intr =
+        |field_storage_negedge_we_irqs_irq0_value
+        || |field_storage_negedge_we_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_negedge_wel_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_negedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_negedge_wel_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((field_storage_negedge_wel_irqs_irq0_next_q & ~hwif_in_negedge_wel_irqs_irq0) != '0 && !field_storage_ctrl_wel_irq0_value) begin // negedge stickybit with WEL
+            next_c = field_storage_negedge_wel_irqs_irq0_value | (field_storage_negedge_wel_irqs_irq0_next_q & ~hwif_in_negedge_wel_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_negedge_wel_irqs_irq0_next = next_c;
+        field_combo_negedge_wel_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_negedge_wel_irqs_irq0_value <= 8'h0;
+            field_storage_negedge_wel_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_negedge_wel_irqs_irq0_load_next) begin
+            field_storage_negedge_wel_irqs_irq0_value <= field_combo_negedge_wel_irqs_irq0_next;
+        end
+        field_storage_negedge_wel_irqs_irq0_next_q <= hwif_in_negedge_wel_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_negedge_wel_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_negedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_negedge_wel_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage_negedge_wel_irqs_irq1_next_q & ~hwif_in_negedge_wel_irqs_irq1 && !field_storage_ctrl_wel_irq1_value) begin // negedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_negedge_wel_irqs_irq1_next = next_c;
+        field_combo_negedge_wel_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_negedge_wel_irqs_irq1_value <= 1'h0;
+            field_storage_negedge_wel_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_negedge_wel_irqs_irq1_load_next) begin
+            field_storage_negedge_wel_irqs_irq1_value <= field_combo_negedge_wel_irqs_irq1_next;
+        end
+        field_storage_negedge_wel_irqs_irq1_next_q <= hwif_in_negedge_wel_irqs_irq1;
+    end
+    assign hwif_out_negedge_wel_irqs_intr =
+        |field_storage_negedge_wel_irqs_irq0_value
+        || |field_storage_negedge_wel_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
         next_c = field_storage_bothedge_irqs_irq0_value;
         load_next_c = '0;
         if(decoded_reg_strb_bothedge_irqs && decoded_req_is_wr) begin // SW write 1 clear
@@ -621,6 +1101,112 @@ module regblock (
     assign hwif_out_bothedge_irqs_intr =
         |field_storage_bothedge_irqs_irq0_value
         || |field_storage_bothedge_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_bothedge_we_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_bothedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_bothedge_we_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(field_storage_bothedge_we_irqs_irq0_next_q != hwif_in_bothedge_we_irqs_irq0 && field_storage_ctrl_we_irq0_value) begin // bothedge stickybit with WE
+            next_c = field_storage_bothedge_we_irqs_irq0_value | (field_storage_bothedge_we_irqs_irq0_next_q ^ hwif_in_bothedge_we_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_bothedge_we_irqs_irq0_next = next_c;
+        field_combo_bothedge_we_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_bothedge_we_irqs_irq0_value <= 8'h0;
+            field_storage_bothedge_we_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_bothedge_we_irqs_irq0_load_next) begin
+            field_storage_bothedge_we_irqs_irq0_value <= field_combo_bothedge_we_irqs_irq0_next;
+        end
+        field_storage_bothedge_we_irqs_irq0_next_q <= hwif_in_bothedge_we_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_bothedge_we_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_bothedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_bothedge_we_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage_bothedge_we_irqs_irq1_next_q != hwif_in_bothedge_we_irqs_irq1 && field_storage_ctrl_we_irq1_value) begin // bothedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_bothedge_we_irqs_irq1_next = next_c;
+        field_combo_bothedge_we_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_bothedge_we_irqs_irq1_value <= 1'h0;
+            field_storage_bothedge_we_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_bothedge_we_irqs_irq1_load_next) begin
+            field_storage_bothedge_we_irqs_irq1_value <= field_combo_bothedge_we_irqs_irq1_next;
+        end
+        field_storage_bothedge_we_irqs_irq1_next_q <= hwif_in_bothedge_we_irqs_irq1;
+    end
+    assign hwif_out_bothedge_we_irqs_intr =
+        |field_storage_bothedge_we_irqs_irq0_value
+        || |field_storage_bothedge_we_irqs_irq1_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_bothedge_wel_irqs_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_bothedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_bothedge_wel_irqs_irq0_value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(field_storage_bothedge_wel_irqs_irq0_next_q != hwif_in_bothedge_wel_irqs_irq0 && !field_storage_ctrl_wel_irq0_value) begin // bothedge stickybit with WEL
+            next_c = field_storage_bothedge_wel_irqs_irq0_value | (field_storage_bothedge_wel_irqs_irq0_next_q ^ hwif_in_bothedge_wel_irqs_irq0);
+            load_next_c = '1;
+        end
+        field_combo_bothedge_wel_irqs_irq0_next = next_c;
+        field_combo_bothedge_wel_irqs_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_bothedge_wel_irqs_irq0_value <= 8'h0;
+            field_storage_bothedge_wel_irqs_irq0_next_q <= 8'h0;
+        end else if(field_combo_bothedge_wel_irqs_irq0_load_next) begin
+            field_storage_bothedge_wel_irqs_irq0_value <= field_combo_bothedge_wel_irqs_irq0_next;
+        end
+        field_storage_bothedge_wel_irqs_irq0_next_q <= hwif_in_bothedge_wel_irqs_irq0;
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_bothedge_wel_irqs_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_bothedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage_bothedge_wel_irqs_irq1_value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage_bothedge_wel_irqs_irq1_next_q != hwif_in_bothedge_wel_irqs_irq1 && !field_storage_ctrl_wel_irq1_value) begin // bothedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo_bothedge_wel_irqs_irq1_next = next_c;
+        field_combo_bothedge_wel_irqs_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_bothedge_wel_irqs_irq1_value <= 1'h0;
+            field_storage_bothedge_wel_irqs_irq1_next_q <= 1'h0;
+        end else if(field_combo_bothedge_wel_irqs_irq1_load_next) begin
+            field_storage_bothedge_wel_irqs_irq1_value <= field_combo_bothedge_wel_irqs_irq1_next;
+        end
+        field_storage_bothedge_wel_irqs_irq1_next_q <= hwif_in_bothedge_wel_irqs_irq1;
+    end
+    assign hwif_out_bothedge_wel_irqs_intr =
+        |field_storage_bothedge_wel_irqs_irq0_value
+        || |field_storage_bothedge_wel_irqs_irq1_value;
     // always_comb begin
     always @(*) begin
         logic [0:0] next_c;
@@ -905,6 +1491,86 @@ module regblock (
             field_storage_ctrl_haltmask_irq1_value <= field_combo_ctrl_haltmask_irq1_next;
         end
     end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_ctrl_we_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_ctrl_we && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_ctrl_we_irq0_value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo_ctrl_we_irq0_next = next_c;
+        field_combo_ctrl_we_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_ctrl_we_irq0_value <= 1'h0;
+        end else if(field_combo_ctrl_we_irq0_load_next) begin
+            field_storage_ctrl_we_irq0_value <= field_combo_ctrl_we_irq0_next;
+        end
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_ctrl_we_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_ctrl_we && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_ctrl_we_irq1_value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo_ctrl_we_irq1_next = next_c;
+        field_combo_ctrl_we_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_ctrl_we_irq1_value <= 1'h0;
+        end else if(field_combo_ctrl_we_irq1_load_next) begin
+            field_storage_ctrl_we_irq1_value <= field_combo_ctrl_we_irq1_next;
+        end
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_ctrl_wel_irq0_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_ctrl_wel && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_ctrl_wel_irq0_value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo_ctrl_wel_irq0_next = next_c;
+        field_combo_ctrl_wel_irq0_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_ctrl_wel_irq0_value <= 1'h0;
+        end else if(field_combo_ctrl_wel_irq0_load_next) begin
+            field_storage_ctrl_wel_irq0_value <= field_combo_ctrl_wel_irq0_next;
+        end
+    end
+    // always_comb begin
+    always @(*) begin
+        logic [0:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_ctrl_wel_irq1_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_ctrl_wel && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_ctrl_wel_irq1_value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo_ctrl_wel_irq1_next = next_c;
+        field_combo_ctrl_wel_irq1_load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage_ctrl_wel_irq1_value <= 1'h0;
+        end else if(field_combo_ctrl_wel_irq1_load_next) begin
+            field_storage_ctrl_wel_irq1_value <= field_combo_ctrl_wel_irq1_next;
+        end
+    end
 
     //--------------------------------------------------------------------------
     // Write response
@@ -924,7 +1590,7 @@ module regblock (
     logic [31:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [31:0] readback_array[12];
+    logic [31:0] readback_array[22];
     assign readback_array[0][7:0] = (decoded_reg_strb_level_irqs_1 && !decoded_req_is_wr) ? field_storage_level_irqs_1_irq0_value : '0;
     assign readback_array[0][8:8] = (decoded_reg_strb_level_irqs_1 && !decoded_req_is_wr) ? field_storage_level_irqs_1_irq1_value : '0;
     assign readback_array[0][31:9] = '0;
@@ -934,35 +1600,65 @@ module regblock (
     assign readback_array[2][7:0] = (decoded_reg_strb_level_irqs_3 && !decoded_req_is_wr) ? field_storage_level_irqs_3_irq0_value : '0;
     assign readback_array[2][8:8] = (decoded_reg_strb_level_irqs_3 && !decoded_req_is_wr) ? field_storage_level_irqs_3_irq1_value : '0;
     assign readback_array[2][31:9] = '0;
-    assign readback_array[3][7:0] = (decoded_reg_strb_posedge_irqs && !decoded_req_is_wr) ? field_storage_posedge_irqs_irq0_value : '0;
-    assign readback_array[3][8:8] = (decoded_reg_strb_posedge_irqs && !decoded_req_is_wr) ? field_storage_posedge_irqs_irq1_value : '0;
+    assign readback_array[3][7:0] = (decoded_reg_strb_level_irqs_we && !decoded_req_is_wr) ? field_storage_level_irqs_we_irq0_value : '0;
+    assign readback_array[3][8:8] = (decoded_reg_strb_level_irqs_we && !decoded_req_is_wr) ? field_storage_level_irqs_we_irq1_value : '0;
     assign readback_array[3][31:9] = '0;
-    assign readback_array[4][7:0] = (decoded_reg_strb_negedge_irqs && !decoded_req_is_wr) ? field_storage_negedge_irqs_irq0_value : '0;
-    assign readback_array[4][8:8] = (decoded_reg_strb_negedge_irqs && !decoded_req_is_wr) ? field_storage_negedge_irqs_irq1_value : '0;
+    assign readback_array[4][7:0] = (decoded_reg_strb_level_irqs_wel && !decoded_req_is_wr) ? field_storage_level_irqs_wel_irq0_value : '0;
+    assign readback_array[4][8:8] = (decoded_reg_strb_level_irqs_wel && !decoded_req_is_wr) ? field_storage_level_irqs_wel_irq1_value : '0;
     assign readback_array[4][31:9] = '0;
-    assign readback_array[5][7:0] = (decoded_reg_strb_bothedge_irqs && !decoded_req_is_wr) ? field_storage_bothedge_irqs_irq0_value : '0;
-    assign readback_array[5][8:8] = (decoded_reg_strb_bothedge_irqs && !decoded_req_is_wr) ? field_storage_bothedge_irqs_irq1_value : '0;
+    assign readback_array[5][7:0] = (decoded_reg_strb_posedge_irqs && !decoded_req_is_wr) ? field_storage_posedge_irqs_irq0_value : '0;
+    assign readback_array[5][8:8] = (decoded_reg_strb_posedge_irqs && !decoded_req_is_wr) ? field_storage_posedge_irqs_irq1_value : '0;
     assign readback_array[5][31:9] = '0;
-    assign readback_array[6][0:0] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_level_active_value : '0;
-    assign readback_array[6][1:1] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_posedge_active_value : '0;
-    assign readback_array[6][2:2] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_negedge_active_value : '0;
-    assign readback_array[6][3:3] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_bothedge_active_value : '0;
-    assign readback_array[6][4:4] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_level_halt_active_value : '0;
-    assign readback_array[6][31:5] = '0;
-    assign readback_array[7][7:0] = (decoded_reg_strb_stickyreg && !decoded_req_is_wr) ? field_storage_stickyreg_stickyfield_value : '0;
-    assign readback_array[7][31:8] = '0;
-    assign readback_array[8][7:0] = (decoded_reg_strb_ctrl_enable && !decoded_req_is_wr) ? field_storage_ctrl_enable_irq0_value : '0;
-    assign readback_array[8][8:8] = (decoded_reg_strb_ctrl_enable && !decoded_req_is_wr) ? field_storage_ctrl_enable_irq1_value : '0;
+    assign readback_array[6][7:0] = (decoded_reg_strb_posedge_we_irqs && !decoded_req_is_wr) ? field_storage_posedge_we_irqs_irq0_value : '0;
+    assign readback_array[6][8:8] = (decoded_reg_strb_posedge_we_irqs && !decoded_req_is_wr) ? field_storage_posedge_we_irqs_irq1_value : '0;
+    assign readback_array[6][31:9] = '0;
+    assign readback_array[7][7:0] = (decoded_reg_strb_posedge_wel_irqs && !decoded_req_is_wr) ? field_storage_posedge_wel_irqs_irq0_value : '0;
+    assign readback_array[7][8:8] = (decoded_reg_strb_posedge_wel_irqs && !decoded_req_is_wr) ? field_storage_posedge_wel_irqs_irq1_value : '0;
+    assign readback_array[7][31:9] = '0;
+    assign readback_array[8][7:0] = (decoded_reg_strb_negedge_irqs && !decoded_req_is_wr) ? field_storage_negedge_irqs_irq0_value : '0;
+    assign readback_array[8][8:8] = (decoded_reg_strb_negedge_irqs && !decoded_req_is_wr) ? field_storage_negedge_irqs_irq1_value : '0;
     assign readback_array[8][31:9] = '0;
-    assign readback_array[9][7:0] = (decoded_reg_strb_ctrl_mask && !decoded_req_is_wr) ? field_storage_ctrl_mask_irq0_value : '0;
-    assign readback_array[9][8:8] = (decoded_reg_strb_ctrl_mask && !decoded_req_is_wr) ? field_storage_ctrl_mask_irq1_value : '0;
+    assign readback_array[9][7:0] = (decoded_reg_strb_negedge_we_irqs && !decoded_req_is_wr) ? field_storage_negedge_we_irqs_irq0_value : '0;
+    assign readback_array[9][8:8] = (decoded_reg_strb_negedge_we_irqs && !decoded_req_is_wr) ? field_storage_negedge_we_irqs_irq1_value : '0;
     assign readback_array[9][31:9] = '0;
-    assign readback_array[10][7:0] = (decoded_reg_strb_ctrl_haltenable && !decoded_req_is_wr) ? field_storage_ctrl_haltenable_irq0_value : '0;
-    assign readback_array[10][8:8] = (decoded_reg_strb_ctrl_haltenable && !decoded_req_is_wr) ? field_storage_ctrl_haltenable_irq1_value : '0;
+    assign readback_array[10][7:0] = (decoded_reg_strb_negedge_wel_irqs && !decoded_req_is_wr) ? field_storage_negedge_wel_irqs_irq0_value : '0;
+    assign readback_array[10][8:8] = (decoded_reg_strb_negedge_wel_irqs && !decoded_req_is_wr) ? field_storage_negedge_wel_irqs_irq1_value : '0;
     assign readback_array[10][31:9] = '0;
-    assign readback_array[11][7:0] = (decoded_reg_strb_ctrl_haltmask && !decoded_req_is_wr) ? field_storage_ctrl_haltmask_irq0_value : '0;
-    assign readback_array[11][8:8] = (decoded_reg_strb_ctrl_haltmask && !decoded_req_is_wr) ? field_storage_ctrl_haltmask_irq1_value : '0;
+    assign readback_array[11][7:0] = (decoded_reg_strb_bothedge_irqs && !decoded_req_is_wr) ? field_storage_bothedge_irqs_irq0_value : '0;
+    assign readback_array[11][8:8] = (decoded_reg_strb_bothedge_irqs && !decoded_req_is_wr) ? field_storage_bothedge_irqs_irq1_value : '0;
     assign readback_array[11][31:9] = '0;
+    assign readback_array[12][7:0] = (decoded_reg_strb_bothedge_we_irqs && !decoded_req_is_wr) ? field_storage_bothedge_we_irqs_irq0_value : '0;
+    assign readback_array[12][8:8] = (decoded_reg_strb_bothedge_we_irqs && !decoded_req_is_wr) ? field_storage_bothedge_we_irqs_irq1_value : '0;
+    assign readback_array[12][31:9] = '0;
+    assign readback_array[13][7:0] = (decoded_reg_strb_bothedge_wel_irqs && !decoded_req_is_wr) ? field_storage_bothedge_wel_irqs_irq0_value : '0;
+    assign readback_array[13][8:8] = (decoded_reg_strb_bothedge_wel_irqs && !decoded_req_is_wr) ? field_storage_bothedge_wel_irqs_irq1_value : '0;
+    assign readback_array[13][31:9] = '0;
+    assign readback_array[14][0:0] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_level_active_value : '0;
+    assign readback_array[14][1:1] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_posedge_active_value : '0;
+    assign readback_array[14][2:2] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_negedge_active_value : '0;
+    assign readback_array[14][3:3] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_bothedge_active_value : '0;
+    assign readback_array[14][4:4] = (decoded_reg_strb_top_irq && !decoded_req_is_wr) ? field_storage_top_irq_level_halt_active_value : '0;
+    assign readback_array[14][31:5] = '0;
+    assign readback_array[15][7:0] = (decoded_reg_strb_stickyreg && !decoded_req_is_wr) ? field_storage_stickyreg_stickyfield_value : '0;
+    assign readback_array[15][31:8] = '0;
+    assign readback_array[16][7:0] = (decoded_reg_strb_ctrl_enable && !decoded_req_is_wr) ? field_storage_ctrl_enable_irq0_value : '0;
+    assign readback_array[16][8:8] = (decoded_reg_strb_ctrl_enable && !decoded_req_is_wr) ? field_storage_ctrl_enable_irq1_value : '0;
+    assign readback_array[16][31:9] = '0;
+    assign readback_array[17][7:0] = (decoded_reg_strb_ctrl_mask && !decoded_req_is_wr) ? field_storage_ctrl_mask_irq0_value : '0;
+    assign readback_array[17][8:8] = (decoded_reg_strb_ctrl_mask && !decoded_req_is_wr) ? field_storage_ctrl_mask_irq1_value : '0;
+    assign readback_array[17][31:9] = '0;
+    assign readback_array[18][7:0] = (decoded_reg_strb_ctrl_haltenable && !decoded_req_is_wr) ? field_storage_ctrl_haltenable_irq0_value : '0;
+    assign readback_array[18][8:8] = (decoded_reg_strb_ctrl_haltenable && !decoded_req_is_wr) ? field_storage_ctrl_haltenable_irq1_value : '0;
+    assign readback_array[18][31:9] = '0;
+    assign readback_array[19][7:0] = (decoded_reg_strb_ctrl_haltmask && !decoded_req_is_wr) ? field_storage_ctrl_haltmask_irq0_value : '0;
+    assign readback_array[19][8:8] = (decoded_reg_strb_ctrl_haltmask && !decoded_req_is_wr) ? field_storage_ctrl_haltmask_irq1_value : '0;
+    assign readback_array[19][31:9] = '0;
+    assign readback_array[20][0:0] = (decoded_reg_strb_ctrl_we && !decoded_req_is_wr) ? field_storage_ctrl_we_irq0_value : '0;
+    assign readback_array[20][1:1] = (decoded_reg_strb_ctrl_we && !decoded_req_is_wr) ? field_storage_ctrl_we_irq1_value : '0;
+    assign readback_array[20][31:2] = '0;
+    assign readback_array[21][0:0] = (decoded_reg_strb_ctrl_wel && !decoded_req_is_wr) ? field_storage_ctrl_wel_irq0_value : '0;
+    assign readback_array[21][1:1] = (decoded_reg_strb_ctrl_wel && !decoded_req_is_wr) ? field_storage_ctrl_wel_irq1_value : '0;
+    assign readback_array[21][31:2] = '0;
 
     // Reduce the array
     // always_comb begin
@@ -971,7 +1667,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<12; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<22; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 

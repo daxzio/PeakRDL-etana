@@ -5,7 +5,7 @@ package regblock_pkg;
 
     localparam REGBLOCK_DATA_WIDTH = 32;
     localparam REGBLOCK_MIN_ADDR_WIDTH = 9;
-    localparam REGBLOCK_SIZE = 'h110;
+    localparam REGBLOCK_SIZE = 'h118;
 
     typedef struct {
         logic [7:0] next;
@@ -48,6 +48,32 @@ package regblock_pkg;
 
     typedef struct {
         logic [7:0] next;
+    } top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t;
+
+    typedef struct {
+        top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t irq0;
+        top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t irq1;
+    } top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__in_t;
+
+    typedef struct {
+        logic [7:0] next;
+    } top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t;
+
+    typedef struct {
+        top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t irq0;
+        top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t irq1;
+    } top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__in_t;
+
+    typedef struct {
+        logic [7:0] next;
     } top__posedge_irqs__intr_t_w8__in_t;
 
     typedef struct {
@@ -58,6 +84,32 @@ package regblock_pkg;
         top__posedge_irqs__intr_t_w8__in_t irq0;
         top__posedge_irqs__intr_t__in_t irq1;
     } top__posedge_irqs__in_t;
+
+    typedef struct {
+        logic [7:0] next;
+    } top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t;
+
+    typedef struct {
+        top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t irq0;
+        top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t irq1;
+    } top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t;
+
+    typedef struct {
+        logic [7:0] next;
+    } top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t;
+
+    typedef struct {
+        top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t irq0;
+        top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t irq1;
+    } top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t;
 
     typedef struct {
         logic [7:0] next;
@@ -74,6 +126,32 @@ package regblock_pkg;
 
     typedef struct {
         logic [7:0] next;
+    } top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t;
+
+    typedef struct {
+        top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t irq0;
+        top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t irq1;
+    } top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t;
+
+    typedef struct {
+        logic [7:0] next;
+    } top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t;
+
+    typedef struct {
+        top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t irq0;
+        top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t irq1;
+    } top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t;
+
+    typedef struct {
+        logic [7:0] next;
     } top__bothedge_irqs__intr_t_w8__in_t;
 
     typedef struct {
@@ -87,6 +165,32 @@ package regblock_pkg;
 
     typedef struct {
         logic [7:0] next;
+    } top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t;
+
+    typedef struct {
+        top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_20483101_w8__in_t irq0;
+        top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__intr_t_we_a3f33cdd__in_t irq1;
+    } top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t;
+
+    typedef struct {
+        logic [7:0] next;
+    } top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t;
+
+    typedef struct {
+        logic next;
+    } top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t;
+
+    typedef struct {
+        top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_6896b59f_w8__in_t irq0;
+        top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__intr_t_wel_3796b545__in_t irq1;
+    } top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t;
+
+    typedef struct {
+        logic [7:0] next;
     } top__stickyreg__stickyfield__in_t;
 
     typedef struct {
@@ -97,9 +201,17 @@ package regblock_pkg;
         top__level_irqs_1__in_t level_irqs_1;
         top__level_irqs_1_irq0_fa78a08b_irq1_d3495905__in_t level_irqs_2;
         top__level_irqs_1_irq0_a1e5c014_irq1_e5cbfedf__in_t level_irqs_3;
+        top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__in_t level_irqs_we;
+        top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__in_t level_irqs_wel;
         top__posedge_irqs__in_t posedge_irqs;
+        top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t posedge_we_irqs;
+        top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t posedge_wel_irqs;
         top__negedge_irqs__in_t negedge_irqs;
+        top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t negedge_we_irqs;
+        top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t negedge_wel_irqs;
         top__bothedge_irqs__in_t bothedge_irqs;
+        top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__in_t bothedge_we_irqs;
+        top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__in_t bothedge_wel_irqs;
         top__stickyreg__in_t stickyreg;
     } regblock__in_t;
 
@@ -119,7 +231,23 @@ package regblock_pkg;
 
     typedef struct {
         logic intr;
+    } top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__out_t;
+
+    typedef struct {
+        logic intr;
     } top__posedge_irqs__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t;
 
     typedef struct {
         logic intr;
@@ -127,7 +255,23 @@ package regblock_pkg;
 
     typedef struct {
         logic intr;
+    } top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t;
+
+    typedef struct {
+        logic intr;
     } top__bothedge_irqs__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t;
+
+    typedef struct {
+        logic intr;
+    } top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t;
 
     typedef struct {
         logic intr;
@@ -137,9 +281,17 @@ package regblock_pkg;
         top__level_irqs_1__out_t level_irqs_1;
         top__level_irqs_1_irq0_fa78a08b_irq1_d3495905__out_t level_irqs_2;
         top__level_irqs_1_irq0_a1e5c014_irq1_e5cbfedf__out_t level_irqs_3;
+        top__level_irqs_we_irq0_2f979512_irq1_69ae7f11__out_t level_irqs_we;
+        top__level_irqs_wel_irq0_ac83bbfb_irq1_39053309__out_t level_irqs_wel;
         top__posedge_irqs__out_t posedge_irqs;
+        top__posedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t posedge_we_irqs;
+        top__posedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t posedge_wel_irqs;
         top__negedge_irqs__out_t negedge_irqs;
+        top__negedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t negedge_we_irqs;
+        top__negedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t negedge_wel_irqs;
         top__bothedge_irqs__out_t bothedge_irqs;
+        top__bothedge_we_irqs_irq0_2f979512_irq1_69ae7f11__out_t bothedge_we_irqs;
+        top__bothedge_wel_irqs_irq0_ac83bbfb_irq1_39053309__out_t bothedge_wel_irqs;
         top__top_irq_bothedge_active_e8335918_level_active_fdc889d6_level_halt_active_7cf9402e_negedge_active_6b47f40d_posedge_active_5ee514ca__out_t top_irq;
     } regblock__out_t;
 endpackage

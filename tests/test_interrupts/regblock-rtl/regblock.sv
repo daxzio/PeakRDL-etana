@@ -90,15 +90,25 @@ module regblock (
         logic level_irqs_1;
         logic level_irqs_2;
         logic level_irqs_3;
+        logic level_irqs_we;
+        logic level_irqs_wel;
         logic posedge_irqs;
+        logic posedge_we_irqs;
+        logic posedge_wel_irqs;
         logic negedge_irqs;
+        logic negedge_we_irqs;
+        logic negedge_wel_irqs;
         logic bothedge_irqs;
+        logic bothedge_we_irqs;
+        logic bothedge_wel_irqs;
         logic top_irq;
         logic stickyreg;
         logic ctrl_enable;
         logic ctrl_mask;
         logic ctrl_haltenable;
         logic ctrl_haltmask;
+        logic ctrl_we;
+        logic ctrl_wel;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_req;
@@ -110,15 +120,25 @@ module regblock (
         decoded_reg_strb.level_irqs_1 = cpuif_req_masked & (cpuif_addr == 9'h0);
         decoded_reg_strb.level_irqs_2 = cpuif_req_masked & (cpuif_addr == 9'h4);
         decoded_reg_strb.level_irqs_3 = cpuif_req_masked & (cpuif_addr == 9'h8);
-        decoded_reg_strb.posedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h10);
-        decoded_reg_strb.negedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h20);
-        decoded_reg_strb.bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h30);
-        decoded_reg_strb.top_irq = cpuif_req_masked & (cpuif_addr == 9'h40);
-        decoded_reg_strb.stickyreg = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb.level_irqs_we = cpuif_req_masked & (cpuif_addr == 9'h10);
+        decoded_reg_strb.level_irqs_wel = cpuif_req_masked & (cpuif_addr == 9'h14);
+        decoded_reg_strb.posedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h20);
+        decoded_reg_strb.posedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h24);
+        decoded_reg_strb.posedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h28);
+        decoded_reg_strb.negedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h30);
+        decoded_reg_strb.negedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h34);
+        decoded_reg_strb.negedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h38);
+        decoded_reg_strb.bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h40);
+        decoded_reg_strb.bothedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h44);
+        decoded_reg_strb.bothedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h48);
+        decoded_reg_strb.top_irq = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb.stickyreg = cpuif_req_masked & (cpuif_addr == 9'h60);
         decoded_reg_strb.ctrl_enable = cpuif_req_masked & (cpuif_addr == 9'h100);
         decoded_reg_strb.ctrl_mask = cpuif_req_masked & (cpuif_addr == 9'h104);
         decoded_reg_strb.ctrl_haltenable = cpuif_req_masked & (cpuif_addr == 9'h108);
         decoded_reg_strb.ctrl_haltmask = cpuif_req_masked & (cpuif_addr == 9'h10c);
+        decoded_reg_strb.ctrl_we = cpuif_req_masked & (cpuif_addr == 9'h110);
+        decoded_reg_strb.ctrl_wel = cpuif_req_masked & (cpuif_addr == 9'h114);
     end
 
     // Pass down signals to next stage
@@ -170,7 +190,47 @@ module regblock (
                 logic next;
                 logic load_next;
             } irq1;
+        } level_irqs_we;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } level_irqs_wel;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
         } posedge_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } posedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } posedge_wel_irqs;
         struct {
             struct {
                 logic [7:0] next;
@@ -190,7 +250,47 @@ module regblock (
                 logic next;
                 logic load_next;
             } irq1;
+        } negedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } negedge_wel_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
         } bothedge_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } bothedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } bothedge_wel_irqs;
         struct {
             struct {
                 logic next;
@@ -259,6 +359,26 @@ module regblock (
                 logic load_next;
             } irq1;
         } ctrl_haltmask;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } ctrl_we;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } irq0;
+            struct {
+                logic next;
+                logic load_next;
+            } irq1;
+        } ctrl_wel;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -290,6 +410,22 @@ module regblock (
         struct {
             struct {
                 logic [7:0] value;
+            } irq0;
+            struct {
+                logic value;
+            } irq1;
+        } level_irqs_we;
+        struct {
+            struct {
+                logic [7:0] value;
+            } irq0;
+            struct {
+                logic value;
+            } irq1;
+        } level_irqs_wel;
+        struct {
+            struct {
+                logic [7:0] value;
                 logic [7:0] next_q;
             } irq0;
             struct {
@@ -297,6 +433,26 @@ module regblock (
                 logic next_q;
             } irq1;
         } posedge_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
+        } posedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
+        } posedge_wel_irqs;
         struct {
             struct {
                 logic [7:0] value;
@@ -316,7 +472,47 @@ module regblock (
                 logic value;
                 logic next_q;
             } irq1;
+        } negedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
+        } negedge_wel_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
         } bothedge_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
+        } bothedge_we_irqs;
+        struct {
+            struct {
+                logic [7:0] value;
+                logic [7:0] next_q;
+            } irq0;
+            struct {
+                logic value;
+                logic next_q;
+            } irq1;
+        } bothedge_wel_irqs;
         struct {
             struct {
                 logic value;
@@ -371,6 +567,22 @@ module regblock (
                 logic value;
             } irq1;
         } ctrl_haltmask;
+        struct {
+            struct {
+                logic value;
+            } irq0;
+            struct {
+                logic value;
+            } irq1;
+        } ctrl_we;
+        struct {
+            struct {
+                logic value;
+            } irq0;
+            struct {
+                logic value;
+            } irq1;
+        } ctrl_wel;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -539,6 +751,112 @@ module regblock (
     assign hwif_out.level_irqs_3.halt =
         |(field_storage.level_irqs_3.irq0.value & ~field_storage.ctrl_haltmask.irq0.value)
         || |(field_storage.level_irqs_3.irq1.value & ~field_storage.ctrl_haltmask.irq1.value);
+    // Field: regblock.level_irqs_we.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.level_irqs_we.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.level_irqs_we && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.level_irqs_we.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(hwif_in.level_irqs_we.irq0.next != '0 && field_storage.ctrl_we.irq0.value) begin // stickybit with WE
+            next_c = field_storage.level_irqs_we.irq0.value | hwif_in.level_irqs_we.irq0.next;
+            load_next_c = '1;
+        end
+        field_combo.level_irqs_we.irq0.next = next_c;
+        field_combo.level_irqs_we.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.level_irqs_we.irq0.value <= 8'h0;
+        end else begin
+            if(field_combo.level_irqs_we.irq0.load_next) begin
+                field_storage.level_irqs_we.irq0.value <= field_combo.level_irqs_we.irq0.next;
+            end
+        end
+    end
+    // Field: regblock.level_irqs_we.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.level_irqs_we.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.level_irqs_we && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.level_irqs_we.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(hwif_in.level_irqs_we.irq1.next && field_storage.ctrl_we.irq1.value) begin // stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.level_irqs_we.irq1.next = next_c;
+        field_combo.level_irqs_we.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.level_irqs_we.irq1.value <= 1'h0;
+        end else begin
+            if(field_combo.level_irqs_we.irq1.load_next) begin
+                field_storage.level_irqs_we.irq1.value <= field_combo.level_irqs_we.irq1.next;
+            end
+        end
+    end
+    assign hwif_out.level_irqs_we.intr =
+        |field_storage.level_irqs_we.irq0.value
+        || |field_storage.level_irqs_we.irq1.value;
+    // Field: regblock.level_irqs_wel.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.level_irqs_wel.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.level_irqs_wel && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.level_irqs_wel.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(hwif_in.level_irqs_wel.irq0.next != '0 && !field_storage.ctrl_wel.irq0.value) begin // stickybit with WEL
+            next_c = field_storage.level_irqs_wel.irq0.value | hwif_in.level_irqs_wel.irq0.next;
+            load_next_c = '1;
+        end
+        field_combo.level_irqs_wel.irq0.next = next_c;
+        field_combo.level_irqs_wel.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.level_irqs_wel.irq0.value <= 8'h0;
+        end else begin
+            if(field_combo.level_irqs_wel.irq0.load_next) begin
+                field_storage.level_irqs_wel.irq0.value <= field_combo.level_irqs_wel.irq0.next;
+            end
+        end
+    end
+    // Field: regblock.level_irqs_wel.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.level_irqs_wel.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.level_irqs_wel && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.level_irqs_wel.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(hwif_in.level_irqs_wel.irq1.next && !field_storage.ctrl_wel.irq1.value) begin // stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.level_irqs_wel.irq1.next = next_c;
+        field_combo.level_irqs_wel.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.level_irqs_wel.irq1.value <= 1'h0;
+        end else begin
+            if(field_combo.level_irqs_wel.irq1.load_next) begin
+                field_storage.level_irqs_wel.irq1.value <= field_combo.level_irqs_wel.irq1.next;
+            end
+        end
+    end
+    assign hwif_out.level_irqs_wel.intr =
+        |field_storage.level_irqs_wel.irq0.value
+        || |field_storage.level_irqs_wel.irq1.value;
     // Field: regblock.posedge_irqs.irq0
     always_comb begin
         automatic logic [7:0] next_c;
@@ -596,6 +914,120 @@ module regblock (
     assign hwif_out.posedge_irqs.intr =
         |field_storage.posedge_irqs.irq0.value
         || |field_storage.posedge_irqs.irq1.value;
+    // Field: regblock.posedge_we_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.posedge_we_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.posedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.posedge_we_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((~field_storage.posedge_we_irqs.irq0.next_q & hwif_in.posedge_we_irqs.irq0.next) != '0 && field_storage.ctrl_we.irq0.value) begin // posedge stickybit with WE
+            next_c = field_storage.posedge_we_irqs.irq0.value | (~field_storage.posedge_we_irqs.irq0.next_q & hwif_in.posedge_we_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.posedge_we_irqs.irq0.next = next_c;
+        field_combo.posedge_we_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.posedge_we_irqs.irq0.value <= 8'h0;
+            field_storage.posedge_we_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.posedge_we_irqs.irq0.load_next) begin
+                field_storage.posedge_we_irqs.irq0.value <= field_combo.posedge_we_irqs.irq0.next;
+            end
+            field_storage.posedge_we_irqs.irq0.next_q <= hwif_in.posedge_we_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.posedge_we_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.posedge_we_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.posedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.posedge_we_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if((~field_storage.posedge_we_irqs.irq1.next_q & hwif_in.posedge_we_irqs.irq1.next) != '0 && field_storage.ctrl_we.irq1.value) begin // posedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.posedge_we_irqs.irq1.next = next_c;
+        field_combo.posedge_we_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.posedge_we_irqs.irq1.value <= 1'h0;
+            field_storage.posedge_we_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.posedge_we_irqs.irq1.load_next) begin
+                field_storage.posedge_we_irqs.irq1.value <= field_combo.posedge_we_irqs.irq1.next;
+            end
+            field_storage.posedge_we_irqs.irq1.next_q <= hwif_in.posedge_we_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.posedge_we_irqs.intr =
+        |field_storage.posedge_we_irqs.irq0.value
+        || |field_storage.posedge_we_irqs.irq1.value;
+    // Field: regblock.posedge_wel_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.posedge_wel_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.posedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.posedge_wel_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((~field_storage.posedge_wel_irqs.irq0.next_q & hwif_in.posedge_wel_irqs.irq0.next) != '0 && !field_storage.ctrl_wel.irq0.value) begin // posedge stickybit with WEL
+            next_c = field_storage.posedge_wel_irqs.irq0.value | (~field_storage.posedge_wel_irqs.irq0.next_q & hwif_in.posedge_wel_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.posedge_wel_irqs.irq0.next = next_c;
+        field_combo.posedge_wel_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.posedge_wel_irqs.irq0.value <= 8'h0;
+            field_storage.posedge_wel_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.posedge_wel_irqs.irq0.load_next) begin
+                field_storage.posedge_wel_irqs.irq0.value <= field_combo.posedge_wel_irqs.irq0.next;
+            end
+            field_storage.posedge_wel_irqs.irq0.next_q <= hwif_in.posedge_wel_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.posedge_wel_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.posedge_wel_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.posedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.posedge_wel_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if((~field_storage.posedge_wel_irqs.irq1.next_q & hwif_in.posedge_wel_irqs.irq1.next) != '0 && !field_storage.ctrl_wel.irq1.value) begin // posedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.posedge_wel_irqs.irq1.next = next_c;
+        field_combo.posedge_wel_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.posedge_wel_irqs.irq1.value <= 1'h0;
+            field_storage.posedge_wel_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.posedge_wel_irqs.irq1.load_next) begin
+                field_storage.posedge_wel_irqs.irq1.value <= field_combo.posedge_wel_irqs.irq1.next;
+            end
+            field_storage.posedge_wel_irqs.irq1.next_q <= hwif_in.posedge_wel_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.posedge_wel_irqs.intr =
+        |field_storage.posedge_wel_irqs.irq0.value
+        || |field_storage.posedge_wel_irqs.irq1.value;
     // Field: regblock.negedge_irqs.irq0
     always_comb begin
         automatic logic [7:0] next_c;
@@ -653,6 +1085,120 @@ module regblock (
     assign hwif_out.negedge_irqs.intr =
         |field_storage.negedge_irqs.irq0.value
         || |field_storage.negedge_irqs.irq1.value;
+    // Field: regblock.negedge_we_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.negedge_we_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.negedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.negedge_we_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((field_storage.negedge_we_irqs.irq0.next_q & ~hwif_in.negedge_we_irqs.irq0.next) != '0 && field_storage.ctrl_we.irq0.value) begin // negedge stickybit with WE
+            next_c = field_storage.negedge_we_irqs.irq0.value | (field_storage.negedge_we_irqs.irq0.next_q & ~hwif_in.negedge_we_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.negedge_we_irqs.irq0.next = next_c;
+        field_combo.negedge_we_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.negedge_we_irqs.irq0.value <= 8'h0;
+            field_storage.negedge_we_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.negedge_we_irqs.irq0.load_next) begin
+                field_storage.negedge_we_irqs.irq0.value <= field_combo.negedge_we_irqs.irq0.next;
+            end
+            field_storage.negedge_we_irqs.irq0.next_q <= hwif_in.negedge_we_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.negedge_we_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.negedge_we_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.negedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.negedge_we_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if((field_storage.negedge_we_irqs.irq1.next_q & ~hwif_in.negedge_we_irqs.irq1.next) != '0 && field_storage.ctrl_we.irq1.value) begin // negedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.negedge_we_irqs.irq1.next = next_c;
+        field_combo.negedge_we_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.negedge_we_irqs.irq1.value <= 1'h0;
+            field_storage.negedge_we_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.negedge_we_irqs.irq1.load_next) begin
+                field_storage.negedge_we_irqs.irq1.value <= field_combo.negedge_we_irqs.irq1.next;
+            end
+            field_storage.negedge_we_irqs.irq1.next_q <= hwif_in.negedge_we_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.negedge_we_irqs.intr =
+        |field_storage.negedge_we_irqs.irq0.value
+        || |field_storage.negedge_we_irqs.irq1.value;
+    // Field: regblock.negedge_wel_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.negedge_wel_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.negedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.negedge_wel_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if((field_storage.negedge_wel_irqs.irq0.next_q & ~hwif_in.negedge_wel_irqs.irq0.next) != '0 && !field_storage.ctrl_wel.irq0.value) begin // negedge stickybit with WEL
+            next_c = field_storage.negedge_wel_irqs.irq0.value | (field_storage.negedge_wel_irqs.irq0.next_q & ~hwif_in.negedge_wel_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.negedge_wel_irqs.irq0.next = next_c;
+        field_combo.negedge_wel_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.negedge_wel_irqs.irq0.value <= 8'h0;
+            field_storage.negedge_wel_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.negedge_wel_irqs.irq0.load_next) begin
+                field_storage.negedge_wel_irqs.irq0.value <= field_combo.negedge_wel_irqs.irq0.next;
+            end
+            field_storage.negedge_wel_irqs.irq0.next_q <= hwif_in.negedge_wel_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.negedge_wel_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.negedge_wel_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.negedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.negedge_wel_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if((field_storage.negedge_wel_irqs.irq1.next_q & ~hwif_in.negedge_wel_irqs.irq1.next) != '0 && !field_storage.ctrl_wel.irq1.value) begin // negedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.negedge_wel_irqs.irq1.next = next_c;
+        field_combo.negedge_wel_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.negedge_wel_irqs.irq1.value <= 1'h0;
+            field_storage.negedge_wel_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.negedge_wel_irqs.irq1.load_next) begin
+                field_storage.negedge_wel_irqs.irq1.value <= field_combo.negedge_wel_irqs.irq1.next;
+            end
+            field_storage.negedge_wel_irqs.irq1.next_q <= hwif_in.negedge_wel_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.negedge_wel_irqs.intr =
+        |field_storage.negedge_wel_irqs.irq0.value
+        || |field_storage.negedge_wel_irqs.irq1.value;
     // Field: regblock.bothedge_irqs.irq0
     always_comb begin
         automatic logic [7:0] next_c;
@@ -710,6 +1256,120 @@ module regblock (
     assign hwif_out.bothedge_irqs.intr =
         |field_storage.bothedge_irqs.irq0.value
         || |field_storage.bothedge_irqs.irq1.value;
+    // Field: regblock.bothedge_we_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.bothedge_we_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.bothedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.bothedge_we_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(field_storage.bothedge_we_irqs.irq0.next_q != hwif_in.bothedge_we_irqs.irq0.next && field_storage.ctrl_we.irq0.value) begin // bothedge stickybit with WE
+            next_c = field_storage.bothedge_we_irqs.irq0.value | (field_storage.bothedge_we_irqs.irq0.next_q ^ hwif_in.bothedge_we_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.bothedge_we_irqs.irq0.next = next_c;
+        field_combo.bothedge_we_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.bothedge_we_irqs.irq0.value <= 8'h0;
+            field_storage.bothedge_we_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.bothedge_we_irqs.irq0.load_next) begin
+                field_storage.bothedge_we_irqs.irq0.value <= field_combo.bothedge_we_irqs.irq0.next;
+            end
+            field_storage.bothedge_we_irqs.irq0.next_q <= hwif_in.bothedge_we_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.bothedge_we_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.bothedge_we_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.bothedge_we_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.bothedge_we_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage.bothedge_we_irqs.irq1.next_q != hwif_in.bothedge_we_irqs.irq1.next && field_storage.ctrl_we.irq1.value) begin // bothedge stickybit with WE
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.bothedge_we_irqs.irq1.next = next_c;
+        field_combo.bothedge_we_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.bothedge_we_irqs.irq1.value <= 1'h0;
+            field_storage.bothedge_we_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.bothedge_we_irqs.irq1.load_next) begin
+                field_storage.bothedge_we_irqs.irq1.value <= field_combo.bothedge_we_irqs.irq1.next;
+            end
+            field_storage.bothedge_we_irqs.irq1.next_q <= hwif_in.bothedge_we_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.bothedge_we_irqs.intr =
+        |field_storage.bothedge_we_irqs.irq0.value
+        || |field_storage.bothedge_we_irqs.irq1.value;
+    // Field: regblock.bothedge_wel_irqs.irq0
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.bothedge_wel_irqs.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.bothedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.bothedge_wel_irqs.irq0.value & ~(decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else if(field_storage.bothedge_wel_irqs.irq0.next_q != hwif_in.bothedge_wel_irqs.irq0.next && !field_storage.ctrl_wel.irq0.value) begin // bothedge stickybit with WEL
+            next_c = field_storage.bothedge_wel_irqs.irq0.value | (field_storage.bothedge_wel_irqs.irq0.next_q ^ hwif_in.bothedge_wel_irqs.irq0.next);
+            load_next_c = '1;
+        end
+        field_combo.bothedge_wel_irqs.irq0.next = next_c;
+        field_combo.bothedge_wel_irqs.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.bothedge_wel_irqs.irq0.value <= 8'h0;
+            field_storage.bothedge_wel_irqs.irq0.next_q <= 8'h0;
+        end else begin
+            if(field_combo.bothedge_wel_irqs.irq0.load_next) begin
+                field_storage.bothedge_wel_irqs.irq0.value <= field_combo.bothedge_wel_irqs.irq0.next;
+            end
+            field_storage.bothedge_wel_irqs.irq0.next_q <= hwif_in.bothedge_wel_irqs.irq0.next;
+        end
+    end
+    // Field: regblock.bothedge_wel_irqs.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.bothedge_wel_irqs.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.bothedge_wel_irqs && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.bothedge_wel_irqs.irq1.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(field_storage.bothedge_wel_irqs.irq1.next_q != hwif_in.bothedge_wel_irqs.irq1.next && !field_storage.ctrl_wel.irq1.value) begin // bothedge stickybit with WEL
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.bothedge_wel_irqs.irq1.next = next_c;
+        field_combo.bothedge_wel_irqs.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.bothedge_wel_irqs.irq1.value <= 1'h0;
+            field_storage.bothedge_wel_irqs.irq1.next_q <= 1'h0;
+        end else begin
+            if(field_combo.bothedge_wel_irqs.irq1.load_next) begin
+                field_storage.bothedge_wel_irqs.irq1.value <= field_combo.bothedge_wel_irqs.irq1.next;
+            end
+            field_storage.bothedge_wel_irqs.irq1.next_q <= hwif_in.bothedge_wel_irqs.irq1.next;
+        end
+    end
+    assign hwif_out.bothedge_wel_irqs.intr =
+        |field_storage.bothedge_wel_irqs.irq0.value
+        || |field_storage.bothedge_wel_irqs.irq1.value;
     // Field: regblock.top_irq.level_active
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1007,6 +1667,94 @@ module regblock (
             end
         end
     end
+    // Field: regblock.ctrl_we.irq0
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.ctrl_we.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.ctrl_we && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.ctrl_we.irq0.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.ctrl_we.irq0.next = next_c;
+        field_combo.ctrl_we.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.ctrl_we.irq0.value <= 1'h0;
+        end else begin
+            if(field_combo.ctrl_we.irq0.load_next) begin
+                field_storage.ctrl_we.irq0.value <= field_combo.ctrl_we.irq0.next;
+            end
+        end
+    end
+    // Field: regblock.ctrl_we.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.ctrl_we.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.ctrl_we && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.ctrl_we.irq1.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo.ctrl_we.irq1.next = next_c;
+        field_combo.ctrl_we.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.ctrl_we.irq1.value <= 1'h0;
+        end else begin
+            if(field_combo.ctrl_we.irq1.load_next) begin
+                field_storage.ctrl_we.irq1.value <= field_combo.ctrl_we.irq1.next;
+            end
+        end
+    end
+    // Field: regblock.ctrl_wel.irq0
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.ctrl_wel.irq0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.ctrl_wel && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.ctrl_wel.irq0.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end
+        field_combo.ctrl_wel.irq0.next = next_c;
+        field_combo.ctrl_wel.irq0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.ctrl_wel.irq0.value <= 1'h0;
+        end else begin
+            if(field_combo.ctrl_wel.irq0.load_next) begin
+                field_storage.ctrl_wel.irq0.value <= field_combo.ctrl_wel.irq0.next;
+            end
+        end
+    end
+    // Field: regblock.ctrl_wel.irq1
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.ctrl_wel.irq1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.ctrl_wel && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.ctrl_wel.irq1.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end
+        field_combo.ctrl_wel.irq1.next = next_c;
+        field_combo.ctrl_wel.irq1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.ctrl_wel.irq1.value <= 1'h0;
+        end else begin
+            if(field_combo.ctrl_wel.irq1.load_next) begin
+                field_storage.ctrl_wel.irq1.value <= field_combo.ctrl_wel.irq1.next;
+            end
+        end
+    end
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1024,7 +1772,7 @@ module regblock (
     logic [31:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [31:0] readback_array[12];
+    logic [31:0] readback_array[22];
     assign readback_array[0][7:0] = (decoded_reg_strb.level_irqs_1 && !decoded_req_is_wr) ? field_storage.level_irqs_1.irq0.value : '0;
     assign readback_array[0][8:8] = (decoded_reg_strb.level_irqs_1 && !decoded_req_is_wr) ? field_storage.level_irqs_1.irq1.value : '0;
     assign readback_array[0][31:9] = '0;
@@ -1034,35 +1782,65 @@ module regblock (
     assign readback_array[2][7:0] = (decoded_reg_strb.level_irqs_3 && !decoded_req_is_wr) ? field_storage.level_irqs_3.irq0.value : '0;
     assign readback_array[2][8:8] = (decoded_reg_strb.level_irqs_3 && !decoded_req_is_wr) ? field_storage.level_irqs_3.irq1.value : '0;
     assign readback_array[2][31:9] = '0;
-    assign readback_array[3][7:0] = (decoded_reg_strb.posedge_irqs && !decoded_req_is_wr) ? field_storage.posedge_irqs.irq0.value : '0;
-    assign readback_array[3][8:8] = (decoded_reg_strb.posedge_irqs && !decoded_req_is_wr) ? field_storage.posedge_irqs.irq1.value : '0;
+    assign readback_array[3][7:0] = (decoded_reg_strb.level_irqs_we && !decoded_req_is_wr) ? field_storage.level_irqs_we.irq0.value : '0;
+    assign readback_array[3][8:8] = (decoded_reg_strb.level_irqs_we && !decoded_req_is_wr) ? field_storage.level_irqs_we.irq1.value : '0;
     assign readback_array[3][31:9] = '0;
-    assign readback_array[4][7:0] = (decoded_reg_strb.negedge_irqs && !decoded_req_is_wr) ? field_storage.negedge_irqs.irq0.value : '0;
-    assign readback_array[4][8:8] = (decoded_reg_strb.negedge_irqs && !decoded_req_is_wr) ? field_storage.negedge_irqs.irq1.value : '0;
+    assign readback_array[4][7:0] = (decoded_reg_strb.level_irqs_wel && !decoded_req_is_wr) ? field_storage.level_irqs_wel.irq0.value : '0;
+    assign readback_array[4][8:8] = (decoded_reg_strb.level_irqs_wel && !decoded_req_is_wr) ? field_storage.level_irqs_wel.irq1.value : '0;
     assign readback_array[4][31:9] = '0;
-    assign readback_array[5][7:0] = (decoded_reg_strb.bothedge_irqs && !decoded_req_is_wr) ? field_storage.bothedge_irqs.irq0.value : '0;
-    assign readback_array[5][8:8] = (decoded_reg_strb.bothedge_irqs && !decoded_req_is_wr) ? field_storage.bothedge_irqs.irq1.value : '0;
+    assign readback_array[5][7:0] = (decoded_reg_strb.posedge_irqs && !decoded_req_is_wr) ? field_storage.posedge_irqs.irq0.value : '0;
+    assign readback_array[5][8:8] = (decoded_reg_strb.posedge_irqs && !decoded_req_is_wr) ? field_storage.posedge_irqs.irq1.value : '0;
     assign readback_array[5][31:9] = '0;
-    assign readback_array[6][0:0] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.level_active.value : '0;
-    assign readback_array[6][1:1] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.posedge_active.value : '0;
-    assign readback_array[6][2:2] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.negedge_active.value : '0;
-    assign readback_array[6][3:3] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.bothedge_active.value : '0;
-    assign readback_array[6][4:4] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.level_halt_active.value : '0;
-    assign readback_array[6][31:5] = '0;
-    assign readback_array[7][7:0] = (decoded_reg_strb.stickyreg && !decoded_req_is_wr) ? field_storage.stickyreg.stickyfield.value : '0;
-    assign readback_array[7][31:8] = '0;
-    assign readback_array[8][7:0] = (decoded_reg_strb.ctrl_enable && !decoded_req_is_wr) ? field_storage.ctrl_enable.irq0.value : '0;
-    assign readback_array[8][8:8] = (decoded_reg_strb.ctrl_enable && !decoded_req_is_wr) ? field_storage.ctrl_enable.irq1.value : '0;
+    assign readback_array[6][7:0] = (decoded_reg_strb.posedge_we_irqs && !decoded_req_is_wr) ? field_storage.posedge_we_irqs.irq0.value : '0;
+    assign readback_array[6][8:8] = (decoded_reg_strb.posedge_we_irqs && !decoded_req_is_wr) ? field_storage.posedge_we_irqs.irq1.value : '0;
+    assign readback_array[6][31:9] = '0;
+    assign readback_array[7][7:0] = (decoded_reg_strb.posedge_wel_irqs && !decoded_req_is_wr) ? field_storage.posedge_wel_irqs.irq0.value : '0;
+    assign readback_array[7][8:8] = (decoded_reg_strb.posedge_wel_irqs && !decoded_req_is_wr) ? field_storage.posedge_wel_irqs.irq1.value : '0;
+    assign readback_array[7][31:9] = '0;
+    assign readback_array[8][7:0] = (decoded_reg_strb.negedge_irqs && !decoded_req_is_wr) ? field_storage.negedge_irqs.irq0.value : '0;
+    assign readback_array[8][8:8] = (decoded_reg_strb.negedge_irqs && !decoded_req_is_wr) ? field_storage.negedge_irqs.irq1.value : '0;
     assign readback_array[8][31:9] = '0;
-    assign readback_array[9][7:0] = (decoded_reg_strb.ctrl_mask && !decoded_req_is_wr) ? field_storage.ctrl_mask.irq0.value : '0;
-    assign readback_array[9][8:8] = (decoded_reg_strb.ctrl_mask && !decoded_req_is_wr) ? field_storage.ctrl_mask.irq1.value : '0;
+    assign readback_array[9][7:0] = (decoded_reg_strb.negedge_we_irqs && !decoded_req_is_wr) ? field_storage.negedge_we_irqs.irq0.value : '0;
+    assign readback_array[9][8:8] = (decoded_reg_strb.negedge_we_irqs && !decoded_req_is_wr) ? field_storage.negedge_we_irqs.irq1.value : '0;
     assign readback_array[9][31:9] = '0;
-    assign readback_array[10][7:0] = (decoded_reg_strb.ctrl_haltenable && !decoded_req_is_wr) ? field_storage.ctrl_haltenable.irq0.value : '0;
-    assign readback_array[10][8:8] = (decoded_reg_strb.ctrl_haltenable && !decoded_req_is_wr) ? field_storage.ctrl_haltenable.irq1.value : '0;
+    assign readback_array[10][7:0] = (decoded_reg_strb.negedge_wel_irqs && !decoded_req_is_wr) ? field_storage.negedge_wel_irqs.irq0.value : '0;
+    assign readback_array[10][8:8] = (decoded_reg_strb.negedge_wel_irqs && !decoded_req_is_wr) ? field_storage.negedge_wel_irqs.irq1.value : '0;
     assign readback_array[10][31:9] = '0;
-    assign readback_array[11][7:0] = (decoded_reg_strb.ctrl_haltmask && !decoded_req_is_wr) ? field_storage.ctrl_haltmask.irq0.value : '0;
-    assign readback_array[11][8:8] = (decoded_reg_strb.ctrl_haltmask && !decoded_req_is_wr) ? field_storage.ctrl_haltmask.irq1.value : '0;
+    assign readback_array[11][7:0] = (decoded_reg_strb.bothedge_irqs && !decoded_req_is_wr) ? field_storage.bothedge_irqs.irq0.value : '0;
+    assign readback_array[11][8:8] = (decoded_reg_strb.bothedge_irqs && !decoded_req_is_wr) ? field_storage.bothedge_irqs.irq1.value : '0;
     assign readback_array[11][31:9] = '0;
+    assign readback_array[12][7:0] = (decoded_reg_strb.bothedge_we_irqs && !decoded_req_is_wr) ? field_storage.bothedge_we_irqs.irq0.value : '0;
+    assign readback_array[12][8:8] = (decoded_reg_strb.bothedge_we_irqs && !decoded_req_is_wr) ? field_storage.bothedge_we_irqs.irq1.value : '0;
+    assign readback_array[12][31:9] = '0;
+    assign readback_array[13][7:0] = (decoded_reg_strb.bothedge_wel_irqs && !decoded_req_is_wr) ? field_storage.bothedge_wel_irqs.irq0.value : '0;
+    assign readback_array[13][8:8] = (decoded_reg_strb.bothedge_wel_irqs && !decoded_req_is_wr) ? field_storage.bothedge_wel_irqs.irq1.value : '0;
+    assign readback_array[13][31:9] = '0;
+    assign readback_array[14][0:0] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.level_active.value : '0;
+    assign readback_array[14][1:1] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.posedge_active.value : '0;
+    assign readback_array[14][2:2] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.negedge_active.value : '0;
+    assign readback_array[14][3:3] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.bothedge_active.value : '0;
+    assign readback_array[14][4:4] = (decoded_reg_strb.top_irq && !decoded_req_is_wr) ? field_storage.top_irq.level_halt_active.value : '0;
+    assign readback_array[14][31:5] = '0;
+    assign readback_array[15][7:0] = (decoded_reg_strb.stickyreg && !decoded_req_is_wr) ? field_storage.stickyreg.stickyfield.value : '0;
+    assign readback_array[15][31:8] = '0;
+    assign readback_array[16][7:0] = (decoded_reg_strb.ctrl_enable && !decoded_req_is_wr) ? field_storage.ctrl_enable.irq0.value : '0;
+    assign readback_array[16][8:8] = (decoded_reg_strb.ctrl_enable && !decoded_req_is_wr) ? field_storage.ctrl_enable.irq1.value : '0;
+    assign readback_array[16][31:9] = '0;
+    assign readback_array[17][7:0] = (decoded_reg_strb.ctrl_mask && !decoded_req_is_wr) ? field_storage.ctrl_mask.irq0.value : '0;
+    assign readback_array[17][8:8] = (decoded_reg_strb.ctrl_mask && !decoded_req_is_wr) ? field_storage.ctrl_mask.irq1.value : '0;
+    assign readback_array[17][31:9] = '0;
+    assign readback_array[18][7:0] = (decoded_reg_strb.ctrl_haltenable && !decoded_req_is_wr) ? field_storage.ctrl_haltenable.irq0.value : '0;
+    assign readback_array[18][8:8] = (decoded_reg_strb.ctrl_haltenable && !decoded_req_is_wr) ? field_storage.ctrl_haltenable.irq1.value : '0;
+    assign readback_array[18][31:9] = '0;
+    assign readback_array[19][7:0] = (decoded_reg_strb.ctrl_haltmask && !decoded_req_is_wr) ? field_storage.ctrl_haltmask.irq0.value : '0;
+    assign readback_array[19][8:8] = (decoded_reg_strb.ctrl_haltmask && !decoded_req_is_wr) ? field_storage.ctrl_haltmask.irq1.value : '0;
+    assign readback_array[19][31:9] = '0;
+    assign readback_array[20][0:0] = (decoded_reg_strb.ctrl_we && !decoded_req_is_wr) ? field_storage.ctrl_we.irq0.value : '0;
+    assign readback_array[20][1:1] = (decoded_reg_strb.ctrl_we && !decoded_req_is_wr) ? field_storage.ctrl_we.irq1.value : '0;
+    assign readback_array[20][31:2] = '0;
+    assign readback_array[21][0:0] = (decoded_reg_strb.ctrl_wel && !decoded_req_is_wr) ? field_storage.ctrl_wel.irq0.value : '0;
+    assign readback_array[21][1:1] = (decoded_reg_strb.ctrl_wel && !decoded_req_is_wr) ? field_storage.ctrl_wel.irq1.value : '0;
+    assign readback_array[21][31:2] = '0;
 
     // Reduce the array
     always_comb begin
@@ -1070,7 +1848,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<12; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<22; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 
