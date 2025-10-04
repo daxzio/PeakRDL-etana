@@ -11,7 +11,8 @@ This flattened approach has the following benefits:
 * **Direct connectivity** - Signals can be connected directly without struct unpacking
 * **Simplified debugging** - Individual signals are easier to trace in waveforms
 
-## Signal Naming Convention
+Signal Naming Convention
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Signals follow the pattern: ``{direction}_{hierarchical_path}_{feature}``
 
@@ -19,7 +20,8 @@ Signals follow the pattern: ``{direction}_{hierarchical_path}_{feature}``
 * **Hierarchical path**: Underscore-separated path through the design hierarchy
 * **Feature**: Signal purpose (value, we, wr_ack, etc.)
 
-### Customizing Signal Prefixes
+Customizing Signal Prefixes
+""""""""""""""""""""""""""""
 
 The default prefixes (``hwif_in`` and ``hwif_out``) can be customized using command-line options:
 
@@ -37,7 +39,8 @@ The default prefixes (``hwif_in`` and ``hwif_out``) can be customized using comm
 * ``--in-str <prefix>`` - Customize the prefix for input signals (default: ``hwif_in``)
 * ``--out-str <prefix>`` - Customize the prefix for output signals (default: ``hwif_out``)
 
-## Example
+Example
+^^^^^^^
 
 For a simple design such as:
 
@@ -69,25 +72,31 @@ For a simple design such as:
     input wire hwif_in_my_reg_0_my_field_we,
     input wire hwif_in_my_reg_1_my_field_we,
 
-## Signal Types
+Signal Types
+^^^^^^^^^^^^
 
-### Field Value Signals
+Field Value Signals
+"""""""""""""""""""
 * **Output (hwif_out_*)**: Current stored value of the field (if hardware readable)
 * **Input (hwif_in_*)**: Next value for the field (if hardware writable)
 
-### Control Signals
+Control Signals
+"""""""""""""""
 * **Write Enable (hwif_in_*_we)**: Enables hardware write to field
 * **Clear/Set (hwif_in_*_hwclr/hwset)**: Hardware clear/set strobes
 * **Counter (hwif_in_*_incr/decr)**: Counter increment/decrement strobes
 
-### Event Signals
+Event Signals
+"""""""""""""
 * **Access Events (hwif_out_*_swacc/swmod)**: Software access/modify strobes
 * **Reductions (hwif_out_*_anded/ored/xored)**: Bitwise reduction outputs
 
-### External Signals
+External Signals
+""""""""""""""""
 User-defined signals are included with their original names (with keyword filtering if needed).
 
-## MSB0 Field Support
+MSB0 Field Support
+^^^^^^^^^^^^^^^^^^
 
 Fields with MSB0 bit ordering (``[low:high]`` notation) are automatically handled with appropriate bit swapping logic. The hardware interface signals maintain the same width and meaning regardless of internal bit ordering.
 
