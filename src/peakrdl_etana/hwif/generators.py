@@ -3,7 +3,12 @@ from typing import TYPE_CHECKING, Optional
 from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
 
-from ..utils import clog2
+from ..utils import (
+    clog2,
+    has_sw_writable_descendants,
+    has_sw_readable_descendants,
+    is_wide_single_field_register,
+)
 
 if TYPE_CHECKING:
     from systemrdl.node import Node, RegfileNode
@@ -54,14 +59,8 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
 
             # Check if addrmap has sw-writable/readable registers
-            # Walk descendants to find any sw-accessible registers
-            has_sw_wr = False
-            has_sw_rd = False
-            for desc in node.descendants():
-                if hasattr(desc, "has_sw_writable"):
-                    has_sw_wr = has_sw_wr or desc.has_sw_writable
-                if hasattr(desc, "has_sw_readable"):
-                    has_sw_rd = has_sw_rd or desc.has_sw_readable
+            has_sw_wr = has_sw_writable_descendants(node)
+            has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
                 self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
@@ -118,8 +117,8 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
 
             # Check if regfile has sw-writable registers
-            has_sw_wr = any(reg.has_sw_writable for reg in node.registers())
-            has_sw_rd = any(reg.has_sw_readable for reg in node.registers())
+            has_sw_wr = has_sw_writable_descendants(node)
+            has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
                 self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
@@ -292,15 +291,11 @@ class InputLogicGenerator(RDLListener):
         if node.external:
             # For wide external registers with only ONE field,
             # regblock generates per-register signals without field name suffix
-            regwidth = node.parent.get_property("regwidth")
-            accesswidth = node.parent.get_property("accesswidth")
-            n_subwords = regwidth // accesswidth
-            is_wide_single_field = (
-                n_subwords > 1 and len(list(node.parent.fields())) == 1
-            )
+            is_wide_single_field = is_wide_single_field_register(node.parent)
 
             if is_wide_single_field:
                 # Use accesswidth for wide registers
+                accesswidth = node.parent.get_property("accesswidth")
                 port_width = accesswidth
                 field_text = self.vector_text + f"[{port_width-1}:0]"
 

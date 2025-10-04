@@ -4,7 +4,7 @@ from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
-from .utils import IndexedPath
+from .utils import IndexedPath, is_inside_external_block
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 
@@ -145,11 +145,8 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.addr_decode.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.addr_decode.top_node):
+            return WalkerAction.SkipDescendants
 
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
 
@@ -254,11 +251,8 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.addr_decode.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.addr_decode.top_node):
+            return WalkerAction.SkipDescendants
 
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
@@ -296,9 +290,6 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 if 0 == len(p.index):
                     s = f"{p.path}[{i}] = {rhs};"
                 else:
-                    for y in p.index:
-                        print(y)
-                    # x = f"({n_subwords}*{p.index[0]})"
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
                 if node.external:

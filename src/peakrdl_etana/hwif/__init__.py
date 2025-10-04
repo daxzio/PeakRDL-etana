@@ -11,7 +11,7 @@ from systemrdl.node import (
 )
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import IndexedPath
+from ..utils import IndexedPath, is_wide_single_field_register
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 
@@ -170,12 +170,7 @@ class Hwif:
             if not node.is_sw_readable:
                 raise
             # Check if this is a wide register with only ONE field
-            regwidth = node.parent.get_property("regwidth")
-            accesswidth = node.parent.get_property("accesswidth")
-            n_subwords = regwidth // accesswidth
-            is_wide_single_field = (
-                n_subwords > 1 and len(list(node.parent.fields())) == 1
-            )
+            is_wide_single_field = is_wide_single_field_register(node.parent)
 
             # Match regblock naming: {reg}_rd_data_{field} for normal fields
             # For wide registers with single field: {reg}_rd_data (no field suffix)
@@ -203,7 +198,6 @@ class Hwif:
             )
         if index:
             s += p.index_str
-        #             print(p.index_vector)
         return s
 
     def get_external_rd_ack(self, node: AddressableNode, index: bool = False) -> str:

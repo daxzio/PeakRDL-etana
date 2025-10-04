@@ -4,6 +4,11 @@ from systemrdl.walker import WalkerAction
 from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 
 from .forloop_generator import RDLForLoopGenerator
+from .utils import (
+    is_inside_external_block,
+    has_sw_writable_descendants,
+    has_sw_readable_descendants,
+)
 
 if TYPE_CHECKING:
     from .exporter import RegblockExporter
@@ -29,9 +34,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
         if node.external:
-            # Check if regfile has sw-writable registers
-            has_sw_wr = any(reg.has_sw_writable for reg in node.registers())
-            if has_sw_wr:
+            if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
             return WalkerAction.SkipDescendants
@@ -43,13 +46,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
             return None
 
         if node.external:
-            # Check if addrmap has sw-writable registers
-            has_sw_wr = False
-            for desc in node.descendants():
-                if hasattr(desc, "has_sw_writable") and desc.has_sw_writable:
-                    has_sw_wr = True
-                    break
-            if has_sw_wr:
+            if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
             return WalkerAction.SkipDescendants
@@ -57,11 +54,8 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> WalkerAction:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.exp.ds.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.exp.ds.top_node):
+            return WalkerAction.SkipDescendants
 
         if node.external:
             if node.has_sw_writable:
@@ -70,24 +64,11 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         return None
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
-        # print('enter_Mem')
         if not node.external:
             raise
         if node.is_sw_writable:
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
-
-    #     def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
-    #         print("enter_Addrmap")
-    #         raise Exception("enter_Addrmap")
-    #         if node.external:
-    #             # AddrmapNode doesn't have is_sw_writable - skip for now
-    #             # if node.is_sw_writable:
-    #             #     x = self.exp.hwif.get_external_wr_ack(node, True)
-    #             #     self.ext_wacks.append(x)
-    #             pass
-    #         # Don't raise exception - return None to continue walking
-    #         return None
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
         super().enter_AddressableComponent(node)
@@ -120,9 +101,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
         if node.external:
-            # Check if regfile has sw-readable registers
-            has_sw_rd = any(reg.has_sw_readable for reg in node.registers())
-            if has_sw_rd:
+            if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
             return WalkerAction.SkipDescendants
@@ -134,13 +113,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             return None
 
         if node.external:
-            # Check if addrmap has sw-readable registers
-            has_sw_rd = False
-            for desc in node.descendants():
-                if hasattr(desc, "has_sw_readable") and desc.has_sw_readable:
-                    has_sw_rd = True
-                    break
-            if has_sw_rd:
+            if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
             return WalkerAction.SkipDescendants
@@ -148,17 +121,13 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> WalkerAction:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.exp.ds.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.exp.ds.top_node):
+            return WalkerAction.SkipDescendants
 
         if node.external:
             if node.has_sw_readable:
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
-        #                 print("enter_Reg", x)
         return None
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
@@ -167,23 +136,6 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if node.is_sw_readable:
             x = self.exp.hwif.get_external_rd_ack(node, True)
             self.ext_racks.append(x)
-
-    #     def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction:
-    #         print("enter_Addrmap")
-    #         # Skip unimplemented functionality for now
-    #         # if not node.external:
-    #         #     if node.is_sw_readable:
-    #         #         x = self.exp.hwif.get_external_rd_ack(node, True)
-    #         #         self.ext_racks.append(x)
-    #         return None
-    #
-    #     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-    #         print("enter_Regfile")
-    #         # Skip unimplemented functionality for now
-    #         # if node.is_sw_readable:
-    #         #     x = self.exp.hwif.get_external_rd_ack(node, True)
-    #         #     self.ext_racks.append(x)
-    #         return None
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
         super().enter_AddressableComponent(node)

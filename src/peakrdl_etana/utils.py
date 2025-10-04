@@ -2,7 +2,7 @@ import re
 from typing import Match, Union, Optional
 
 from systemrdl.rdltypes.references import PropertyReference
-from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode
+from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode, RegfileNode
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
@@ -90,9 +90,6 @@ class IndexedPath:
             else:
                 x.append(f"{mult}*{val}")
             mult *= 5
-
-        #         if not 0 == len(self.index):
-        #             print("+".join(reversed(x)))
 
         return v
 
@@ -218,3 +215,88 @@ def do_bitswap(
             vswap = (vswap << 1) + (v & 1)
             v >>= 1
         return SVInt(vswap, value.width)
+
+
+def is_inside_external_block(node: Node, top_node: Node) -> bool:
+    """
+    Check if node is inside an external regfile/addrmap.
+
+    This is a common pattern used throughout the codebase to determine
+    whether a node is contained within an external block, which requires
+    special handling for bus interfaces.
+
+    Args:
+        node: The node to check
+        top_node: The top-level addrmap node
+
+    Returns:
+        True if node is inside an external block, False otherwise
+    """
+    parent = node.parent
+    while parent is not None and parent != top_node:
+        if hasattr(parent, "external") and parent.external:
+            return True
+        parent = parent.parent if hasattr(parent, "parent") else None
+    return False
+
+
+def has_sw_writable_descendants(node: Union[RegfileNode, AddrmapNode]) -> bool:
+    """
+    Check if node has any sw-writable descendants.
+
+    For regfiles, checks all registers. For addrmaps, checks all descendants.
+
+    Args:
+        node: RegfileNode or AddrmapNode to check
+
+    Returns:
+        True if any descendants are sw-writable, False otherwise
+    """
+    if isinstance(node, RegfileNode):
+        return any(reg.has_sw_writable for reg in node.registers())
+    elif isinstance(node, AddrmapNode):
+        for desc in node.descendants():
+            if hasattr(desc, "has_sw_writable") and desc.has_sw_writable:
+                return True
+    return False
+
+
+def has_sw_readable_descendants(node: Union[RegfileNode, AddrmapNode]) -> bool:
+    """
+    Check if node has any sw-readable descendants.
+
+    For regfiles, checks all registers. For addrmaps, checks all descendants.
+
+    Args:
+        node: RegfileNode or AddrmapNode to check
+
+    Returns:
+        True if any descendants are sw-readable, False otherwise
+    """
+    if isinstance(node, RegfileNode):
+        return any(reg.has_sw_readable for reg in node.registers())
+    elif isinstance(node, AddrmapNode):
+        for desc in node.descendants():
+            if hasattr(desc, "has_sw_readable") and desc.has_sw_readable:
+                return True
+    return False
+
+
+def is_wide_single_field_register(reg_node: RegNode) -> bool:
+    """
+    Check if register is wide with only one field.
+
+    Wide single-field registers use special naming conventions:
+    - Use accesswidth instead of regwidth for port declarations
+    - Omit field name suffix in signal names
+
+    Args:
+        reg_node: Register node to check
+
+    Returns:
+        True if register is wide with a single field, False otherwise
+    """
+    regwidth = reg_node.get_property("regwidth")
+    accesswidth = reg_node.get_property("accesswidth")
+    n_subwords = regwidth // accesswidth
+    return n_subwords > 1 and len(list(reg_node.fields())) == 1

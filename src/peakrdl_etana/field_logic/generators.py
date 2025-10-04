@@ -7,7 +7,14 @@ from systemrdl.walker import WalkerAction
 from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 
 from ..forloop_generator import RDLForLoopGenerator
-from ..utils import IndexedPath, clog2
+from ..utils import (
+    IndexedPath,
+    clog2,
+    is_inside_external_block,
+    has_sw_writable_descendants,
+    has_sw_readable_descendants,
+    is_wide_single_field_register,
+)
 from .bases import NextStateUnconditional
 from .wide_field import WideFieldSubwordWrite
 
@@ -57,12 +64,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Check if this register is inside an external regfile/addrmap
         # If so, skip it - the parent external block handles the interface
-        parent = node.parent
-        while parent is not None and parent != self.ds.top_node:
-            if hasattr(parent, "external") and parent.external:
-                # Inside an external block - skip this register
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.ds.top_node):
+            return WalkerAction.SkipDescendants
 
         self.intr_fields = []  # type: List[FieldNode]
         self.halt_fields = []  # type: List[FieldNode]
@@ -405,14 +408,12 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         else:
             bslice = ""
 
-        n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
         accesswidth = node.get_property("accesswidth")
-        regwidth = node.get_property("regwidth")
         inst_names = []
 
         # For wide external registers with only ONE field,
         # regblock generates per-register signals without field name suffix at accesswidth
-        if n_subwords > 1 and len(self.fields) == 1:
+        if is_wide_single_field_register(node) and len(self.fields) == 1:
             # Generate per-register signal without field name, using accesswidth
             vslice = f"[{accesswidth-1}:0]"
             inst_names.append(["", vslice])  # Empty string for field name
@@ -457,21 +458,16 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         readable = False
         if isinstance(node, RegfileNode):
             retime = self.ds.retime_external_regfile
-            # Check if regfile has sw-writable/readable registers
-            writable = any(reg.has_sw_writable for reg in node.registers())
-            readable = any(reg.has_sw_readable for reg in node.registers())
+            writable = has_sw_writable_descendants(node)
+            readable = has_sw_readable_descendants(node)
         elif isinstance(node, MemNode):
             retime = self.ds.retime_external_mem
             writable = node.is_sw_writable
             readable = node.is_sw_readable
         elif isinstance(node, AddrmapNode):
             retime = self.ds.retime_external_addrmap
-            # Check if addrmap has sw-writable/readable registers
-            for desc in node.descendants():
-                if hasattr(desc, "has_sw_writable"):
-                    writable = writable or desc.has_sw_writable
-                if hasattr(desc, "has_sw_readable"):
-                    readable = readable or desc.has_sw_readable
+            writable = has_sw_writable_descendants(node)
+            readable = has_sw_readable_descendants(node)
 
         context = {
             "is_sw_writable": writable,
