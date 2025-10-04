@@ -1,0 +1,27 @@
+# Auto-generated Yosys synthesis script
+# Read all source files
+read_verilog -sv ./etana-rtl/regblock.sv
+
+# Elaborate design hierarchy
+hierarchy -check -top regblock
+
+# Translate processes (always blocks)
+proc
+
+# Perform high-level optimizations
+opt
+
+# Flatten design (optional - comment out to keep hierarchy)
+# flatten
+
+# Technology mapping to simple gates
+techmap
+
+# Final optimizations
+opt
+
+# Display statistics
+stat
+
+# Write synthesized netlist
+write_verilog -noattr synth-rtl/regblock_synth.v

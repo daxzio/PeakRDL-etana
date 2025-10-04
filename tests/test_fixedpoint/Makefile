@@ -1,2 +1,2 @@
-TEST_NAME := test_fixedpoint
+UDPS?=../regblock_udps.rdl
 include ../tests.mak
