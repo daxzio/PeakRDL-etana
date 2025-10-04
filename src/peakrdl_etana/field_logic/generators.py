@@ -20,7 +20,7 @@ from .wide_field import WideFieldSubwordWrite
 
 if TYPE_CHECKING:
     from . import FieldLogic
-    from systemrdl.node import FieldNode, AddressableNode
+    from systemrdl.node import FieldNode, AddressableNode, Node
 
 
 class FieldLogicGenerator(RDLForLoopGenerator):

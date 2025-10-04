@@ -1,2 +1,2 @@
-from .base import CpuifBase
-from . import ahb
+from .base import CpuifBase as CpuifBase
+from . import ahb as ahb

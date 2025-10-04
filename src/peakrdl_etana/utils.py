@@ -10,7 +10,6 @@ from .sv_int import SVInt
 
 class IndexedPath:
     def __init__(self, top_node: Node, target_node: Node) -> None:
-        from systemrdl.node import RegfileNode
 
         self.top_node = top_node
         self.target_node = target_node
@@ -107,7 +106,7 @@ class IndexedPath:
     @property
     def array_instances(self) -> str:
         s = ""
-        if not self.array_dimensions is None:
+        if self.array_dimensions is not None:
             for i in self.array_dimensions:
                 s += f"[{i}]"
         return s
@@ -194,7 +193,6 @@ def do_bitswap(
                 match = re.match(r"(.+)\[(\d+):(\d+)\]", value)
                 if match:
                     base_name = match.group(1)
-                    high = int(match.group(2))
                     low = int(match.group(3))
                     # Reverse order: generate {base[low], base[low+1], ..., base[high]}
                     bits = [f"{base_name}[{low + i}]" for i in range(width)]

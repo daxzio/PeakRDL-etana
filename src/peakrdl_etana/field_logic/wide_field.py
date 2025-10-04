@@ -4,6 +4,7 @@ from .bases import NextStateConditional
 
 if TYPE_CHECKING:
     from systemrdl.node import FieldNode
+    from ..exporter import RegblockExporter
 
 
 class WideFieldSubwordWrite(NextStateConditional):

@@ -8,6 +8,7 @@ from ..forloop_generator import RDLForLoopGenerator, LoopBody
 from ..utils import do_bitswap, do_slice, is_inside_external_block
 
 if TYPE_CHECKING:
+    from systemrdl.node import RegfileNode, AddrmapNode
     from ..exporter import RegblockExporter
 
 
