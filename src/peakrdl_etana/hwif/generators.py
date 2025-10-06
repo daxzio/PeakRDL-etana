@@ -178,9 +178,7 @@ class InputLogicGenerator(RDLListener):
 
         # Check for register-level interrupt outputs
         # Interrupt and halt are field properties, so check if any field in the register has them
-        has_intr = any(
-            field.get_property("intr") is not None for field in node.fields()
-        )
+        has_intr = any(field.get_property("intr") for field in node.fields())
         has_halt = any(
             field.get_property("haltenable") is not None
             or field.get_property("haltmask") is not None
@@ -376,7 +374,7 @@ class InputLogicGenerator(RDLListener):
                 )
 
             # Counter threshold outputs
-            if node.get_property("incrthreshold") is not None:
+            if node.get_property("incrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "incrthreshold"
                 )
@@ -384,7 +382,7 @@ class InputLogicGenerator(RDLListener):
                 self.hwif_port.append(
                     f"output logic {prop_output_text} {prop_identifier}"
                 )
-            if node.get_property("decrthreshold") is not None:
+            if node.get_property("decrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "decrthreshold"
                 )
