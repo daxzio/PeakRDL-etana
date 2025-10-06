@@ -16,16 +16,10 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_r1_intr,
         input wire [0:0] hwif_in_r1_f_sw,
-        output logic [0:0] hwif_out_r1_f_sw_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_sw_decrthreshold,
         input wire [0:0] hwif_in_r1_f_sw_we,
         input wire [0:0] hwif_in_r1_f_hw,
-        output logic [0:0] hwif_out_r1_f_hw_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_hw_decrthreshold,
-        input wire [0:0] hwif_in_r1_f_hw_we,
-        output logic [0:0] hwif_out_r1_events_intr
+        input wire [0:0] hwif_in_r1_f_hw_we
     );
 
     //--------------------------------------------------------------------------

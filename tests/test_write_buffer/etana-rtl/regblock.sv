@@ -5,82 +5,34 @@ module regblock (
         input wire clk,
         input wire rst,
 
-        input wire s_cpuif_req,
-        input wire s_cpuif_req_is_wr,
-        input wire [5:0] s_cpuif_addr,
-        input wire [15:0] s_cpuif_wr_data,
-        input wire [15:0] s_cpuif_wr_biten,
-        output wire s_cpuif_req_stall_wr,
-        output wire s_cpuif_req_stall_rd,
-        output wire s_cpuif_rd_ack,
-        output wire s_cpuif_rd_err,
-        output wire [15:0] s_cpuif_rd_data,
-        output wire s_cpuif_wr_ack,
-        output wire s_cpuif_wr_err,
+        input wire s_apb_psel,
+        input wire s_apb_pwrite,
+        input wire s_apb_penable,
+        input wire [2:0] s_apb_pprot,
+        input wire [5:0] s_apb_paddr,
+        input wire [15:0] s_apb_pwdata,
+        input wire [1:0] s_apb_pstrb,
+        output logic s_apb_pready,
+        output logic [15:0] s_apb_prdata,
+        output logic s_apb_pslverr,
 
         input wire [0:0] hwif_in_trigger_sig,
         input wire [0:0] hwif_in_trigger_sig_n,
-        output logic [0:0] hwif_out_reg1_intr,
         output logic [63:0] hwif_out_reg1_f1,
-        output logic [0:0] hwif_out_reg1_f1_incrthreshold,
-        output logic [0:0] hwif_out_reg1_f1_decrthreshold,
-        output logic [0:0] hwif_out_reg1_msb0_intr,
         output logic [63:0] hwif_out_reg1_msb0_f1,
-        output logic [0:0] hwif_out_reg1_msb0_f1_incrthreshold,
-        output logic [0:0] hwif_out_reg1_msb0_f1_decrthreshold,
-        output logic [0:0] hwif_out_reg2_intr,
         output logic [11:0] hwif_out_reg2_f1,
-        output logic [0:0] hwif_out_reg2_f1_incrthreshold,
-        output logic [0:0] hwif_out_reg2_f1_decrthreshold,
         output logic [3:0] hwif_out_reg2_f2,
-        output logic [0:0] hwif_out_reg2_f2_incrthreshold,
-        output logic [0:0] hwif_out_reg2_f2_decrthreshold,
-        output logic [0:0] hwif_out_reg2_msb0_intr,
         output logic [11:0] hwif_out_reg2_msb0_f1,
-        output logic [0:0] hwif_out_reg2_msb0_f1_incrthreshold,
-        output logic [0:0] hwif_out_reg2_msb0_f1_decrthreshold,
         output logic [3:0] hwif_out_reg2_msb0_f2,
-        output logic [0:0] hwif_out_reg2_msb0_f2_incrthreshold,
-        output logic [0:0] hwif_out_reg2_msb0_f2_decrthreshold,
-        output logic [0:0] hwif_out_g1_r1_intr,
         output logic [15:0] hwif_out_g1_r1_f1,
-        output logic [0:0] hwif_out_g1_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g1_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g1_r2_intr,
         output logic [15:0] hwif_out_g1_r2_f1,
-        output logic [0:0] hwif_out_g1_r2_f1_incrthreshold,
-        output logic [0:0] hwif_out_g1_r2_f1_decrthreshold,
-        output logic [0:0] hwif_out_g2_r1_intr,
         output logic [15:0] hwif_out_g2_r1_f1,
-        output logic [0:0] hwif_out_g2_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g2_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g2_r2_intr,
         output logic [15:0] hwif_out_g2_r2_f1,
-        output logic [0:0] hwif_out_g2_r2_f1_incrthreshold,
-        output logic [0:0] hwif_out_g2_r2_f1_decrthreshold,
-        output logic [0:0] hwif_out_g3_r1_intr,
         output logic [15:0] hwif_out_g3_r1_f1,
-        output logic [0:0] hwif_out_g3_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g3_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g3_trig_intr,
         output logic [0:0] hwif_out_g3_trig_trig,
-        output logic [0:0] hwif_out_g3_trig_trig_incrthreshold,
-        output logic [0:0] hwif_out_g3_trig_trig_decrthreshold,
-        output logic [0:0] hwif_out_g4_r1_intr,
         output logic [15:0] hwif_out_g4_r1_f1,
-        output logic [0:0] hwif_out_g4_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g4_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g4_trig_intr,
-        output logic [0:0] hwif_out_g5_r1_intr,
         output logic [15:0] hwif_out_g5_r1_f1,
-        output logic [0:0] hwif_out_g5_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g5_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g5_modcount_intr,
-        output logic [0:0] hwif_out_g6_r1_intr,
-        output logic [15:0] hwif_out_g6_r1_f1,
-        output logic [0:0] hwif_out_g6_r1_f1_incrthreshold,
-        output logic [0:0] hwif_out_g6_r1_f1_decrthreshold,
-        output logic [0:0] hwif_out_g6_modcount_intr
+        output logic [15:0] hwif_out_g6_r1_f1
     );
 
     //--------------------------------------------------------------------------
@@ -101,18 +53,42 @@ module regblock (
     logic cpuif_wr_ack;
     logic cpuif_wr_err;
 
-    assign cpuif_req = s_cpuif_req;
-    assign cpuif_req_is_wr = s_cpuif_req_is_wr;
-    assign cpuif_addr = s_cpuif_addr;
-    assign cpuif_wr_data = s_cpuif_wr_data;
-    assign cpuif_wr_biten = s_cpuif_wr_biten;
-    assign s_cpuif_req_stall_wr = cpuif_req_stall_wr;
-    assign s_cpuif_req_stall_rd = cpuif_req_stall_rd;
-    assign s_cpuif_rd_ack = cpuif_rd_ack;
-    assign s_cpuif_rd_err = cpuif_rd_err;
-    assign s_cpuif_rd_data = cpuif_rd_data;
-    assign s_cpuif_wr_ack = cpuif_wr_ack;
-    assign s_cpuif_wr_err = cpuif_wr_err;
+
+    // Request
+    logic is_active;
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            is_active <= '0;
+            cpuif_req <= '0;
+            cpuif_req_is_wr <= '0;
+            cpuif_addr <= '0;
+            cpuif_wr_data <= '0;
+            cpuif_wr_biten <= '0;
+        end else begin
+            if(~is_active) begin
+                if(s_apb_psel) begin
+                    is_active <= '1;
+                    cpuif_req <= '1;
+                    cpuif_req_is_wr <= s_apb_pwrite;
+                    cpuif_addr <= {s_apb_paddr[5:1], 1'b0};
+                    cpuif_wr_data <= s_apb_pwdata;
+                    for(int i=0; i<2; i++) begin
+                        cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
+                    end
+                end
+            end else begin
+                cpuif_req <= '0;
+                if(cpuif_rd_ack || cpuif_wr_ack) begin
+                    is_active <= '0;
+                end
+            end
+        end
+    end
+
+    // Response
+    assign s_apb_pready = cpuif_rd_ack | cpuif_wr_ack;
+    assign s_apb_prdata = cpuif_rd_data;
+    assign s_apb_pslverr = cpuif_rd_err | cpuif_wr_err;
 
     logic cpuif_req_masked;
 

@@ -16,7 +16,7 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_r1_f
+        output logic [0:0] [31:0] hwif_out_regs_f
     );
 
     //--------------------------------------------------------------------------
@@ -86,7 +86,7 @@ module regblock (
     //--------------------------------------------------------------------------
     // Address Decode
     //--------------------------------------------------------------------------
-    logic [0:0] decoded_reg_strb_r1;
+    logic [0:0] decoded_reg_strb_regs [1];
     logic decoded_req;
     logic decoded_req_is_wr;
     /* verilator lint_off UNUSEDSIGNAL */
@@ -98,7 +98,10 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 3'h0);
+        for(int i0=0; i0<1; i0++) begin : gen_loop_3
+            next_cpuif_addr = 32'h0 + i0*3'h4;
+            decoded_reg_strb_regs[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[2:0]);
+        end
     end
 
     // Pass down signals to next stage
@@ -112,37 +115,36 @@ module regblock (
     // Field storage declarations
     //--------------------------------------------------------------------------
 
-    // Field: regblock.r1.f
-    logic [0:0] field_storage_r1_f_value;
-    logic [0:0] field_combo_r1_f_next;
-    logic field_combo_r1_f_load_next;
+    // Field: regblock.regs[].f
+    logic [31:0] field_storage_regs_f_value [1] ;
+    logic [31:0] field_combo_regs_f_next [1] ;
+    logic field_combo_regs_f_load_next [1] ;
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
-    // always_comb begin
-    always @(*) begin
-        logic [0:0] next_c;
-        logic load_next_c;
-        next_c = field_storage_r1_f_value;
-        load_next_c = '0;
-        if(decoded_reg_strb_r1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage_r1_f_value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end else begin // singlepulse clears back to 0
-            next_c = '0;
-            load_next_c = '1;
+    for(genvar i0=0; i0<1; i0++) begin : gen_loop_5
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_regs_f_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_regs[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_regs_f_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_regs_f_next[i0] = next_c;
+            field_combo_regs_f_load_next[i0] = load_next_c;
         end
-        field_combo_r1_f_next = next_c;
-        field_combo_r1_f_load_next = load_next_c;
-    end
-    always_ff @(posedge clk) begin
-        if(rst) begin
-            field_storage_r1_f_value <= 1'h0;
-        end else if(field_combo_r1_f_load_next) begin
-            field_storage_r1_f_value <= field_combo_r1_f_next;
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_regs_f_value[i0] <= 32'h1;
+            end else if(field_combo_regs_f_load_next[i0]) begin
+                field_storage_regs_f_value[i0] <= field_combo_regs_f_next[i0];
+            end
         end
+        assign hwif_out_regs_f[i0] = field_storage_regs_f_value[i0];
     end
-    assign hwif_out_r1_f = field_storage_r1_f_value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -163,8 +165,9 @@ module regblock (
 
     // Assign readback values to a flattened array
     logic [31:0] readback_array[1];
-    assign readback_array[0][0:0] = (decoded_reg_strb_r1 && !decoded_req_is_wr) ? field_storage_r1_f_value : '0;
-    assign readback_array[0][31:1] = '0;
+    for(genvar i0=0; i0<1; i0++) begin : gen_loop_1
+        assign readback_array[i0*1 + 0][31:0] = (decoded_reg_strb_regs[i0] && !decoded_req_is_wr) ? field_storage_regs_f_value[i0] : '0;
+    end
 
     // Reduce the array
     // always_comb begin

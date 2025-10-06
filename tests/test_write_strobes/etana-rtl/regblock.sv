@@ -16,12 +16,9 @@ module regblock (
         output wire s_cpuif_rd_err,
         output wire [31:0] s_cpuif_rd_data,
         output wire s_cpuif_wr_ack,
-        output wire s_cpuif_wr_err,
+        output wire s_cpuif_wr_err
 
-        output logic [0:0] hwif_out_r1_intr,
-        output logic [0:0] hwif_out_r2_intr,
-        output logic [0:0] hwif_out_r3_intr,
-        output logic [0:0] hwif_out_r4_intr
+
     );
 
     //--------------------------------------------------------------------------

@@ -14,12 +14,9 @@ module regblock (
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
         output logic [31:0] s_apb_prdata,
-        output logic s_apb_pslverr,
+        output logic s_apb_pslverr
 
-        output logic [0:0] hwif_out_r1_intr,
-        output logic [0:0] hwif_out_r2_intr,
-        output logic [0:0] hwif_out_r3_intr,
-        output logic [0:0] hwif_out_r4_intr
+
     );
 
     //--------------------------------------------------------------------------
