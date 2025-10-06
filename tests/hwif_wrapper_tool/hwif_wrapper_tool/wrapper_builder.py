@@ -39,7 +39,7 @@ class WrapperBuilder:
         self.has_params = param_match is not None
         self.params = []
         if self.has_params:
-            param_text = param_match.group(1).strip()
+            param_text = param_match.group(1).strip()  # type: ignore[union-attr]
             for param_line in param_text.split("\n"):
                 param_line = param_line.strip().rstrip(",")
                 if param_line:
@@ -50,7 +50,7 @@ class WrapperBuilder:
 
     def _extract_non_hwif_ports(self) -> List[str]:
         """Extract all ports except hwif_in and hwif_out"""
-        ports = []
+        ports: List[str] = []
 
         # Find port section
         if self.has_params:
@@ -159,7 +159,7 @@ class WrapperBuilder:
             lines.append(f"module {self.module_name}_wrapper (")
 
         # Build port list
-        ports = []
+        ports: List[str] = []
 
         # Copy all non-hwif ports from original module
         for port in self.non_hwif_ports:
@@ -188,7 +188,7 @@ class WrapperBuilder:
             lines.append(f"    {self.module_name} i_{self.module_name} (")
 
         # Build port connections
-        ports = []
+        ports: List[str] = []
 
         # Connect all non-hwif ports (pass-through)
         for port_decl in self.non_hwif_ports:

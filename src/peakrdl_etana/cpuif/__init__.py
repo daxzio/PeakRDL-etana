@@ -1,2 +1,4 @@
-from .base import CpuifBase as CpuifBase
-from . import ahb as ahb
+from .base import CpuifBase
+from . import ahb
+
+__all__ = ["CpuifBase", "ahb"]

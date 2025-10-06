@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from systemrdl.node import RegNode, MemNode, AddressableNode
 from systemrdl.walker import WalkerAction
@@ -27,7 +27,7 @@ class ReadbackLoopBody(LoopBody):
 
 class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     i_type = "genvar"
-    loop_body_cls = ReadbackLoopBody
+    loop_body_cls = ReadbackLoopBody  # type: ignore[assignment]
 
     def __init__(self, exp: "RegblockExporter") -> None:
         super().__init__()
@@ -37,8 +37,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         # array. The array width is equal to the CPUIF bus width. Each entry in
         # the array represents an aligned read access.
         self.current_offset = 0
-        self.start_offset_stack = []  # type: List[int]
-        self.dim_stack = []  # type: List[int]
+        self.start_offset_stack: List[int] = []
+        self.dim_stack: List[int] = []
 
     @property
     def current_offset_str(self) -> str:
@@ -85,6 +85,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
         super().enter_AddressableComponent(node)
         self.strb = self.exp.hwif.get_external_rd_ack(node, True)
+        return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
         if node.external:
@@ -143,6 +144,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         else:
             self.process_reg(node)
 
+        return WalkerAction.SkipDescendants
+
     def process_external_block(self, node: "AddressableNode") -> None:
         """Handle readback for external regfile, addrmap, or mem blocks."""
         # Use the bus interface rd_data and rd_ack signals
@@ -181,12 +184,12 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 )
 
             if node.external:
-                value = self.exp.hwif.get_external_rd_data(field, True)
+                value = self.exp.hwif.get_external_rd_data(field, True)  # type: ignore[arg-type]
             else:
-                value = self.exp.dereferencer.get_value(field)
+                value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]  # type: ignore[assignment]
             if field.msb < field.lsb:
                 # Field gets bitswapped since it is in [low:high] orientation
-                value = do_bitswap(value, field.width)
+                value = do_bitswap(value, field.width)  # type: ignore[assignment]
 
             self.add_content(
                 f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"

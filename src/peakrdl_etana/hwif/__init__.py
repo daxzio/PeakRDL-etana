@@ -78,7 +78,7 @@ class Hwif:
         try:
             hwif_ports = InputLogicGenerator(self)
             self.logic = hwif_ports.get_logic(self.top_node)
-            return False if 0 == len(self.logic) else True
+            return False if self.logic is None or 0 == len(self.logic) else True
         except Exception as e:
             import traceback
 
@@ -93,7 +93,7 @@ class Hwif:
         """
 
         assert self.has_hwif_ports is not None
-        return ",\n".join(self.logic)
+        return ",\n".join(self.logic) if self.logic is not None else ""
 
     # ---------------------------------------------------------------------------
     # hwif utility functions
@@ -158,7 +158,7 @@ class Hwif:
             s = f"{self.hwif_in_str}_{p.path}"
             return s
         elif isinstance(obj, PropertyReference):
-            return self.get_implied_prop_input_identifier(obj.node, obj.name)
+            return self.get_implied_prop_input_identifier(obj.node, obj.name)  # type: ignore[arg-type]
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
@@ -264,7 +264,7 @@ class Hwif:
             # not sure when anything would call this function with a prop ref
             # when dereferencer's get_value is more useful here
             assert obj.node.get_property(obj.name)
-            return self.get_implied_prop_output_identifier(obj.node, obj.name)
+            return self.get_implied_prop_output_identifier(obj.node, obj.name)  # type: ignore[arg-type]
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 

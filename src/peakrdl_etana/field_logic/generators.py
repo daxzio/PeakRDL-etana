@@ -1,5 +1,5 @@
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict, Any, List
 
 from collections import OrderedDict
 
@@ -67,10 +67,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if is_inside_external_block(node, self.ds.top_node):
             return WalkerAction.SkipDescendants
 
-        self.intr_fields = []  # type: List[FieldNode]
-        self.halt_fields = []  # type: List[FieldNode]
         self.msg = self.ds.top_node.env.msg
-        self.fields = []
+        self.fields: List[FieldNode] = []
+        self.intr_fields = []
+        self.halt_fields = []
+        return WalkerAction.Continue
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
         # For external regfiles, generate bus interface and skip descendants
@@ -212,9 +213,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         resetsignal = node.get_property("resetsignal", default=None)
         if resetsignal is None:
             # Check if parent register has a field_reset signal
-            for signal in node.parent.signals():
-                if signal.get_property("field_reset", default=False):
-                    resetsignal = signal
+            for signal in node.parent.signals():  # type: ignore[assignment]
+                if signal.get_property("field_reset", default=False):  # type: ignore[attr-defined]
+                    resetsignal = signal  # type: ignore[assignment]
                     break
 
         reset_value = node.get_property("reset", default=None)
@@ -256,7 +257,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         strb = self.exp.dereferencer.get_access_strobe(node.parent)
 
         # Mark this field as wide for conditional matching
-        node._is_wide_field = True
+        node._is_wide_field = True  # type: ignore[attr-defined]
 
         # Create conditionals for each subword
         conditionals = []
@@ -268,7 +269,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 conditionals.append(conditional)
 
         # No extra combo signals for wide fields
-        extra_combo_signals = {}
+        extra_combo_signals: Dict[str, Any] = {}
 
         # No unconditional actions for wide fields
         unconditional = None

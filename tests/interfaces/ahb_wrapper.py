@@ -1,5 +1,4 @@
 import logging
-from random import randint
 from cocotb import start_soon
 from cocotb.triggers import RisingEdge
 
@@ -10,7 +9,7 @@ from cocotbext.ahb import AHBTrans, AHBBurst
 
 # from cocotbext.ahb import AHBMaster
 
-from typing import Optional, Sequence, Union, List, Any
+from typing import Optional, Sequence, Union, Any
 import collections.abc
 
 
@@ -117,7 +116,7 @@ class AHBLiteMasterDX(AHBLiteMaster):
         length: Optional[int] = 1,
         **kwargs,
     ) -> Sequence[dict]:
-        self.prepare_addresses(address, value, length)
+        self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
 
         ret = await super().write(self.addresses, self.values, **kwargs)
         for i, x in enumerate(ret):
@@ -131,11 +130,11 @@ class AHBLiteMasterDX(AHBLiteMaster):
         length: Optional[int] = 1,
         **kwargs,
     ) -> Sequence[dict]:
-        self.prepare_addresses(address, value, length)
+        self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
         ret = await super().read(self.addresses, **kwargs)
         for i, x in enumerate(ret):
             self.returned_val = int(x["data"], 16)
             self.value = self.values[i]
             self.log.info(f"Read  0x{self.addresses[i]:08x}: 0x{self.returned_val:08x}")
             self.check_read(self.addresses[i])
-        return int(ret[0]["data"], 16)
+        return int(ret[0]["data"], 16)  # type: ignore[return-value]

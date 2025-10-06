@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .hwif import Hwif
     from .field_logic import FieldLogic
     from .addr_decode import AddressDecode
+    from .utils import IndexedPath
 
 
 class Dereferencer:
@@ -279,15 +280,15 @@ class Dereferencer:
 
     def get_access_strobe(
         self, obj: Union[RegNode, FieldNode], reduce_substrobes: bool = True
-    ) -> str:
+    ) -> "IndexedPath":
         """
-        Returns the Verilog string that represents the register's access strobe
+        Returns the IndexedPath that represents the register's access strobe
         """
         return self.address_decode.get_access_strobe(obj, reduce_substrobes)
 
-    def get_external_block_access_strobe(self, obj: "AddressableNode") -> str:
+    def get_external_block_access_strobe(self, obj: "AddressableNode") -> "IndexedPath":
         """
-        Returns the Verilog string that represents the external block's access strobe
+        Returns the IndexedPath that represents the external block's access strobe
         """
         return self.address_decode.get_external_block_access_strobe(obj)
 

@@ -9,12 +9,12 @@ if sys.version_info >= (3, 10, 0):
 
     def _get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
         eps = []
-        for ep in metadata.entry_points().select(group=group_name):
+        for ep in metadata.entry_points().select(group=group_name):  # type: ignore[attr-defined]
             eps.append((ep, ep.dist))
         return eps
 
     def _get_name_from_dist(dist: "Distribution") -> str:
-        return dist.name
+        return dist.name  # type: ignore[attr-defined]
 
 elif sys.version_info >= (3, 8, 0):  # pragma: no cover
     from importlib import metadata
@@ -40,13 +40,13 @@ elif sys.version_info >= (3, 8, 0):  # pragma: no cover
         return dist.metadata["Name"]
 
 else:  # pragma: no cover
-    import pkg_resources  # type: ignore
+    import pkg_resources
 
     def _get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
         eps = []
         for ep in pkg_resources.iter_entry_points(group_name):
             eps.append((ep, ep.dist))
-        return eps
+        return eps  # type: ignore[return-value]
 
     def _get_name_from_dist(dist: "Distribution") -> str:
         return dist.project_name  # type: ignore

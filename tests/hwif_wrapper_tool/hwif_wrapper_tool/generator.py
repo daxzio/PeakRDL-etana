@@ -105,7 +105,7 @@ def generate_wrapper(
         report_path = os.path.join(temp_dir, f"{actual_module_name}_hwif.rpt")
 
         if not os.path.exists(report_path):
-            print(f"No hwif report generated - design may not have hwif structs")
+            print("No hwif report generated - design may not have hwif structs")
             return
 
         # Parse hwif report

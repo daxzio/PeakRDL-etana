@@ -15,6 +15,7 @@ UDPS?=
 ETANA_HDL_SRC=$(shell python -c "import peakrdl_etana, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_etana.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_etana.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
 #REGBLOCK_HDL_SRC=$(shell python -c "import peakrdl_regblock, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_regblock.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_regblock.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
 REGBLOCK=0
+GHDL=0
 YOSYS=0
 
 SYNTH_OUTPUT?=synth-rtl
@@ -30,7 +31,15 @@ ifeq ($(REGBLOCK),1)
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 endif
-
+ifeq ($(GHDL),1)
+    override SIM=ghdl
+    override TOPLEVEL_LANG=vhdl
+	undefine VERILOG_SOURCES
+    VHDL_SOURCES=\
+        ./regblock-vhdl-rtl/*.vhd \
+		/mnt/sda/projects/PeakRDL-regblock-vhdl/hdl-src/reg_utils.vhd
+	EXTRA_ARGS += --std=08
+endif
 ifeq ($(YOSYS),1)
     VERILOG_SOURCES= \
         ./$(SYNTH_OUTPUT)/*
@@ -60,6 +69,13 @@ regblock:
 	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
 	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
+
+regblock-vhdl:
+	rm -rf regblock-vhdl-rtl/*
+	echo ${VHDL_SOURCES}
+	echo ${VERILOG_SOURCES}
+	peakrdl regblock-vhdl ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
+
 # Synthesize the design using Yosys
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)

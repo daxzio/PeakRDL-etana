@@ -1,5 +1,5 @@
 import re
-from typing import Match, Union, Optional
+from typing import Match, Union, Optional, List
 
 from systemrdl.rdltypes.references import PropertyReference
 from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode, RegfileNode
@@ -17,7 +17,7 @@ class IndexedPath:
 
         # Collect ALL array dimensions from target up to top
         # Walk up the hierarchy and collect array dimensions from all regfiles
-        self.array_dimensions = []
+        self.array_dimensions: List[int] = []
         current = target_node
 
         # For FieldNodes, start from the parent (the register)
@@ -37,16 +37,16 @@ class IndexedPath:
 
             # Move to parent
             if hasattr(current, "parent"):
-                current = current.parent
+                current = current.parent  # type: ignore[assignment]
             else:
                 break
 
         # Convert to None if empty
         if not self.array_dimensions:
-            self.array_dimensions = None
+            self.array_dimensions = None  # type: ignore[assignment]
 
         try:
-            self.width = self.target_node.width
+            self.width = self.target_node.width  # type: ignore[attr-defined]
         except AttributeError:
             self.width = None
 
@@ -98,8 +98,8 @@ class IndexedPath:
         if not 0 == len(self.index):
             v += "["
             for i in self.index:
-                v += f"({i}*{self.regwidth})+"
-            v += f":{self.regwidth}]"
+                v += f"({i}*{self.regwidth})+"  # type: ignore[attr-defined]
+            v += f":{self.regwidth}]"  # type: ignore[attr-defined]
         return v
 
     #
@@ -147,7 +147,7 @@ def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) 
             # not internal!
             return False
 
-        current_node = current_node.parent
+        current_node = current_node.parent  # type: ignore[assignment]
 
     # A root signal was referenced, which dodged the top addrmap
     # This is considerd internal for this exporter

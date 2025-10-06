@@ -1,8 +1,14 @@
 """Test wide registers (regwidth > accesswidth) - simplified"""
 
-from cocotb import test
-from cocotb.triggers import RisingEdge
-from tb_base import testbench
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from cocotb import test  # noqa: E402
+from cocotb.triggers import RisingEdge  # noqa: E402
+from tb_base import testbench  # noqa: E402
 
 
 @test()
@@ -63,7 +69,7 @@ async def test_dut_wide_regs(dut):
 
     # r_reg3 & r_reg4: ro registers (skip - depend on reset behavior)
     # Just verify they're accessible
-    r3_val = await tb.intf.read(0x30)
-    r4_val = await tb.intf.read(0x38)
+    await tb.intf.read(0x30)
+    await tb.intf.read(0x38)
 
     await tb.clk.end_test()

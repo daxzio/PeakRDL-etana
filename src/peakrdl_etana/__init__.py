@@ -1,3 +1,4 @@
-from .__about__ import __version__ as __version__
+from .__about__ import __version__
+from .exporter import RegblockExporter
 
-from .exporter import RegblockExporter as RegblockExporter
+__all__ = ["__version__", "RegblockExporter"]

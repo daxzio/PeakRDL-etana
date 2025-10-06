@@ -21,11 +21,11 @@ pre-commit:
 	pre-commit run --all-files
 
 lint:
-	pyflakes src
-# 	pyflakes cocotb
+	pyflakes src tests
+	ruff check src/ tests/ --output-format=concise
 
 mypy:
-	mypy src
+	mypy src tests
 
 format:
 # 	black src

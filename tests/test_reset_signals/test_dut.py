@@ -1,8 +1,14 @@
 """Test various reset signal types"""
 
-from cocotb import test
-from cocotb.triggers import RisingEdge, Timer
-from tb_base import testbench
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from cocotb import test  # noqa: E402
+from cocotb.triggers import RisingEdge, Timer  # noqa: E402
+from tb_base import testbench  # noqa: E402
 
 
 @test()

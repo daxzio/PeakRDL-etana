@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 
 from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
@@ -18,13 +18,13 @@ if TYPE_CHECKING:
 class InputLogicGenerator(RDLListener):
     def __init__(self, hwif: "Hwif") -> None:
         self.hwif = hwif
-        self.hwif_port = []
+        self.hwif_port: List[str] = []
         #         self.hwif_out = []
         super().__init__()
         self.regfile = False
-        self.in_port = []
-        self.out_port = []
-        self.regfile_array = []
+        self.in_port: List[str] = []
+        self.out_port: List[str] = []
+        self.regfile_array: List[str] = []
         self.vector_text = ""  # Initialize to empty string
 
     def get_logic(self, node: "Node") -> Optional[str]:
@@ -38,7 +38,7 @@ class InputLogicGenerator(RDLListener):
         self.lines = []
         self.lines.extend(self.hwif_port)
         #         self.lines.extend(self.hwif_out)
-        return self.lines
+        return self.lines  # type: ignore[return-value]
 
     def enter_Addrmap(self, node: "AddrmapNode") -> None:
         from ..utils import IndexedPath, clog2
@@ -103,7 +103,7 @@ class InputLogicGenerator(RDLListener):
 
         self.regfile_array = []
         if node.is_array:
-            self.regfile_array.extend(node.array_dimensions)
+            self.regfile_array.extend(str(d) for d in node.array_dimensions)  # type: ignore[union-attr]  # type: ignore[arg-type]
 
         # For external regfiles, generate bus interface ports
         if node.external:
@@ -174,7 +174,7 @@ class InputLogicGenerator(RDLListener):
         while parent is not None and parent != self.hwif.top_node:
             if hasattr(parent, "external") and parent.external:
                 return  # Skip this register
-            parent = parent.parent if hasattr(parent, "parent") else None
+            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
         # Check for register-level interrupt outputs
         # Interrupt and halt are field properties, so check if any field in the register has them
@@ -212,7 +212,7 @@ class InputLogicGenerator(RDLListener):
             if not 1 == self.n_subwords:
                 vector_extend = f"[{self.n_subwords-1}:0] "
 
-            x = self.hwif.get_output_identifier(node)
+            x = self.hwif.get_output_identifier(node)  # type: ignore[arg-type]
             self.hwif_port.append(
                 f"output logic {self.vector_text}{vector_extend}{x}_req"
             )
@@ -239,7 +239,7 @@ class InputLogicGenerator(RDLListener):
             ):
                 # Inside an external regfile/addrmap - skip field ports
                 return
-            parent = parent.parent if hasattr(parent, "parent") else None
+            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
         # Check for implied property inputs
         implied_props = []
@@ -301,10 +301,10 @@ class InputLogicGenerator(RDLListener):
 
             if node.is_sw_readable:
                 self.hwif_port.append(
-                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"
+                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"  # type: ignore[arg-type]
                 )
             if node.is_sw_writable:
-                x = self.hwif.get_output_identifier(node.parent)
+                x = self.hwif.get_output_identifier(node.parent)  # type: ignore[arg-type]
                 # Match regblock naming: {reg}_wr_data_{field} for normal fields
                 # For wide registers with single field: {reg}_wr_data (no field suffix)
                 if is_wide_single_field:

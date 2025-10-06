@@ -1,8 +1,14 @@
 """Test extended swacc/swmod - rd_swacc and wr_swacc timing"""
 
-from cocotb import test
-from cocotb.triggers import RisingEdge
-from tb_base import testbench
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from cocotb import test  # noqa: E402
+from cocotb.triggers import RisingEdge  # noqa: E402
+from tb_base import testbench  # noqa: E402
 
 
 @test()
@@ -18,7 +24,7 @@ async def test_dut_extended_swacc_swmod(dut):
     await RisingEdge(tb.clk.clk)
 
     # Start read transaction
-    read_task = await tb.intf.read(0x0)
+    await tb.intf.read(0x0)
 
     # Check rd_swacc pulsed during read
     await RisingEdge(tb.clk.clk)

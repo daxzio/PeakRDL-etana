@@ -1,4 +1,11 @@
 import re
+import logging
+from collections import deque
+from typing import Deque, Tuple, Any, Union
+
+from cocotb import start_soon
+from cocotb.triggers import RisingEdge, Event
+from cocotb_bus.bus import Bus
 
 
 def resolve_x_int(x):
@@ -6,9 +13,6 @@ def resolve_x_int(x):
         y = re.sub("[xz]", "0", str(x.value), flags=re.I)
         return int(y)
     return int(x.value)
-
-
-from cocotb_bus.bus import Bus
 
 
 class PTBus(Bus):
@@ -47,20 +51,6 @@ class PTBus(Bus):
     @classmethod
     def from_prefix(cls, entity, prefix, **kwargs):
         return cls(entity, prefix, **kwargs)
-
-
-import logging
-import datetime
-
-from cocotb import start_soon
-from cocotb.triggers import RisingEdge
-
-from collections import deque
-from cocotb.triggers import Event
-from typing import Deque
-from typing import Tuple
-from typing import Any
-from typing import Union
 
 
 class PTMaster:
@@ -241,9 +231,9 @@ class PTMaster:
             self.bus.req_is_wr.value = write
             self.bus.addr.value = addr
             if write:
-                data = int.from_bytes(data, byteorder="little")
-                self.log.info(f"Write addr: 0x{addr:08x} data: 0x{data:08x}")
-                self.bus.wr_data.value = data & self.wdata_mask
+                data_int = int.from_bytes(data, byteorder="little")
+                self.log.info(f"Write addr: 0x{addr:08x} data: 0x{data_int:08x}")
+                self.bus.wr_data.value = data_int & self.wdata_mask
                 if -1 == strb:
                     self.bus.wr_biten.value = self.wdata_mask
                 else:

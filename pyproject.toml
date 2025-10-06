@@ -78,9 +78,36 @@ allow_redefinition = true
 allow_untyped_globals = true
 allow_untyped_calls = true
 
+# Use explicit package bases to handle test package structure
+explicit_package_bases = true
+
 [[tool.mypy.overrides]]
 module = [
     "systemrdl.*",
     "jinja2.*",
+    "peakrdl.*",
+    "pkg_resources.*",
+    "importlib.metadata.*",
+    "importlib.*",
+    "metadata.*",
+    "distributions.*",
+    "entry_points.*",
+    "cocotb.*",
+    "cocotbext.*",
+    "cocotb_tools.*",
+    "cocotb_bus.*",
+    "peakrdl_regblock.*",
+    "hwif_wrapper_tool.*",
+    "tb_base.*",
+    "external_reg_emulator_simple.*",
+    "interfaces.*",
+    "tests.interfaces.*",
+    "tests.hwif_wrapper_tool.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "src.peakrdl_etana.entry_points",
+]
+ignore_errors = true

@@ -68,6 +68,5 @@ class WideFieldSubwordWrite(NextStateConditional):
             "load_next_c = '1;",
         ]
 
-    @property
-    def comment(self) -> str:
+    def comment(self) -> str:  # type: ignore[override]
         return f"SW write to subword {self.subword_idx}"
