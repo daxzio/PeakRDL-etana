@@ -34,6 +34,7 @@ endif
 ifeq ($(GHDL),1)
     override SIM=ghdl
     override TOPLEVEL_LANG=vhdl
+    TOPLEVEL=regblock_wrapper
 	undefine VERILOG_SOURCES
     VHDL_SOURCES=\
         ./regblock-vhdl-rtl/*.vhd \
@@ -72,9 +73,8 @@ regblock:
 
 regblock-vhdl:
 	rm -rf regblock-vhdl-rtl/*
-	echo ${VHDL_SOURCES}
-	echo ${VERILOG_SOURCES}
 	peakrdl regblock-vhdl ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
+	../hwif_wrapper_tool_vhdl/generate_wrapper_vhdl.py ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
 
 # Synthesize the design using Yosys
 yosys: etana
