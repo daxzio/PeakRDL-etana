@@ -11,6 +11,7 @@ from ..utils import (
     IndexedPath,
     clog2,
     is_inside_external_block,
+    should_treat_as_external,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
     is_wide_single_field_register,
@@ -64,7 +65,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Check if this register is inside an external regfile/addrmap
         # If so, skip it - the parent external block handles the interface
-        if is_inside_external_block(node, self.ds.top_node):
+        if is_inside_external_block(node, self.ds.top_node, self.ds):
             return WalkerAction.SkipDescendants
 
         self.msg = self.ds.top_node.env.msg
@@ -75,7 +76,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
         # For external regfiles, generate bus interface and skip descendants
-        if node.external:
+        if should_treat_as_external(node, self.ds):
             self.assign_external_block_outputs(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -86,7 +87,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             return WalkerAction.Continue
 
         # For external addrmaps, generate bus interface and skip descendants
-        if node.external:
+        if should_treat_as_external(node, self.ds):
             self.assign_external_block_outputs(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -103,7 +104,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         return WalkerAction.SkipDescendants
 
     def enter_Field(self, node: "FieldNode") -> None:
-        if node.external:
+        if should_treat_as_external(node, self.ds):
             if node.is_hw_readable:
                 self.fields.append(node)
             return
@@ -120,7 +121,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 self.halt_fields.append(node)
 
     def exit_Reg(self, node: "RegNode") -> None:
-        if node.external:
+        if should_treat_as_external(node, self.ds):
             self.assign_external_reg_outputs(node)
             return
         # Assign register's intr output

@@ -128,6 +128,11 @@ class RegblockExporter:
             If overriden to True, default reset is active-low instead of active-high.
         default_reset_async: bool
             If overriden to True, default reset is asynchronous instead of synchronous.
+        flatten_nested_blocks: bool
+            If True, nested regfile and addrmap components will be flattened into
+            the parent address space instead of being treated as external interfaces.
+            Memory (mem) blocks are always external per SystemRDL specification.
+            Defaults to False (maintains backward compatibility).
         """
 
         # If it is the root node, skip to top addrmap
@@ -274,6 +279,9 @@ class DesignState:
         )  # type: bool
         self.hwif_in_str = kwargs.pop("in_str", "hwif_in")  # type: str
         self.hwif_out_str = kwargs.pop("out_str", "hwif_out")  # type: str
+        self.flatten_nested_blocks = kwargs.pop(
+            "flatten_nested_blocks", False
+        )  # type: bool
 
         # ------------------------
         # Info about the design

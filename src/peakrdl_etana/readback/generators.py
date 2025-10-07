@@ -5,7 +5,12 @@ from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator, LoopBody
 
-from ..utils import do_bitswap, do_slice, is_inside_external_block
+from ..utils import (
+    do_bitswap,
+    do_slice,
+    is_inside_external_block,
+    should_treat_as_external,
+)
 
 if TYPE_CHECKING:
     from systemrdl.node import RegfileNode, AddrmapNode
@@ -100,7 +105,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
         # For external regfiles, use bus interface readback
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -111,7 +116,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             return WalkerAction.Continue
 
         # For external addrmaps, use bus interface readback
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -122,7 +127,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         # Check if this register is inside an external regfile/addrmap
         # If so, skip it - the parent external block handles the readback
-        if is_inside_external_block(node, self.exp.ds.top_node):
+        if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
             return WalkerAction.SkipDescendants
 
         accesswidth = node.get_property("accesswidth")
@@ -164,11 +169,11 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def process_reg(self, node: RegNode) -> None:
         regwidth = node.get_property("regwidth")
-        if regwidth < self.exp.cpuif.data_width:
-            raise
+        # Note: regwidth can be less than cpuif.data_width for narrow registers
+        # The readback logic below handles padding automatically
         current_bit = 0
         p = self.exp.dereferencer.get_access_strobe(node)
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
         else:
             rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
@@ -183,7 +188,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     f"assign readback_array[{self.current_offset_str}][{field.low-1}:{current_bit}] = '0;"
                 )
 
-            if node.external:
+            if should_treat_as_external(node, self.exp.ds):
                 value = self.exp.hwif.get_external_rd_data(field, True)  # type: ignore[arg-type]
             else:
                 value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]  # type: ignore[assignment]
@@ -328,7 +333,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         bus_width = self.exp.cpuif.data_width
 
         # For external wide registers, use simpler bus interface readback
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             n_subwords = node.get_property("regwidth") // accesswidth
             rd_data = self.exp.hwif.get_external_rd_data(node, True)
             rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
@@ -382,7 +387,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             while current_bit <= field.high:
                 # Assign the field
                 # For external registers, use rd_ack; for internal, use access strobe
-                if node.external:
+                if should_treat_as_external(node, self.exp.ds):
                     rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
                 else:
                     rd_strb = (
@@ -396,7 +401,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     high = field.high - accesswidth * subword_idx
 
                     # For external registers, use external rd_data; for internal, use dereferencer
-                    if node.external:
+                    if should_treat_as_external(node, self.exp.ds):
                         value = self.exp.hwif.get_external_rd_data(field, True)
                     else:
                         value = self.exp.dereferencer.get_value(field)
@@ -434,7 +439,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_low, f_high = f_high, f_low
 
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if node.external:
+                        if should_treat_as_external(node, self.exp.ds):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -446,7 +451,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         )
                     else:
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if node.external:
+                        if should_treat_as_external(node, self.exp.ds):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -483,7 +488,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_low, f_high = f_high, f_low
 
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if node.external:
+                        if should_treat_as_external(node, self.exp.ds):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -495,7 +500,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         )
                     else:
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if node.external:
+                        if should_treat_as_external(node, self.exp.ds):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )

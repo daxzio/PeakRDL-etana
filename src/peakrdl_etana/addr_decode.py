@@ -4,7 +4,7 @@ from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
-from .utils import IndexedPath, is_inside_external_block
+from .utils import IndexedPath, is_inside_external_block, should_treat_as_external
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 
@@ -114,7 +114,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         super().enter_AddressableComponent(node)
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
-        if node.external:
+        if should_treat_as_external(node, self.addr_decode.exp.ds):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
             s = f"logic {p.path};"
@@ -127,7 +127,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
 
-        if node.external:
+        if should_treat_as_external(node, self.addr_decode.exp.ds):
             # Declare strobe signal for external addrmap
             p = self.addr_decode.get_external_block_access_strobe(node)
             s = f"logic {p.path};"
@@ -145,7 +145,9 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        if is_inside_external_block(node, self.addr_decode.top_node):
+        if is_inside_external_block(
+            node, self.addr_decode.top_node, self.addr_decode.exp.ds
+        ):
             return WalkerAction.SkipDescendants
 
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
@@ -218,7 +220,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     #         return a
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
-        if node.external:
+        if should_treat_as_external(node, self.addr_decode.exp.ds):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
@@ -232,7 +234,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
 
-        if node.external:
+        if should_treat_as_external(node, self.addr_decode.exp.ds):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
@@ -252,7 +254,9 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        if is_inside_external_block(node, self.addr_decode.top_node):
+        if is_inside_external_block(
+            node, self.addr_decode.top_node, self.addr_decode.exp.ds
+        ):
             return WalkerAction.SkipDescendants
 
         regwidth = node.get_property("regwidth")
@@ -270,7 +274,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 )
                 s = f"{p.path} = {rhs};"
             self.add_content(s)
-            if node.external:
+            if should_treat_as_external(node, self.addr_decode.exp.ds):
                 readable = node.has_sw_readable
                 writable = node.has_sw_writable
                 if readable and writable:
@@ -293,7 +297,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 else:
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
-                if node.external:
+                if should_treat_as_external(node, self.addr_decode.exp.ds):
                     readable = node.has_sw_readable
                     writable = node.has_sw_writable
                     if readable and writable:

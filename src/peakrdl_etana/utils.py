@@ -1,11 +1,14 @@
 import re
-from typing import Match, Union, Optional, List
+from typing import Match, Union, Optional, List, TYPE_CHECKING
 
 from systemrdl.rdltypes.references import PropertyReference
 from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode, RegfileNode
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
+
+if TYPE_CHECKING:
+    from .exporter import DesignState
 
 
 class IndexedPath:
@@ -215,7 +218,48 @@ def do_bitswap(
         return SVInt(vswap, value.width)
 
 
-def is_inside_external_block(node: Node, top_node: Node) -> bool:
+def should_treat_as_external(node: Node, ds: "DesignState") -> bool:
+    """
+    Determine if a node should be treated as external.
+
+    When flatten_nested_blocks is enabled, nested addrmaps and regfiles
+    are NOT treated as external. Memory blocks are always external per spec.
+
+    Args:
+        node: The node to check
+        ds: DesignState containing configuration
+
+    Returns:
+        True if node should generate external interfaces
+    """
+    if not hasattr(node, "external") or not node.external:
+        return False
+
+    # Memory nodes are always external (SystemRDL spec requirement)
+    node_type = type(node).__name__
+    if node_type == "MemNode":
+        return True
+
+    # Top node is never treated as external
+    if node == ds.top_node:
+        return False
+
+    # If flattening is disabled, use the external property as-is
+    if not ds.flatten_nested_blocks:
+        return True
+
+    # When flattening is enabled:
+    # - Nested addrmaps/regfiles are NOT external (flatten them)
+    # - But respect explicit external register declarations
+    if node_type in ["AddrmapNode", "RegfileNode"]:
+        return False  # Flatten these
+
+    return True  # RegNode with external property stays external
+
+
+def is_inside_external_block(
+    node: Node, top_node: Node, ds: Optional["DesignState"] = None
+) -> bool:
     """
     Check if node is inside an external regfile/addrmap.
 
@@ -226,6 +270,7 @@ def is_inside_external_block(node: Node, top_node: Node) -> bool:
     Args:
         node: The node to check
         top_node: The top-level addrmap node
+        ds: Optional DesignState for flatten mode support
 
     Returns:
         True if node is inside an external block, False otherwise
@@ -233,6 +278,10 @@ def is_inside_external_block(node: Node, top_node: Node) -> bool:
     parent = node.parent
     while parent is not None and parent != top_node:
         if hasattr(parent, "external") and parent.external:
+            # Check if we should actually treat this as external
+            if ds is not None and not should_treat_as_external(parent, ds):
+                parent = parent.parent if hasattr(parent, "parent") else None
+                continue
             return True
         parent = parent.parent if hasattr(parent, "parent") else None
     return False

@@ -6,6 +6,7 @@ from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 from .forloop_generator import RDLForLoopGenerator
 from .utils import (
     is_inside_external_block,
+    should_treat_as_external,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
 )
@@ -33,7 +34,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         return content
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -45,7 +46,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         if node == self.exp.ds.top_node:
             return WalkerAction.Continue
 
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -54,10 +55,10 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> WalkerAction:
         # Skip registers inside external blocks
-        if is_inside_external_block(node, self.exp.ds.top_node):
+        if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
             return WalkerAction.SkipDescendants
 
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if node.has_sw_writable:
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -102,7 +103,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         return content
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
@@ -114,7 +115,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if node == self.exp.ds.top_node:
             return WalkerAction.Continue
 
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
@@ -123,10 +124,10 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> WalkerAction:
         # Skip registers inside external blocks
-        if is_inside_external_block(node, self.exp.ds.top_node):
+        if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
             return WalkerAction.SkipDescendants
 
-        if node.external:
+        if should_treat_as_external(node, self.exp.ds):
             if node.has_sw_readable:
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)

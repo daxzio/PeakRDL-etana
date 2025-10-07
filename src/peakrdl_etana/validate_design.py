@@ -36,7 +36,13 @@ class DesignValidator(RDLListener):
             self.msg.fatal("Unable to export due to previous errors")
 
     def enter_Component(self, node: "Node") -> Optional[WalkerAction]:
-        if node.external and (node != self.top_node):
+        from .utils import should_treat_as_external
+
+        if (
+            node.external
+            and should_treat_as_external(node, self.exp.ds)
+            and (node != self.top_node)
+        ):
             # Do not inspect external components. None of my business
             return WalkerAction.SkipDescendants
 
@@ -71,19 +77,52 @@ class DesignValidator(RDLListener):
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> None:
         # All registers must be aligned to the internal data bus width
-        alignment = self.exp.cpuif.data_width_bytes
-        if (node.raw_address_offset % alignment) != 0:
-            self.msg.error(
-                "Unaligned registers are not supported. Address offset of "
-                f"instance '{node.inst_name}' must be a multiple of {alignment}",
-                node.inst.inst_src_ref,
-            )
-        if node.is_array and (node.array_stride % alignment) != 0:  # type: ignore[operator]
-            self.msg.error(
-                "Unaligned registers are not supported. Address stride of "
-                f"instance array '{node.inst_name}' must be a multiple of {alignment}",
-                node.inst.inst_src_ref,
-            )
+        # However, when flattening nested blocks, we should skip this check for the
+        # nested addressable components themselves (regfiles/addrmaps), as they're
+        # being flattened into internal registers and don't need CPU bus alignment.
+        # Only actual registers and truly external blocks need this alignment.
+        from .utils import should_treat_as_external
+
+        # Skip alignment check for nested blocks that are being flattened
+        if not isinstance(node, RegNode):
+            # This is a regfile, addrmap, or mem
+            if not should_treat_as_external(node, self.exp.ds):
+                # It's being flattened, so skip the alignment check for the block itself
+                # The registers inside will be checked individually
+                pass
+            else:
+                # It's external, so enforce alignment
+                alignment = self.exp.cpuif.data_width_bytes
+                if (node.raw_address_offset % alignment) != 0:
+                    self.msg.error(
+                        "Unaligned registers are not supported. Address offset of "
+                        f"instance '{node.inst_name}' must be a multiple of {alignment}",
+                        node.inst.inst_src_ref,
+                    )
+                if node.is_array and (node.array_stride % alignment) != 0:  # type: ignore[operator]
+                    self.msg.error(
+                        "Unaligned registers are not supported. Address stride of "
+                        f"instance array '{node.inst_name}' must be a multiple of {alignment}",
+                        node.inst.inst_src_ref,
+                    )
+        else:
+            # It's a register - enforce alignment based on register's access width
+            # not the CPU bus width. This allows narrow registers (8-bit, 16-bit) to
+            # have natural alignment even when the bus is wider (e.g., 64-bit).
+            reg_accesswidth = node.get_property("accesswidth")
+            alignment = reg_accesswidth // 8  # Convert bits to bytes
+            if (node.raw_address_offset % alignment) != 0:
+                self.msg.error(
+                    "Unaligned registers are not supported. Address offset of "
+                    f"instance '{node.inst_name}' must be a multiple of {alignment}",
+                    node.inst.inst_src_ref,
+                )
+            if node.is_array and (node.array_stride % alignment) != 0:  # type: ignore[operator]
+                self.msg.error(
+                    "Unaligned registers are not supported. Address stride of "
+                    f"instance array '{node.inst_name}' must be a multiple of {alignment}",
+                    node.inst.inst_src_ref,
+                )
 
         if not isinstance(node, RegNode):
             # Entering a block-like node
@@ -91,7 +130,11 @@ class DesignValidator(RDLListener):
                 # Ignore top addrmap's external property when entering
                 self._contains_external_block_stack.append(False)
             else:
-                self._contains_external_block_stack.append(node.external)
+                from .utils import should_treat_as_external
+
+                self._contains_external_block_stack.append(
+                    should_treat_as_external(node, self.exp.ds)
+                )
 
     def enter_Regfile(self, node: RegfileNode) -> None:
         self._check_sharedextbus(node)
@@ -128,7 +171,9 @@ class DesignValidator(RDLListener):
             node.lsb // parent_accesswidth
         ) != (node.msb // parent_accesswidth):
             # field spans multiple sub-words
-            if node.external:
+            from .utils import should_treat_as_external
+
+            if should_treat_as_external(node, self.exp.ds):
                 # External fields that span multiple subwords is not supported
                 self.msg.error(
                     "External fields that span multiple software-accessible "
@@ -182,22 +227,28 @@ class DesignValidator(RDLListener):
             if contains_external_block:
                 # Check that addressing follows strict alignment rules to allow
                 # for simplified address bit-pruning
-                if node.external:
-                    err_suffix = "is external"
-                else:
-                    err_suffix = "contains an external addrmap/regfile/mem"
+                # NOTE: This strict alignment is only needed for actual external blocks.
+                # When flattening is enabled, previously external blocks become internal,
+                # so we skip this check to avoid overly strict validation.
+                from .utils import should_treat_as_external
 
-                req_align = roundup_pow2(node.size)
-                if (node.raw_address_offset % req_align) != 0:
-                    self.msg.error(
-                        f"Address offset +0x{node.raw_address_offset:x} of instance '{node.inst_name}' is not a power of 2 multiple of its size 0x{node.size:x}. "
-                        f"This is required by the regblock exporter if a component {err_suffix}.",
-                        node.inst.inst_src_ref,
-                    )
-                if node.is_array:
-                    if node.array_stride is not None and not is_pow2(node.array_stride):
+                if should_treat_as_external(node, self.exp.ds):
+                    err_suffix = "is external"
+                    # Only enforce strict alignment for actual external blocks
+                    req_align = roundup_pow2(node.size)
+                    if (node.raw_address_offset % req_align) != 0:
                         self.msg.error(
-                            f"Address stride of instance array '{node.inst_name}' is not a power of 2"
+                            f"Address offset +0x{node.raw_address_offset:x} of instance '{node.inst_name}' is not a power of 2 multiple of its size 0x{node.size:x}. "
                             f"This is required by the regblock exporter if a component {err_suffix}.",
                             node.inst.inst_src_ref,
                         )
+                    if node.is_array:
+                        if node.array_stride is not None and not is_pow2(
+                            node.array_stride
+                        ):
+                            self.msg.error(
+                                f"Address stride of instance array '{node.inst_name}' is not a power of 2"
+                                f"This is required by the regblock exporter if a component {err_suffix}.",
+                                node.inst.inst_src_ref,
+                            )
+                # When flattening, we don't enforce this strict alignment on flattened blocks

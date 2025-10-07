@@ -8,6 +8,7 @@ from ..utils import (
     has_sw_writable_descendants,
     has_sw_readable_descendants,
     is_wide_single_field_register,
+    should_treat_as_external,
 )
 
 if TYPE_CHECKING:
@@ -48,7 +49,7 @@ class InputLogicGenerator(RDLListener):
             return
 
         # For external addrmaps, generate bus interface ports
-        if node.external:
+        if should_treat_as_external(node, self.hwif.ds):
             p = IndexedPath(self.hwif.top_node, node)
             prefix_out = f"{self.hwif.hwif_out_str}_{p.path}"
             prefix_in = f"{self.hwif.hwif_in_str}_{p.path}"
@@ -106,7 +107,7 @@ class InputLogicGenerator(RDLListener):
             self.regfile_array.extend(str(d) for d in node.array_dimensions)  # type: ignore[union-attr]  # type: ignore[arg-type]
 
         # For external regfiles, generate bus interface ports
-        if node.external:
+        if should_treat_as_external(node, self.hwif.ds):
             p = IndexedPath(self.hwif.top_node, node)
             prefix_out = f"{self.hwif.hwif_out_str}_{p.path}"
             prefix_in = f"{self.hwif.hwif_in_str}_{p.path}"
@@ -172,7 +173,11 @@ class InputLogicGenerator(RDLListener):
         # The parent external block already has the bus interface ports
         parent = node.parent
         while parent is not None and parent != self.hwif.top_node:
-            if hasattr(parent, "external") and parent.external:
+            if (
+                hasattr(parent, "external")
+                and parent.external
+                and should_treat_as_external(parent, self.hwif.ds)
+            ):
                 return  # Skip this register
             parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
@@ -205,7 +210,7 @@ class InputLogicGenerator(RDLListener):
                 f"output logic {self.vector_text}[0:0] {halt_identifier}"
             )
 
-        if node.external:
+        if should_treat_as_external(node, self.hwif.ds):
             vector_extend = ""
             if not 1 == self.n_subwords:
                 vector_extend = f"[{self.n_subwords-1}:0] "
@@ -233,6 +238,7 @@ class InputLogicGenerator(RDLListener):
             if (
                 hasattr(parent, "external")
                 and parent.external
+                and should_treat_as_external(parent, self.hwif.ds)
                 and not isinstance(parent, RegNode)
             ):
                 # Inside an external regfile/addrmap - skip field ports
@@ -286,7 +292,7 @@ class InputLogicGenerator(RDLListener):
 
         width = node.width
         field_text = self.vector_text + f"[{width-1}:0]"
-        if node.external:
+        if should_treat_as_external(node, self.hwif.ds):
             # For wide external registers with only ONE field,
             # regblock generates per-register signals without field name suffix
             is_wide_single_field = is_wide_single_field_register(node.parent)

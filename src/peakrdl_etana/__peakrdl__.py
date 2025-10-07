@@ -189,6 +189,15 @@ class Exporter(ExporterSubcommandPlugin):
             This bypasses SystemRDL specification rule 10.6.1-f and enables non-atomic writes to wide registers.""",
         )
 
+        arg_group.add_argument(
+            "--flatten-nested-blocks",
+            action="store_true",
+            default=False,
+            help="""Flatten nested regfile and addrmap components into the parent address space
+            instead of treating them as external interfaces. Memory (mem) blocks are always external
+            per SystemRDL specification. Useful for simpler integration and better tool compatibility.""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -256,4 +265,5 @@ class Exporter(ExporterSubcommandPlugin):
             in_str=options.in_str,
             out_str=options.out_str,
             allow_wide_field_subwords=options.allow_wide_field_subwords,
+            flatten_nested_blocks=options.flatten_nested_blocks,
         )
