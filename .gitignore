@@ -28,3 +28,6 @@ cocotbext
 top_edit.sv
 # etana-rtl/
 # regblock-rtl/
+cursor_work/
+venv*/
+repos/
