@@ -1,9 +1,14 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 
 from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
 
-from ..utils import clog2
+from ..utils import (
+    clog2,
+    has_sw_writable_descendants,
+    has_sw_readable_descendants,
+    is_wide_single_field_register,
+)
 
 if TYPE_CHECKING:
     from systemrdl.node import Node, RegfileNode
@@ -13,13 +18,13 @@ if TYPE_CHECKING:
 class InputLogicGenerator(RDLListener):
     def __init__(self, hwif: "Hwif") -> None:
         self.hwif = hwif
-        self.hwif_port = []
+        self.hwif_port: List[str] = []
         #         self.hwif_out = []
         super().__init__()
         self.regfile = False
-        self.in_port = []
-        self.out_port = []
-        self.regfile_array = []
+        self.in_port: List[str] = []
+        self.out_port: List[str] = []
+        self.regfile_array: List[str] = []
         self.vector_text = ""  # Initialize to empty string
 
     def get_logic(self, node: "Node") -> Optional[str]:
@@ -33,7 +38,7 @@ class InputLogicGenerator(RDLListener):
         self.lines = []
         self.lines.extend(self.hwif_port)
         #         self.lines.extend(self.hwif_out)
-        return self.lines
+        return self.lines  # type: ignore[return-value]
 
     def enter_Addrmap(self, node: "AddrmapNode") -> None:
         from ..utils import IndexedPath, clog2
@@ -54,14 +59,8 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
 
             # Check if addrmap has sw-writable/readable registers
-            # Walk descendants to find any sw-accessible registers
-            has_sw_wr = False
-            has_sw_rd = False
-            for desc in node.descendants():
-                if hasattr(desc, "has_sw_writable"):
-                    has_sw_wr = has_sw_wr or desc.has_sw_writable
-                if hasattr(desc, "has_sw_readable"):
-                    has_sw_rd = has_sw_rd or desc.has_sw_readable
+            has_sw_wr = has_sw_writable_descendants(node)
+            has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
                 self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
@@ -104,7 +103,7 @@ class InputLogicGenerator(RDLListener):
 
         self.regfile_array = []
         if node.is_array:
-            self.regfile_array.extend(node.array_dimensions)
+            self.regfile_array.extend(str(d) for d in node.array_dimensions)  # type: ignore[union-attr]  # type: ignore[arg-type]
 
         # For external regfiles, generate bus interface ports
         if node.external:
@@ -118,8 +117,8 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
 
             # Check if regfile has sw-writable registers
-            has_sw_wr = any(reg.has_sw_writable for reg in node.registers())
-            has_sw_rd = any(reg.has_sw_readable for reg in node.registers())
+            has_sw_wr = has_sw_writable_descendants(node)
+            has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
                 self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
@@ -175,13 +174,11 @@ class InputLogicGenerator(RDLListener):
         while parent is not None and parent != self.hwif.top_node:
             if hasattr(parent, "external") and parent.external:
                 return  # Skip this register
-            parent = parent.parent if hasattr(parent, "parent") else None
+            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
         # Check for register-level interrupt outputs
         # Interrupt and halt are field properties, so check if any field in the register has them
-        has_intr = any(
-            field.get_property("intr") is not None for field in node.fields()
-        )
+        has_intr = any(field.get_property("intr") for field in node.fields())
         has_halt = any(
             field.get_property("haltenable") is not None
             or field.get_property("haltmask") is not None
@@ -213,7 +210,7 @@ class InputLogicGenerator(RDLListener):
             if not 1 == self.n_subwords:
                 vector_extend = f"[{self.n_subwords-1}:0] "
 
-            x = self.hwif.get_output_identifier(node)
+            x = self.hwif.get_output_identifier(node)  # type: ignore[arg-type]
             self.hwif_port.append(
                 f"output logic {self.vector_text}{vector_extend}{x}_req"
             )
@@ -240,7 +237,7 @@ class InputLogicGenerator(RDLListener):
             ):
                 # Inside an external regfile/addrmap - skip field ports
                 return
-            parent = parent.parent if hasattr(parent, "parent") else None
+            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
         # Check for implied property inputs
         implied_props = []
@@ -292,24 +289,20 @@ class InputLogicGenerator(RDLListener):
         if node.external:
             # For wide external registers with only ONE field,
             # regblock generates per-register signals without field name suffix
-            regwidth = node.parent.get_property("regwidth")
-            accesswidth = node.parent.get_property("accesswidth")
-            n_subwords = regwidth // accesswidth
-            is_wide_single_field = (
-                n_subwords > 1 and len(list(node.parent.fields())) == 1
-            )
+            is_wide_single_field = is_wide_single_field_register(node.parent)
 
             if is_wide_single_field:
                 # Use accesswidth for wide registers
+                accesswidth = node.parent.get_property("accesswidth")
                 port_width = accesswidth
                 field_text = self.vector_text + f"[{port_width-1}:0]"
 
             if node.is_sw_readable:
                 self.hwif_port.append(
-                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"
+                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"  # type: ignore[arg-type]
                 )
             if node.is_sw_writable:
-                x = self.hwif.get_output_identifier(node.parent)
+                x = self.hwif.get_output_identifier(node.parent)  # type: ignore[arg-type]
                 # Match regblock naming: {reg}_wr_data_{field} for normal fields
                 # For wide registers with single field: {reg}_wr_data (no field suffix)
                 if is_wide_single_field:
@@ -381,7 +374,7 @@ class InputLogicGenerator(RDLListener):
                 )
 
             # Counter threshold outputs
-            if node.get_property("incrthreshold") is not None:
+            if node.get_property("incrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "incrthreshold"
                 )
@@ -389,7 +382,7 @@ class InputLogicGenerator(RDLListener):
                 self.hwif_port.append(
                     f"output logic {prop_output_text} {prop_identifier}"
                 )
-            if node.get_property("decrthreshold") is not None:
+            if node.get_property("decrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "decrthreshold"
                 )

@@ -19,8 +19,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, script_dir)
 
 # Import our modules
-from hwif_wrapper_tool.parser import parse_hwif_report
-from hwif_wrapper_tool.wrapper_builder import WrapperBuilder
+from hwif_wrapper_tool.parser import parse_hwif_report  # noqa: E402
+from hwif_wrapper_tool.wrapper_builder import WrapperBuilder  # noqa: E402
 
 
 def main():

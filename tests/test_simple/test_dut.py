@@ -1,5 +1,11 @@
 # from cocotb import start_soon
-from cocotb import test
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from cocotb import test  # noqa: E402
 
 # from cocotbext.apb import ApbBus
 # from cocotbext.apb import ApbMonitor
@@ -8,7 +14,7 @@ from cocotb import test
 # from interfaces.clkreset import Clk
 # from interfaces.clkreset import Reset
 
-from tb_base import testbench
+from tb_base import testbench  # noqa: E402
 
 # class testbench:
 #     def __init__(self, dut, reset_sense=1):

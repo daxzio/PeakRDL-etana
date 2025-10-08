@@ -22,7 +22,7 @@ pre-commit:
 
 lint:
 	pyflakes src
-# 	pyflakes cocotb
+	ruff check src/ --output-format=concise
 
 mypy:
 	mypy src

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 from systemrdl.rdltypes import PropertyReference
@@ -23,7 +23,7 @@ class DesignValidator(RDLListener):
         self.exp = exp
         self.msg = self.top_node.env.msg
 
-        self._contains_external_block_stack = []  # type: List[bool]
+        self._contains_external_block_stack: List[bool] = []
         self.contains_external_block = False
 
     @property
@@ -78,7 +78,7 @@ class DesignValidator(RDLListener):
                 f"instance '{node.inst_name}' must be a multiple of {alignment}",
                 node.inst.inst_src_ref,
             )
-        if node.is_array and (node.array_stride % alignment) != 0:
+        if node.is_array and (node.array_stride % alignment) != 0:  # type: ignore[operator]
             self.msg.error(
                 "Unaligned registers are not supported. Address stride of "
                 f"instance array '{node.inst_name}' must be a multiple of {alignment}",
@@ -195,7 +195,7 @@ class DesignValidator(RDLListener):
                         node.inst.inst_src_ref,
                     )
                 if node.is_array:
-                    if not is_pow2(node.array_stride):
+                    if node.array_stride is not None and not is_pow2(node.array_stride):
                         self.msg.error(
                             f"Address stride of instance array '{node.inst_name}' is not a power of 2"
                             f"This is required by the regblock exporter if a component {err_suffix}.",

@@ -1,10 +1,16 @@
-from random import randint
+import sys
+from pathlib import Path
 
-from cocotb import start_soon
-from cocotb import test
-from cocotb.triggers import RisingEdge
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from random import randint  # noqa: E402
 
-from tb_base import testbench
+from cocotb import start_soon  # noqa: E402
+from cocotb import test  # noqa: E402
+from cocotb.triggers import RisingEdge  # noqa: E402
+
+from tb_base import testbench  # noqa: E402
 
 
 async def detect_parity_error(

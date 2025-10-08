@@ -1,6 +1,6 @@
 from cocotb.clock import Clock
 from cocotb import start_soon
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
 
 
 class Clk:

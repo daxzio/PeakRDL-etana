@@ -25,16 +25,16 @@ class AlwaysWrite(NextStateUnconditional):
     def get_assignments(self, field: "FieldNode") -> List[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
-        I = str(self.exp.hwif.get_input_identifier(field))
-        R = self.exp.field_logic.get_storage_identifier(field)
+        input_val = str(self.exp.hwif.get_input_identifier(field))
+        storage_val = self.exp.field_logic.get_storage_identifier(field)
         if hwmask is not None:
-            M = self.exp.dereferencer.get_value(hwmask)
-            next_val = f"{I} & ~{M} | {R} & {M}"
+            mask_val = self.exp.dereferencer.get_value(hwmask)
+            next_val = f"{input_val} & ~{mask_val} | {storage_val} & {mask_val}"
         elif hwenable is not None:
-            E = self.exp.dereferencer.get_value(hwenable)
-            next_val = f"{I} & {E} | {R} & ~{E}"
+            enable_val = self.exp.dereferencer.get_value(hwenable)
+            next_val = f"{input_val} & {enable_val} | {storage_val} & ~{enable_val}"
         else:
-            next_val = I
+            next_val = input_val
 
         return [
             f"next_c = {next_val};",
@@ -46,16 +46,16 @@ class _QualifiedWrite(NextStateConditional):
     def get_assignments(self, field: "FieldNode") -> List[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
-        I = str(self.exp.hwif.get_input_identifier(field))
-        R = self.exp.field_logic.get_storage_identifier(field)
+        input_val = str(self.exp.hwif.get_input_identifier(field))
+        storage_val = self.exp.field_logic.get_storage_identifier(field)
         if hwmask is not None:
-            M = self.exp.dereferencer.get_value(hwmask)
-            next_val = f"{I} & ~{M} | {R} & {M}"
+            mask_val = self.exp.dereferencer.get_value(hwmask)
+            next_val = f"{input_val} & ~{mask_val} | {storage_val} & {mask_val}"
         elif hwenable is not None:
-            E = self.exp.dereferencer.get_value(hwenable)
-            next_val = f"{I} & {E} | {R} & ~{E}"
+            enable_val = self.exp.dereferencer.get_value(hwenable)
+            next_val = f"{input_val} & {enable_val} | {storage_val} & ~{enable_val}"
         else:
-            next_val = I
+            next_val = input_val
 
         return [
             f"next_c = {next_val};",

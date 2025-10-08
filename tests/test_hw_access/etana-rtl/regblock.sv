@@ -16,34 +16,18 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_hw_ctrl_intr,
-        output logic [0:0] hwif_out_r1_intr,
         input wire [7:0] hwif_in_r1_f,
-        output logic [0:0] hwif_out_r1_f_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_decrthreshold,
         input wire [0:0] hwif_in_r1_f_hwclr,
         input wire [0:0] hwif_in_r1_f_hwset,
         input wire [0:0] hwif_in_r1_f_we,
-        output logic [0:0] hwif_out_r2_intr,
         input wire [7:0] hwif_in_r2_f,
-        output logic [0:0] hwif_out_r2_f_incrthreshold,
-        output logic [0:0] hwif_out_r2_f_decrthreshold,
         input wire [0:0] hwif_in_r2_f_hwclr,
         input wire [0:0] hwif_in_r2_f_hwset,
         input wire [0:0] hwif_in_r2_f_we,
-        output logic [0:0] hwif_out_r3_intr,
         input wire [7:0] hwif_in_r3_f,
-        output logic [0:0] hwif_out_r3_f_incrthreshold,
-        output logic [0:0] hwif_out_r3_f_decrthreshold,
-        output logic [0:0] hwif_out_r4_intr,
         input wire [7:0] hwif_in_r4_f,
-        output logic [0:0] hwif_out_r4_f_incrthreshold,
-        output logic [0:0] hwif_out_r4_f_decrthreshold,
-        output logic [0:0] hwif_out_r5_intr,
         input wire [7:0] hwif_in_r5_f_next_value,
-        input wire [0:0] hwif_in_r5_f_we,
-        output logic [0:0] hwif_out_r5_f_incrthreshold,
-        output logic [0:0] hwif_out_r5_f_decrthreshold
+        input wire [0:0] hwif_in_r5_f_we
     );
 
     //--------------------------------------------------------------------------

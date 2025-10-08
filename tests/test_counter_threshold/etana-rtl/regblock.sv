@@ -16,25 +16,21 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_threshold_via_bool_intr,
         output logic [3:0] hwif_out_threshold_via_bool_count,
         output logic [0:0] hwif_out_threshold_via_bool_count_incrthreshold,
         output logic [0:0] hwif_out_threshold_via_bool_count_decrthreshold,
         input wire [0:0] hwif_in_threshold_via_bool_count_incr,
         input wire [0:0] hwif_in_threshold_via_bool_count_decr,
-        output logic [0:0] hwif_out_threshold_via_const_intr,
         output logic [3:0] hwif_out_threshold_via_const_count,
         output logic [0:0] hwif_out_threshold_via_const_count_incrthreshold,
         output logic [0:0] hwif_out_threshold_via_const_count_decrthreshold,
         input wire [0:0] hwif_in_threshold_via_const_count_incr,
         input wire [0:0] hwif_in_threshold_via_const_count_decr,
-        output logic [0:0] hwif_out_threshold_via_ref_intr,
         output logic [3:0] hwif_out_threshold_via_ref_count,
         output logic [0:0] hwif_out_threshold_via_ref_count_incrthreshold,
         output logic [0:0] hwif_out_threshold_via_ref_count_decrthreshold,
         input wire [0:0] hwif_in_threshold_via_ref_count_incr,
-        input wire [0:0] hwif_in_threshold_via_ref_count_decr,
-        output logic [0:0] hwif_out_threshold_control_intr
+        input wire [0:0] hwif_in_threshold_via_ref_count_decr
     );
 
     //--------------------------------------------------------------------------

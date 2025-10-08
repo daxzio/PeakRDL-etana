@@ -350,7 +350,6 @@ class FieldLogic:
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
-        #         print(s)
         return s
 
     def get_parity_error_identifier(
@@ -365,7 +364,6 @@ class FieldLogic:
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
-        #         print(s)
         return s
 
     def has_next_q(self, field: "FieldNode") -> bool:

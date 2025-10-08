@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, Union, Optional, List
 
 from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
-from .utils import IndexedPath
+from .utils import IndexedPath, is_inside_external_block
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 
@@ -38,9 +38,9 @@ class AddressDecode:
 
     def get_access_strobe(
         self, node: Union[RegNode, FieldNode], reduce_substrobes: bool = True
-    ) -> str:
+    ) -> IndexedPath:
         """
-        Returns the Verilog string that represents the register/field's access strobe.
+        Returns the IndexedPath that represents the register/field's access strobe.
         """
         if isinstance(node, FieldNode):
             field = node
@@ -73,7 +73,7 @@ class AddressDecode:
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
-    def get_external_block_access_strobe(self, node: "AddressableNode") -> str:
+    def get_external_block_access_strobe(self, node: "AddressableNode") -> IndexedPath:
         assert node.external
         assert not isinstance(node, RegNode)
         p = IndexedPath(self.top_node, node)
@@ -85,7 +85,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def __init__(self, addr_decode: AddressDecode) -> None:
         self.addr_decode = addr_decode
         super().__init__()
-        self._logic_stack = []  # type: List[object]
+        self._logic_stack: List[object] = []
         self.printed = False
 
     def get_logic(self, node: "Node") -> Optional[str]:
@@ -145,20 +145,18 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.addr_decode.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.addr_decode.top_node):
+            return WalkerAction.SkipDescendants
 
         n_subwords = node.get_property("regwidth") // node.get_property("accesswidth")
 
         self.build_logic(node, n_subwords)
         self.printed = False
+        return WalkerAction.Continue
 
     def finish(self) -> Optional[str]:
         s = self._logic_stack
-        return str("\n".join(s))
+        return "\n".join(str(item) for item in s)
 
 
 class DecodeLogicGenerator(RDLForLoopGenerator):
@@ -180,9 +178,9 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             strides = []
             for dim in reversed(node.array_dimensions):
                 strides.append(current_stride)
-                current_stride *= dim
+                current_stride *= dim  # type: ignore[operator]
             strides.reverse()
-            self._array_stride_stack.extend(strides)
+            self._array_stride_stack.extend([s for s in strides if s is not None])
 
         return WalkerAction.Continue
 
@@ -250,15 +248,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
             self.add_content(f"{strb.path} = {rhs};")
             self.add_content(f"is_external |= {rhs};")
-            return WalkerAction.SkipDescendants
+        # return WalkerAction.SkipDescendants
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
         # Skip registers inside external blocks
-        parent = node.parent
-        while parent is not None and parent != self.addr_decode.top_node:
-            if hasattr(parent, "external") and parent.external:
-                return WalkerAction.SkipDescendants
-            parent = parent.parent if hasattr(parent, "parent") else None
+        if is_inside_external_block(node, self.addr_decode.top_node):
+            return WalkerAction.SkipDescendants
 
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
@@ -296,9 +291,6 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 if 0 == len(p.index):
                     s = f"{p.path}[{i}] = {rhs};"
                 else:
-                    for y in p.index:
-                        print(y)
-                    # x = f"({n_subwords}*{p.index[0]})"
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
                 if node.external:
@@ -311,7 +303,10 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                     elif not readable and writable:
                         self.add_content(f"is_external |= {rhs} & cpuif_req_is_wr;")
                     else:
-                        raise RuntimeError
+                        raise RuntimeError(
+                            "External register must be readable or writable"
+                        )
+        return WalkerAction.Continue
 
     def exit_AddressableComponent(self, node: "AddressableNode") -> None:
         super().exit_AddressableComponent(node)

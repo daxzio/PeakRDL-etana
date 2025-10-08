@@ -16,29 +16,13 @@ module regblock (
         output logic [63:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_r1_intr,
         output logic [15:0] hwif_out_r1_f_q8_8,
-        output logic [0:0] hwif_out_r1_f_q8_8_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_q8_8_decrthreshold,
         input wire [19:0] hwif_in_r1_f_q32_n12,
-        output logic [0:0] hwif_out_r1_f_q32_n12_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_q32_n12_decrthreshold,
         output logic [23:0] hwif_out_r1_f_sqn8_32,
-        output logic [0:0] hwif_out_r1_f_sqn8_32_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_sqn8_32_decrthreshold,
         output logic [0:0] hwif_out_r1_f_sqn6_7,
-        output logic [0:0] hwif_out_r1_f_sqn6_7_incrthreshold,
-        output logic [0:0] hwif_out_r1_f_sqn6_7_decrthreshold,
-        output logic [0:0] hwif_out_r2_intr,
         input wire [15:0] hwif_in_r2_f_signed,
-        output logic [0:0] hwif_out_r2_f_signed_incrthreshold,
-        output logic [0:0] hwif_out_r2_f_signed_decrthreshold,
         output logic [15:0] hwif_out_r2_f_unsigned,
-        output logic [0:0] hwif_out_r2_f_unsigned_incrthreshold,
-        output logic [0:0] hwif_out_r2_f_unsigned_decrthreshold,
-        input wire [15:0] hwif_in_r2_f_no_sign,
-        output logic [0:0] hwif_out_r2_f_no_sign_incrthreshold,
-        output logic [0:0] hwif_out_r2_f_no_sign_decrthreshold
+        input wire [15:0] hwif_in_r2_f_no_sign
     );
 
     //--------------------------------------------------------------------------

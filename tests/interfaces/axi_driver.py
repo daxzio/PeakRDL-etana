@@ -2,7 +2,6 @@ import math
 import logging
 import itertools
 from random import randint, seed
-from cocotb import start_soon
 from cocotb.triggers import RisingEdge
 from cocotbext.axi import (
     AxiBus,
@@ -46,7 +45,7 @@ class AxiDriver:
     def __init__(
         self, dut, axi_prefix="s_axi", clk_name="s_aclk", reset_name=None, seednum=None
     ):
-        self.log = logging.getLogger(f"cocotb.AxiDriver")
+        self.log = logging.getLogger("cocotb.AxiDriver")
         self.enable_logging()
         if reset_name is None:
             self.axi_master = AxiMaster(
@@ -77,7 +76,7 @@ class AxiDriver:
     @property
     def length(self):
         if self.len is None:
-            if not 0 == self.data and not self.data is None:
+            if not 0 == self.data and self.data is not None:
                 return max(math.ceil(math.log2(self.data) / 8), 4)
             else:
                 return 4
@@ -175,7 +174,7 @@ class AxiDriver:
         while True:
             await self.read(addr, debug=debug)
             if data == self.returned_val:
-                self.log.debug(f"Condition Satisified")
+                self.log.debug("Condition Satisified")
                 break
         return
 
@@ -184,7 +183,7 @@ class AxiDriver:
             self.log.debug(
                 f"Read  0x{self.addr:08x}: 0x{self.returned_val:0{self.length*2}x}"
             )
-        if not self.returned_val == self.data and not None == self.data:
+        if not self.returned_val == self.data and self.data is not None:
             raise Exception(
                 f"Expected 0x{self.data:08x} doesn't match returned 0x{self.returned_val:08x}"
             )
@@ -230,7 +229,7 @@ class AxiDriver:
         print(self.axi_master.read_if.read_command_queue)
         print(self.axi_master.read_if.current_read_command)
         # print(self.read_op)
-        await RisingEdge(self.clk)
+        await RisingEdge(self.clk)  # type: ignore[attr-defined]
         i = 0
         while True:
             await self.axi_master.read_if.wait()
@@ -269,7 +268,7 @@ class AxiStreamDriver:
     def __init__(
         self, dut, axi_prefix="m_axi", clk_name="m_aclk", reset_name=None, seednum=None
     ):
-        self.log = logging.getLogger(f"cocotb.AxiStreamDriver")
+        self.log = logging.getLogger("cocotb.AxiStreamDriver")
         self.enable_logging()
 
         if reset_name is None:
@@ -320,7 +319,7 @@ class AxiStreamReceiver:
     def __init__(
         self, dut, axi_prefix="s_axi", clk_name="s_aclk", reset_name=None, seednum=None
     ):
-        self.log = logging.getLogger(f"cocotb.AxiStreamSink")
+        self.log = logging.getLogger("cocotb.AxiStreamSink")
         self.enable_logging()
 
         self.axis_sink = AxiStreamSink(
@@ -340,7 +339,7 @@ class AxiStreamReceiver:
     @property
     def length(self):
         if self.len is None:
-            if not 0 == self.data and not self.data is None:
+            if not 0 == self.data and self.data is not None:
                 return math.ceil(math.log2(self.data) / 32) * 4
             else:
                 return 4
@@ -356,7 +355,7 @@ class AxiStreamReceiver:
     def check_read(self, debug=True):
         if debug:
             self.log.debug(f"Receive:          0x{self.returned_val:0{self.length*2}x}")
-        if not self.returned_val == self.data and not None == self.data:
+        if not self.returned_val == self.data and self.data is not None:
             raise Exception(
                 f"Expected 0x{self.data:08x} doesn't match returned 0x{self.returned_val:08x}"
             )

@@ -90,7 +90,7 @@ def test_regblock():
         proj_path / "rdl-rtl" / "regblock.sv",
     ]
 
-    c = cocotbSetup(verilog_sources, "regblock", "test_dut")
+    cocotbSetup(verilog_sources, "regblock", "test_dut")
 
 
 if __name__ == "__main__":

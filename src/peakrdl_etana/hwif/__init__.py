@@ -11,7 +11,7 @@ from systemrdl.node import (
 )
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import IndexedPath
+from ..utils import IndexedPath, is_wide_single_field_register
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 
@@ -78,7 +78,7 @@ class Hwif:
         try:
             hwif_ports = InputLogicGenerator(self)
             self.logic = hwif_ports.get_logic(self.top_node)
-            return False if 0 == len(self.logic) else True
+            return False if self.logic is None or 0 == len(self.logic) else True
         except Exception as e:
             import traceback
 
@@ -93,7 +93,7 @@ class Hwif:
         """
 
         assert self.has_hwif_ports is not None
-        return ",\n".join(self.logic)
+        return ",\n".join(self.logic) if self.logic is not None else ""
 
     # ---------------------------------------------------------------------------
     # hwif utility functions
@@ -158,7 +158,7 @@ class Hwif:
             s = f"{self.hwif_in_str}_{p.path}"
             return s
         elif isinstance(obj, PropertyReference):
-            return self.get_implied_prop_input_identifier(obj.node, obj.name)
+            return self.get_implied_prop_input_identifier(obj.node, obj.name)  # type: ignore[arg-type]
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
@@ -170,12 +170,7 @@ class Hwif:
             if not node.is_sw_readable:
                 raise
             # Check if this is a wide register with only ONE field
-            regwidth = node.parent.get_property("regwidth")
-            accesswidth = node.parent.get_property("accesswidth")
-            n_subwords = regwidth // accesswidth
-            is_wide_single_field = (
-                n_subwords > 1 and len(list(node.parent.fields())) == 1
-            )
+            is_wide_single_field = is_wide_single_field_register(node.parent)
 
             # Match regblock naming: {reg}_rd_data_{field} for normal fields
             # For wide registers with single field: {reg}_rd_data (no field suffix)
@@ -203,7 +198,6 @@ class Hwif:
             )
         if index:
             s += p.index_str
-        #             print(p.index_vector)
         return s
 
     def get_external_rd_ack(self, node: AddressableNode, index: bool = False) -> str:
@@ -270,7 +264,7 @@ class Hwif:
             # not sure when anything would call this function with a prop ref
             # when dereferencer's get_value is more useful here
             assert obj.node.get_property(obj.name)
-            return self.get_implied_prop_output_identifier(obj.node, obj.name)
+            return self.get_implied_prop_output_identifier(obj.node, obj.name)  # type: ignore[arg-type]
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 

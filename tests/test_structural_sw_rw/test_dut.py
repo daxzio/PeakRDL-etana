@@ -1,5 +1,11 @@
 """Test structural access (simplified - wrapper has array issues)"""
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
 from cocotb import test
 from tb_base import testbench
 
@@ -13,15 +19,15 @@ async def test_dut_structural_sw_rw(dut):
     # Test simple non-array registers only
     # r0 at 0x000: field a=0x42, b=0, c=1
     await tb.intf.write(0x0, 0x11223344)
-    r0_val = await tb.intf.read(0x0)
+    _ = await tb.intf.read(0x0)
 
     # r2 at 0x1000: field a=0x11, b=0, c=1
     await tb.intf.write(0x1000, 0xAABBCCDD)
-    r2_val = await tb.intf.read(0x1000)
+    _ = await tb.intf.read(0x1000)
 
     # r3 at 0x2080 (simple subreg, not in array)
     await tb.intf.write(0x2080, 0x000000F0)
-    r3_val = await tb.intf.read(0x2080)
+    _ = await tb.intf.read(0x2080)
 
     # Just verify read/write works - wrapper can't test arrays
 

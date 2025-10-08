@@ -6,9 +6,14 @@ External register emulators are started as background tasks.
 Skipped: ext_reg_array[32] due to regblock wrapper array limitation.
 """
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
 from random import randint
 from cocotb import test, start_soon
-from cocotb.triggers import RisingEdge
 from tb_base import testbench
 from external_reg_emulator_simple import (
     ExtRegEmulator,
@@ -89,7 +94,7 @@ async def test_dut_external(dut):
         expected_storage = ((value >> 4) & 1) << 4 | ((value >> 8) & 0xFF) << 8
         assert (
             emulators["ext_reg"].storage & 0xFF10
-        ) == expected_storage, f"Internal storage mismatch"
+        ) == expected_storage, "Internal storage mismatch"
 
     # wide_ext_reg: 64-bit external register (2 subwords)
     for i in range(2):
@@ -189,7 +194,7 @@ async def test_dut_external(dut):
         await tb.intf.read(0x4004, 0x00000000)  # WO reads as 0
 
         # Internal state verification - verify value stored even though SW can't read
-        assert emulators["wo_reg"].storage == value, f"wo_reg storage mismatch"
+        assert emulators["wo_reg"].storage == value, "wo_reg storage mismatch"
 
     # --------------------------------------------------------------------------
     # Wide read-only external register (wide_ro_reg @ 0x4010)

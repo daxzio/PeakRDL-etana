@@ -16,34 +16,18 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] hwif_out_simple_intr,
-        output logic [0:0] hwif_out_simple_implied_up_incrthreshold,
-        output logic [0:0] hwif_out_simple_implied_up_decrthreshold,
         input wire [0:0] hwif_in_simple_implied_up_incr,
-        output logic [0:0] hwif_out_simple_up_incrthreshold,
-        output logic [0:0] hwif_out_simple_up_decrthreshold,
         input wire [0:0] hwif_in_simple_up_incr,
-        output logic [0:0] hwif_out_simple_down_incrthreshold,
-        output logic [0:0] hwif_out_simple_down_decrthreshold,
         input wire [0:0] hwif_in_simple_down_decr,
         output logic [3:0] hwif_out_simple_updown,
         output logic [0:0] hwif_out_simple_updown_overflow,
         output logic [0:0] hwif_out_simple_updown_underflow,
-        output logic [0:0] hwif_out_simple_updown_incrthreshold,
-        output logic [0:0] hwif_out_simple_updown_decrthreshold,
         input wire [0:0] hwif_in_simple_updown_incr,
         input wire [0:0] hwif_in_simple_updown_decr,
-        output logic [0:0] hwif_out_simple_updown3_incrthreshold,
-        output logic [0:0] hwif_out_simple_updown3_decrthreshold,
         input wire [3:0] hwif_in_simple_updown3_incrvalue,
         input wire [3:0] hwif_in_simple_updown3_decrvalue,
         output logic [0:0] hwif_out_simple_do_count_up,
-        output logic [0:0] hwif_out_simple_do_count_up_incrthreshold,
-        output logic [0:0] hwif_out_simple_do_count_up_decrthreshold,
-        output logic [0:0] hwif_out_simple_do_count_down,
-        output logic [0:0] hwif_out_simple_do_count_down_incrthreshold,
-        output logic [0:0] hwif_out_simple_do_count_down_decrthreshold,
-        output logic [0:0] hwif_out_wrap_counter_intr
+        output logic [0:0] hwif_out_simple_do_count_down
     );
 
     //--------------------------------------------------------------------------

@@ -32,7 +32,7 @@ class DesignScanner(RDLListener):
                     path = signal.get_path()
                     self.ds.out_of_hier_signals[path] = signal
                     return
-            current_node = current_node.parent
+            current_node = current_node.parent  # type: ignore[assignment]
 
     def do_scan(self) -> None:
         # Collect cpuif reset, if any.

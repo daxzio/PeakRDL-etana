@@ -4,6 +4,7 @@ pytest
 mypy
 black
 pyflakes
+ruff
 cocotb_bus
 cocotbext-apb
 cocotbext-ahb

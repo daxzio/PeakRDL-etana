@@ -19,14 +19,9 @@ module regblock (
         output logic s_apb_pslverr,
 
         input wire [0:0] hwif_in_f2_reset,
-        output logic [0:0] hwif_out_r1_intr,
-        output logic [0:0] hwif_out_r2_intr,
         input wire [0:0] hwif_in_r2_my_reset,
-        output logic [0:0] hwif_out_r3_intr,
         input wire [0:0] hwif_in_r3_my_areset,
-        output logic [0:0] hwif_out_r4_intr,
         input wire [0:0] hwif_in_r4_my_reset_n,
-        output logic [0:0] hwif_out_r5_intr,
         input wire [0:0] hwif_in_r5_my_areset_n
     );
 

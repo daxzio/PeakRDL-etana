@@ -7,8 +7,14 @@ a smoke test that the design elaborates correctly with the proper size constant.
 The REGBLOCK_SIZE constant is validated at SystemVerilog compile/elaboration time.
 """
 
-from cocotb import test
-from tb_base import testbench
+import sys
+from pathlib import Path
+
+# Add parent directory to path to access shared test modules
+test_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(test_dir))
+from cocotb import test  # noqa: E402
+from tb_base import testbench  # noqa: E402
 
 
 @test()
