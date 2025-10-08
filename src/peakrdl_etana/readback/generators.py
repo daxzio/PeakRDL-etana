@@ -324,7 +324,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         n_subwords = regwidth // accesswidth
         rbuf = self.exp.read_buffering.get_rbuf_data(node)
         for i in range(1, n_subwords):
-            rd_strb = f"({astrb.path}[{i}] && !decoded_req_is_wr)"
+            # Include array indices before subword index
+            array_indices = astrb.index_str if astrb.index_str else ""
+            rd_strb = f"({astrb.path}{array_indices}[{i}] && !decoded_req_is_wr)"
             bslice = f"[{(i + 1) * accesswidth - 1}:{i*accesswidth}]"
             self.add_content(
                 f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {rbuf}{bslice} : '0;"
@@ -392,9 +394,16 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 if self.policy.is_external(node):
                     rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
                 else:
-                    rd_strb = (
-                        f"({access_strb.path}[{subword_idx}] && !decoded_req_is_wr)"
+                    # Rebuild strobe path for each subword to include correct subword index
+                    current_access_strb = self.exp.dereferencer.get_access_strobe(
+                        node, reduce_substrobes=False
                     )
+                    array_indices = (
+                        current_access_strb.index_str
+                        if current_access_strb.index_str
+                        else ""
+                    )
+                    rd_strb = f"({current_access_strb.path}{array_indices}[{subword_idx}] && !decoded_req_is_wr)"
                 if (field_pos == field.low) and (
                     field.high < accesswidth * (subword_idx + 1)
                 ):
@@ -527,5 +536,22 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             high = bus_width - 1
             self.add_content(
                 f"assign readback_array[{self.current_offset_str}][{high}:{low}] = '0;"
+            )
+            self.current_offset += 1
+
+        # Handle any remaining empty subwords
+        expected_subwords = node.get_property("regwidth") // accesswidth
+        for remaining_subword_idx in range(subword_idx, expected_subwords):
+            # Create conditional zero assignment for empty subword using correct strobe
+            current_access_strb = self.exp.dereferencer.get_access_strobe(
+                node, reduce_substrobes=False
+            )
+            array_indices = (
+                current_access_strb.index_str if current_access_strb.index_str else ""
+            )
+            rd_strb = f"({current_access_strb.path}{array_indices}[{remaining_subword_idx}] && !decoded_req_is_wr)"
+
+            self.add_content(
+                f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
             )
             self.current_offset += 1

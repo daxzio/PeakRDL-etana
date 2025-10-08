@@ -54,10 +54,15 @@ class AddressDecode:
                 sidx_hi = field.msb // accesswidth
                 sidx_lo = field.lsb // accesswidth
                 if sidx_hi == sidx_lo:
-                    suffix = f"[{sidx_lo}]"
+                    subword_suffix = f"[{sidx_lo}]"
                 else:
-                    suffix = f"[{sidx_hi}:{sidx_lo}]"
-                p.path += suffix
+                    subword_suffix = f"[{sidx_hi}:{sidx_lo}]"
+
+                # For arrayed registers, append array indices before subword index
+                # This ensures correct order: path[array_idx][subword_idx]
+                p.path += p.index_str + subword_suffix
+                # Clear index_str since we've already appended it
+                p.index = []
 
                 if sidx_hi != sidx_lo and reduce_substrobes:
                     p.path = "|decoded_reg_strb_" + p.path

@@ -1,0 +1,115 @@
+reg r_byte  {
+    default sw = rw;
+    default hw = na;
+    desc = "
+    ";
+    field {
+    } BYTE [8] = 0;
+};
+reg r_word  {
+    default sw = rw;
+    default hw = na;
+    regwidth = 32;
+    desc = "
+    ";
+    field {
+    } WORD [16] = 0;
+};
+
+reg vout {
+    // regwidth = 64;
+    regwidth = 32;
+    accesswidth = 32;
+    default sw = rw;
+    default hw = na;
+    desc = "
+    ";
+    field {
+        desc = "The value of the output voltage measured at the sense or output pins that causes an output fault.
+        ";
+    } FAULT_LIMIT [16] = 0;
+    field {
+        desc = " the value of the output voltage at the sense or output pins that causes an output voltage high warning.
+        This value is typically less than the output overvoltage threshold.
+        ";
+    } WARN_LIMIT [16] = 0;
+    // field {
+    //     desc = "action to take in response to an output overvoltage fault.
+    //     ";
+    // } FAULT_RESPONSE [8] = 0;
+};
+
+reg vout64 {
+    regwidth = 64;
+    accesswidth = 32;
+    // regwidth = 32;
+    default sw = rw;
+    default hw = na;
+    desc = "
+    ";
+    field {
+        desc = "The value of the output voltage measured at the sense or output pins that causes an output fault.
+        ";
+    } FAULT_LIMIT [32] = 0;
+    field {
+        desc = " the value of the output voltage at the sense or output pins that causes an output voltage high warning.
+        This value is typically less than the output overvoltage threshold.
+        ";
+    } WARN_LIMIT [32] = 0;
+    // field {
+    //     desc = "action to take in response to an output overvoltage fault.
+    //     ";
+    // } FAULT_RESPONSE [8] = 0;
+};
+
+regfile page_config {
+    desc = "Contains all the registers that need to be maintained per page";
+
+    vout VOUT_OV;
+    VOUT_OV->desc = "VOUT Overvoltage register";
+    vout VOUT_UV;
+    VOUT_UV->desc = "VOUT Undervoltage register";
+};
+
+regfile page_config64 {
+    desc = "Contains all the registers that need to be maintained per page";
+
+    vout64 VOUT_OV;
+    VOUT_OV->desc = "VOUT Overvoltage register";
+    vout64 VOUT_UV;
+    VOUT_UV->desc = "VOUT Undervoltage register";
+};
+
+addrmap PMBUS #(
+    longint PAGES = 32
+) {
+//     default sw = rw;
+//     default hw = na;
+//     default regwidth = 32;
+//     default accesswidth = 32;
+
+    desc = "Register file containing PMBus registers";
+//     default accesswidth = 32;
+
+    r_byte PAGE;
+    PAGE->desc = "PAGE contains the Operating Memory (and at the option of the device manufacturer, User Store and Default Store) for each outpu";
+    PAGE.BYTE->sw=r;
+//     PAGE.BYTE->hw=w;
+
+    r_byte OPERATON;
+    r_byte ON_OFF_CONFIG;
+
+    page_config PAGE_CONFIG[PAGES]@0x100;
+
+    page_config64 page_config64[PAGES]@0x1000;
+//     PAGE_CONFIG2.VOUT_OV.FAULT_LIMIT->sw=r;
+
+    vout VOUT_OV[PAGES]@0x2000;
+    vout64 VOUT_OV64[PAGES]@0x3000;
+    // VOUT_OV->desc = "VOUT Overvoltage register";
+    // vout VOUT_UV[PAGES];
+    // VOUT_UV->desc = "VOUT Undervoltage register";
+
+    r_word OT_FAULT_LIMIT[PAGES];
+    r_byte OT_FAULT_RESPONSE[PAGES];
+};

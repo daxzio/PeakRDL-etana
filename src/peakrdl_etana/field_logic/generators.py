@@ -264,7 +264,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         conditionals = []
         for subword_idx in range(n_subwords):
             conditional = WideFieldSubwordWrite(
-                self.exp, subword_idx, accesswidth, regwidth, strb.path
+                self.exp, subword_idx, accesswidth, regwidth, strb.path, strb.index_str
             )
             if conditional.is_match(node):
                 conditionals.append(conditional)

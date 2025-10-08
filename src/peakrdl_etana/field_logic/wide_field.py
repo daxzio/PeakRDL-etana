@@ -17,12 +17,14 @@ class WideFieldSubwordWrite(NextStateConditional):
         accesswidth: int,
         regwidth: int,
         strb_path: str,
+        strb_index_str: str = "",
     ):
         super().__init__(exp)
         self.subword_idx = subword_idx
         self.accesswidth = accesswidth
         self.regwidth = regwidth
         self.strb_path = strb_path
+        self.strb_index_str = strb_index_str
 
     def is_match(self, field: "FieldNode") -> bool:
         """Check if this field spans multiple subwords and overlaps with this subword."""
@@ -37,7 +39,14 @@ class WideFieldSubwordWrite(NextStateConditional):
 
     def get_predicate(self, field: "FieldNode") -> str:
         """Generate the condition for this subword write."""
-        return f"({self.strb_path}[{self.subword_idx}] && decoded_req_is_wr)"
+        # For arrayed registers, include array index before subword index
+        # For non-arrayed, just use subword index
+        if self.strb_index_str:
+            # Arrayed: path[array_idx][subword_idx]
+            return f"({self.strb_path}{self.strb_index_str}[{self.subword_idx}] && decoded_req_is_wr)"
+        else:
+            # Non-arrayed: path[subword_idx]
+            return f"({self.strb_path}[{self.subword_idx}] && decoded_req_is_wr)"
 
     def get_assignments(self, field: "FieldNode") -> List[str]:
         """Generate the assignments for this subword write."""
