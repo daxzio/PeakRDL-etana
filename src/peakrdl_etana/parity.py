@@ -23,9 +23,9 @@ class ParityErrorReduceGenerator(RDLForLoopGenerator):
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
         super().enter_AddressableComponent(node)
-        from .utils import should_treat_as_external
+        from .utils import external_policy
 
-        if should_treat_as_external(node, self.exp.ds):
+        if external_policy(self.exp.ds).is_external(node):
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 

@@ -11,7 +11,7 @@ from ..utils import (
     IndexedPath,
     clog2,
     is_inside_external_block,
-    should_treat_as_external,
+    is_external_for_codegen,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
     is_wide_single_field_register,
@@ -76,7 +76,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
         # For external regfiles, generate bus interface and skip descendants
-        if should_treat_as_external(node, self.ds):
+        if is_external_for_codegen(node, self.ds):
             self.assign_external_block_outputs(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -87,7 +87,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             return WalkerAction.Continue
 
         # For external addrmaps, generate bus interface and skip descendants
-        if should_treat_as_external(node, self.ds):
+        if is_external_for_codegen(node, self.ds):
             self.assign_external_block_outputs(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -104,7 +104,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         return WalkerAction.SkipDescendants
 
     def enter_Field(self, node: "FieldNode") -> None:
-        if should_treat_as_external(node, self.ds):
+        if is_external_for_codegen(node, self.ds):
             if node.is_hw_readable:
                 self.fields.append(node)
             return
@@ -121,7 +121,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 self.halt_fields.append(node)
 
     def exit_Reg(self, node: "RegNode") -> None:
-        if should_treat_as_external(node, self.ds):
+        if is_external_for_codegen(node, self.ds):
             self.assign_external_reg_outputs(node)
             return
         # Assign register's intr output

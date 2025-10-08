@@ -6,7 +6,7 @@ from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
 from .forloop_generator import RDLForLoopGenerator
 from .utils import (
     is_inside_external_block,
-    should_treat_as_external,
+    external_policy,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
 )
@@ -21,6 +21,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         super().__init__()
         self.exp = exp
         self.ext_wacks: List[str] = []
+        self.policy = external_policy(self.exp.ds)
 
     def has_external_write(self) -> bool:
         if self.get_content(self.exp.ds.top_node) is None:
@@ -34,7 +35,8 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         return content
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        if should_treat_as_external(node, self.exp.ds):
+        self.policy = external_policy(self.exp.ds)
+        if self.policy.is_external(node):
             if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -46,7 +48,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         if node == self.exp.ds.top_node:
             return WalkerAction.Continue
 
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             if has_sw_writable_descendants(node):
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -58,7 +60,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
             return WalkerAction.SkipDescendants
 
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             if node.has_sw_writable:
                 x = self.exp.hwif.get_external_wr_ack(node, True)
                 self.ext_wacks.append(x)
@@ -90,6 +92,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         super().__init__()
         self.exp = exp
         self.ext_racks: List[str] = []
+        self.policy = external_policy(self.exp.ds)
 
     def has_external_read(self) -> bool:
         if self.get_content(self.exp.ds.top_node) is None:
@@ -103,7 +106,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         return content
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
@@ -115,7 +118,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if node == self.exp.ds.top_node:
             return WalkerAction.Continue
 
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             if has_sw_readable_descendants(node):
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)
@@ -127,7 +130,7 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
             return WalkerAction.SkipDescendants
 
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             if node.has_sw_readable:
                 x = self.exp.hwif.get_external_rd_ack(node, True)
                 self.ext_racks.append(x)

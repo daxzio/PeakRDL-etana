@@ -63,13 +63,10 @@ class DesignScanner(RDLListener):
             self.msg.fatal("Unable to export due to previous errors")
 
     def enter_Component(self, node: "Node") -> Optional[WalkerAction]:
-        from .utils import should_treat_as_external
+        from .utils import external_policy
 
-        if (
-            node.external
-            and should_treat_as_external(node, self.ds)
-            and (node != self.top_node)
-        ):
+        policy = external_policy(self.ds)
+        if node.external and policy.is_external(node) and (node != self.top_node):
             # Do not inspect external components. None of my business
             return WalkerAction.SkipDescendants
 
@@ -91,13 +88,10 @@ class DesignScanner(RDLListener):
         return WalkerAction.Continue
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> None:
-        from .utils import should_treat_as_external
+        from .utils import external_policy
 
-        if (
-            node.external
-            and should_treat_as_external(node, self.ds)
-            and node != self.top_node
-        ):
+        policy = external_policy(self.ds)
+        if node.external and policy.is_external(node) and node != self.top_node:
             self.ds.has_external_addressable = True
             if not isinstance(node, RegNode):
                 self.ds.has_external_block = True

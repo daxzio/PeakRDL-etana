@@ -78,7 +78,7 @@ class Hwif:
         try:
             hwif_ports = InputLogicGenerator(self)
             self.logic = hwif_ports.get_logic(self.top_node)
-            return False if self.logic is None or 0 == len(self.logic) else True
+            return bool(self.logic and len(self.logic) > 0)
         except Exception as e:
             import traceback
 

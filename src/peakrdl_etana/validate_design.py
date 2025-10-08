@@ -36,11 +36,11 @@ class DesignValidator(RDLListener):
             self.msg.fatal("Unable to export due to previous errors")
 
     def enter_Component(self, node: "Node") -> Optional[WalkerAction]:
-        from .utils import should_treat_as_external
+        from .utils import external_policy
 
         if (
             node.external
-            and should_treat_as_external(node, self.exp.ds)
+            and external_policy(self.exp.ds).is_external(node)
             and (node != self.top_node)
         ):
             # Do not inspect external components. None of my business
@@ -81,12 +81,13 @@ class DesignValidator(RDLListener):
         # nested addressable components themselves (regfiles/addrmaps), as they're
         # being flattened into internal registers and don't need CPU bus alignment.
         # Only actual registers and truly external blocks need this alignment.
-        from .utils import should_treat_as_external
+        from .utils import external_policy
 
         # Skip alignment check for nested blocks that are being flattened
         if not isinstance(node, RegNode):
             # This is a regfile, addrmap, or mem
-            if not should_treat_as_external(node, self.exp.ds):
+            policy = external_policy(self.exp.ds)
+            if not policy.is_external(node):
                 # It's being flattened, so skip the alignment check for the block itself
                 # The registers inside will be checked individually
                 pass
@@ -130,11 +131,10 @@ class DesignValidator(RDLListener):
                 # Ignore top addrmap's external property when entering
                 self._contains_external_block_stack.append(False)
             else:
-                from .utils import should_treat_as_external
+                from .utils import external_policy
 
-                self._contains_external_block_stack.append(
-                    should_treat_as_external(node, self.exp.ds)
-                )
+                policy = external_policy(self.exp.ds)
+                self._contains_external_block_stack.append(policy.is_external(node))
 
     def enter_Regfile(self, node: RegfileNode) -> None:
         self._check_sharedextbus(node)
@@ -171,9 +171,9 @@ class DesignValidator(RDLListener):
             node.lsb // parent_accesswidth
         ) != (node.msb // parent_accesswidth):
             # field spans multiple sub-words
-            from .utils import should_treat_as_external
+            from .utils import external_policy
 
-            if should_treat_as_external(node, self.exp.ds):
+            if external_policy(self.exp.ds).is_external(node):
                 # External fields that span multiple subwords is not supported
                 self.msg.error(
                     "External fields that span multiple software-accessible "
@@ -230,9 +230,9 @@ class DesignValidator(RDLListener):
                 # NOTE: This strict alignment is only needed for actual external blocks.
                 # When flattening is enabled, previously external blocks become internal,
                 # so we skip this check to avoid overly strict validation.
-                from .utils import should_treat_as_external
+                from .utils import external_policy
 
-                if should_treat_as_external(node, self.exp.ds):
+                if external_policy(self.exp.ds).is_external(node):
                     err_suffix = "is external"
                     # Only enforce strict alignment for actual external blocks
                     req_align = roundup_pow2(node.size)

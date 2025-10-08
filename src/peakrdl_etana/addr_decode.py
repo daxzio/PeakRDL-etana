@@ -4,7 +4,7 @@ from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
-from .utils import IndexedPath, is_inside_external_block, should_treat_as_external
+from .utils import IndexedPath, is_inside_external_block, external_policy
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 
@@ -87,6 +87,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         super().__init__()
         self._logic_stack: List[object] = []
         self.printed = False
+        self.policy = external_policy(self.addr_decode.exp.ds)
 
     def get_logic(self, node: "Node") -> Optional[str]:
 
@@ -114,7 +115,8 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         super().enter_AddressableComponent(node)
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
-        if should_treat_as_external(node, self.addr_decode.exp.ds):
+        policy = external_policy(self.addr_decode.exp.ds)
+        if self.policy.is_external(node):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
             s = f"logic {p.path};"
@@ -127,7 +129,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
 
-        if should_treat_as_external(node, self.addr_decode.exp.ds):
+        if self.policy.is_external(node):
             # Declare strobe signal for external addrmap
             p = self.addr_decode.get_external_block_access_strobe(node)
             s = f"logic {p.path};"
@@ -168,6 +170,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
         # List of address strides for each dimension
         self._array_stride_stack = []  # type: List[int]
+        self.policy = external_policy(self.addr_decode.exp.ds)
 
     def enter_AddressableComponent(
         self, node: "AddressableNode"
@@ -220,7 +223,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     #         return a
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
-        if should_treat_as_external(node, self.addr_decode.exp.ds):
+        if self.policy.is_external(node):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
@@ -234,7 +237,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
 
-        if should_treat_as_external(node, self.addr_decode.exp.ds):
+        if self.policy.is_external(node):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
@@ -274,7 +277,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 )
                 s = f"{p.path} = {rhs};"
             self.add_content(s)
-            if should_treat_as_external(node, self.addr_decode.exp.ds):
+            if self.policy.is_external(node):
                 readable = node.has_sw_readable
                 writable = node.has_sw_writable
                 if readable and writable:
@@ -297,7 +300,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 else:
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
-                if should_treat_as_external(node, self.addr_decode.exp.ds):
+                if self.policy.is_external(node):
                     readable = node.has_sw_readable
                     writable = node.has_sw_writable
                     if readable and writable:

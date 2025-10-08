@@ -9,7 +9,7 @@ from ..utils import (
     do_bitswap,
     do_slice,
     is_inside_external_block,
-    should_treat_as_external,
+    external_policy,
 )
 
 if TYPE_CHECKING:
@@ -37,6 +37,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def __init__(self, exp: "RegblockExporter") -> None:
         super().__init__()
         self.exp = exp
+        self.policy = external_policy(self.exp.ds)
 
         # The readback array collects all possible readback values into a flat
         # array. The array width is equal to the CPUIF bus width. Each entry in
@@ -105,7 +106,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> WalkerAction:
         # For external regfiles, use bus interface readback
-        if should_treat_as_external(node, self.exp.ds):
+        self.policy = external_policy(self.exp.ds)
+        if self.policy.is_external(node):
             self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -116,7 +118,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             return WalkerAction.Continue
 
         # For external addrmaps, use bus interface readback
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -173,7 +175,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         # The readback logic below handles padding automatically
         current_bit = 0
         p = self.exp.dereferencer.get_access_strobe(node)
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
         else:
             rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
@@ -188,7 +190,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     f"assign readback_array[{self.current_offset_str}][{field.low-1}:{current_bit}] = '0;"
                 )
 
-            if should_treat_as_external(node, self.exp.ds):
+            if self.policy.is_external(node):
                 value = self.exp.hwif.get_external_rd_data(field, True)  # type: ignore[arg-type]
             else:
                 value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]  # type: ignore[assignment]
@@ -333,7 +335,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         bus_width = self.exp.cpuif.data_width
 
         # For external wide registers, use simpler bus interface readback
-        if should_treat_as_external(node, self.exp.ds):
+        if self.policy.is_external(node):
             n_subwords = node.get_property("regwidth") // accesswidth
             rd_data = self.exp.hwif.get_external_rd_data(node, True)
             rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
@@ -387,7 +389,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             while current_bit <= field.high:
                 # Assign the field
                 # For external registers, use rd_ack; for internal, use access strobe
-                if should_treat_as_external(node, self.exp.ds):
+                if self.policy.is_external(node):
                     rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
                 else:
                     rd_strb = (
@@ -401,7 +403,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     high = field.high - accesswidth * subword_idx
 
                     # For external registers, use external rd_data; for internal, use dereferencer
-                    if should_treat_as_external(node, self.exp.ds):
+                    if self.policy.is_external(node):
                         value = self.exp.hwif.get_external_rd_data(field, True)
                     else:
                         value = self.exp.dereferencer.get_value(field)
@@ -439,7 +441,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_low, f_high = f_high, f_low
 
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if should_treat_as_external(node, self.exp.ds):
+                        if self.policy.is_external(node):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -451,7 +453,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         )
                     else:
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if should_treat_as_external(node, self.exp.ds):
+                        if self.policy.is_external(node):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -488,7 +490,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_low, f_high = f_high, f_low
 
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if should_treat_as_external(node, self.exp.ds):
+                        if self.policy.is_external(node):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )
@@ -500,7 +502,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         )
                     else:
                         # For external registers, use external rd_data; for internal, use dereferencer
-                        if should_treat_as_external(node, self.exp.ds):
+                        if self.policy.is_external(node):
                             field_value = self.exp.hwif.get_external_rd_data(
                                 field, True
                             )

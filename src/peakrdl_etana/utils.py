@@ -218,19 +218,16 @@ def do_bitswap(
         return SVInt(vswap, value.width)
 
 
-def should_treat_as_external(node: Node, ds: "DesignState") -> bool:
-    """
-    Determine if a node should be treated as external.
+def is_external_for_codegen(node: Node, ds: "DesignState") -> bool:
+    """Single source of truth for whether a node is treated as external
+    by the code generator.
 
-    When flatten_nested_blocks is enabled, nested addrmaps and regfiles
-    are NOT treated as external. Memory blocks are always external per spec.
-
-    Args:
-        node: The node to check
-        ds: DesignState containing configuration
-
-    Returns:
-        True if node should generate external interfaces
+    Semantics:
+    - Mem nodes: always external
+    - Top node: never external
+    - When flattening is disabled: honor node.external as-is
+    - When flattening is enabled: nested Addrmap/Regfile are NOT external,
+      but explicitly external Reg nodes remain external.
     """
     if not hasattr(node, "external") or not node.external:
         return False
@@ -255,6 +252,32 @@ def should_treat_as_external(node: Node, ds: "DesignState") -> bool:
         return False  # Flatten these
 
     return True  # RegNode with external property stays external
+
+
+class ExternalPolicy:
+    """Encapsulates external/flattening policy decisions for codegen.
+
+    Prefer using this object over calling helpers directly, so call sites remain
+    descriptive and future changes are localized.
+    """
+
+    def __init__(self, ds: "DesignState") -> None:
+        self.ds = ds
+
+    def is_external(self, node: Node) -> bool:
+        return is_external_for_codegen(node, self.ds)
+
+    def is_inside_external(self, node: Node, top_node: Node) -> bool:
+        return is_inside_external_block(node, top_node, self.ds)
+
+
+def external_policy(ds: "DesignState") -> ExternalPolicy:
+    return ExternalPolicy(ds)
+
+
+# Backward compat alias (to be removed after downstream updates)
+def should_treat_as_external(node: Node, ds: "DesignState") -> bool:  # noqa: N802
+    return is_external_for_codegen(node, ds)
 
 
 def is_inside_external_block(
