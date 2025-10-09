@@ -70,6 +70,7 @@ regblock:
 	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
 	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
+	../../scripts/strip_trailing_whitespace.py regblock-rtl/
 
 regblock-vhdl:
 	rm -rf regblock-vhdl-rtl/*
