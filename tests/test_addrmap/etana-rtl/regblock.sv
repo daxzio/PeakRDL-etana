@@ -9,14 +9,25 @@ module regblock (
         input wire s_apb_pwrite,
         input wire s_apb_penable,
         input wire [2:0] s_apb_pprot,
-        input wire [13:0] s_apb_paddr,
+        input wire [15:0] s_apb_paddr,
         input wire [31:0] s_apb_pwdata,
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
         output logic [31:0] s_apb_prdata,
-        output logic s_apb_pslverr
+        output logic s_apb_pslverr,
 
-
+        output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_max_upper,
+        output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_max_lower,
+        output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_min_upper,
+        output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_min_lower,
+        output logic [7:0] [31:0] hwif_out_page_config64_hwnr_tout_max_upper,
+        output logic [7:0] [31:0] hwif_out_page_config64_hwnr_tout_max_lower,
+        output logic [7:0] [31:0] hwif_out_page_config64_hwnr_tout_min_upper,
+        output logic [7:0] [31:0] hwif_out_page_config64_hwnr_tout_min_lower,
+        output logic [7:0] [15:0] hwif_out_tout_max32_hwr_upper,
+        output logic [7:0] [15:0] hwif_out_tout_max32_hwr_lower,
+        output logic [7:0] [31:0] hwif_out_tout_max64_hwr_upper,
+        output logic [7:0] [31:0] hwif_out_tout_max64_hwr_lower
     );
 
     //--------------------------------------------------------------------------
@@ -24,7 +35,7 @@ module regblock (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [13:0] cpuif_addr;
+    logic [15:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,7 +65,7 @@ module regblock (
                     is_active <= '1;
                     cpuif_req <= '1;
                     cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[13:2], 2'b0};
+                    cpuif_addr <= {s_apb_paddr[15:2], 2'b0};
                     cpuif_wr_data <= s_apb_pwdata;
                     for(int i=0; i<4; i++) begin
                         cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
@@ -88,15 +99,19 @@ module regblock (
     //--------------------------------------------------------------------------
     logic [0:0] decoded_reg_strb_page;
     logic [0:0] decoded_reg_strb_operaton;
-    logic [0:0] decoded_reg_strb_on_off_config;
-    logic [0:0] decoded_reg_strb_page_config_vout_ov [32];
-    logic [0:0] decoded_reg_strb_page_config_vout_uv [32];
-    logic [1:0] decoded_reg_strb_page_config64_vout_ov [32];
-    logic [1:0] decoded_reg_strb_page_config64_vout_uv [32];
-    logic [0:0] decoded_reg_strb_vout_ov [32];
-    logic [1:0] decoded_reg_strb_vout_ov64 [32];
-    logic [0:0] decoded_reg_strb_ot_fault_limit [32];
-    logic [0:0] decoded_reg_strb_ot_fault_response [32];
+    logic [0:0] decoded_reg_strb_config;
+    logic [0:0] decoded_reg_strb_page_config32_hwna_tout_max [8];
+    logic [0:0] decoded_reg_strb_page_config32_hwna_tout_min [8];
+    logic [1:0] decoded_reg_strb_page_config64_hwna_tout_max [8];
+    logic [1:0] decoded_reg_strb_page_config64_hwna_tout_min [8];
+    logic [0:0] decoded_reg_strb_tout_max32_hwna [8];
+    logic [1:0] decoded_reg_strb_tout_max64_hwna [8];
+    logic [0:0] decoded_reg_strb_page_config32_hwnr_tout_max [8];
+    logic [0:0] decoded_reg_strb_page_config32_hwnr_tout_min [8];
+    logic [1:0] decoded_reg_strb_page_config64_hwnr_tout_max [8];
+    logic [1:0] decoded_reg_strb_page_config64_hwnr_tout_min [8];
+    logic [0:0] decoded_reg_strb_tout_max32_hwr [8];
+    logic [1:0] decoded_reg_strb_tout_max64_hwr [8];
     logic decoded_req;
     logic decoded_req_is_wr;
     /* verilator lint_off UNUSEDSIGNAL */
@@ -108,36 +123,48 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_page = cpuif_req_masked & (cpuif_addr == 14'h0);
-        decoded_reg_strb_operaton = cpuif_req_masked & (cpuif_addr == 14'h4);
-        decoded_reg_strb_on_off_config = cpuif_req_masked & (cpuif_addr == 14'h8);
-        for(int i0=0; i0<32; i0++) begin : gen_loop_13
-            next_cpuif_addr = 32'h100 + i0*14'h8;
-            decoded_reg_strb_page_config_vout_ov[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[13:0]);
-            next_cpuif_addr = 32'h104 + i0*14'h8;
-            decoded_reg_strb_page_config_vout_uv[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[13:0]);
+        decoded_reg_strb_page = cpuif_req_masked & (cpuif_addr == 16'h0);
+        decoded_reg_strb_operaton = cpuif_req_masked & (cpuif_addr == 16'h4);
+        decoded_reg_strb_config = cpuif_req_masked & (cpuif_addr == 16'h8);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_17
+            next_cpuif_addr = 32'h1000 + i0*16'h8;
+            decoded_reg_strb_page_config32_hwna_tout_max[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h1004 + i0*16'h8;
+            decoded_reg_strb_page_config32_hwna_tout_min[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
-        for(int i0=0; i0<32; i0++) begin : gen_loop_14
-            decoded_reg_strb_page_config64_vout_ov[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h1000 + i0*14'h10);
-            decoded_reg_strb_page_config64_vout_ov[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h1004 + i0*14'h10);
-            decoded_reg_strb_page_config64_vout_uv[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h1008 + i0*14'h10);
-            decoded_reg_strb_page_config64_vout_uv[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h100c + i0*14'h10);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_18
+            decoded_reg_strb_page_config64_hwna_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h2000 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwna_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h2004 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwna_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h2008 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwna_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h200c + i0*16'h10);
         end
-        for(int i0=0; i0<32; i0++) begin : gen_loop_15
-            next_cpuif_addr = 32'h2000 + i0*14'h4;
-            decoded_reg_strb_vout_ov[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[13:0]);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_19
+            next_cpuif_addr = 32'h3000 + i0*16'h4;
+            decoded_reg_strb_tout_max32_hwna[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
-        for(int i0=0; i0<32; i0++) begin : gen_loop_16
-            decoded_reg_strb_vout_ov64[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h3000 + i0*14'h8);
-            decoded_reg_strb_vout_ov64[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h3004 + i0*14'h8);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_20
+            decoded_reg_strb_tout_max64_hwna[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h4000 + i0*16'h8);
+            decoded_reg_strb_tout_max64_hwna[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h4004 + i0*16'h8);
         end
-        for(int i0=0; i0<32; i0++) begin : gen_loop_17
-            next_cpuif_addr = 32'h3100 + i0*14'h4;
-            decoded_reg_strb_ot_fault_limit[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[13:0]);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_21
+            next_cpuif_addr = 32'h5000 + i0*16'h8;
+            decoded_reg_strb_page_config32_hwnr_tout_max[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h5004 + i0*16'h8;
+            decoded_reg_strb_page_config32_hwnr_tout_min[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
-        for(int i0=0; i0<32; i0++) begin : gen_loop_18
-            next_cpuif_addr = 32'h3180 + i0*14'h4;
-            decoded_reg_strb_ot_fault_response[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[13:0]);
+        for(int i0=0; i0<8; i0++) begin : gen_loop_22
+            decoded_reg_strb_page_config64_hwnr_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h6000 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwnr_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h6004 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwnr_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h6008 + i0*16'h10);
+            decoded_reg_strb_page_config64_hwnr_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h600c + i0*16'h10);
+        end
+        for(int i0=0; i0<8; i0++) begin : gen_loop_23
+            next_cpuif_addr = 32'h7000 + i0*16'h4;
+            decoded_reg_strb_tout_max32_hwr[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+        end
+        for(int i0=0; i0<8; i0++) begin : gen_loop_24
+            decoded_reg_strb_tout_max64_hwr[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h8000 + i0*16'h8);
+            decoded_reg_strb_tout_max64_hwr[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h8004 + i0*16'h8);
         end
     end
 
@@ -156,66 +183,106 @@ module regblock (
     logic [7:0] field_storage_operaton_byte_value;
     logic [7:0] field_combo_operaton_byte_next;
     logic field_combo_operaton_byte_load_next;
-    // Field: regblock.ON_OFF_CONFIG.BYTE
-    logic [7:0] field_storage_on_off_config_byte_value;
-    logic [7:0] field_combo_on_off_config_byte_next;
-    logic field_combo_on_off_config_byte_load_next;
-    // Field: regblock.PAGE_CONFIG[].VOUT_OV.FAULT_LIMIT
-    logic [15:0] field_storage_page_config_vout_ov_fault_limit_value [32] ;
-    logic [15:0] field_combo_page_config_vout_ov_fault_limit_next [32] ;
-    logic field_combo_page_config_vout_ov_fault_limit_load_next [32] ;
-    // Field: regblock.PAGE_CONFIG[].VOUT_OV.WARN_LIMIT
-    logic [15:0] field_storage_page_config_vout_ov_warn_limit_value [32] ;
-    logic [15:0] field_combo_page_config_vout_ov_warn_limit_next [32] ;
-    logic field_combo_page_config_vout_ov_warn_limit_load_next [32] ;
-    // Field: regblock.PAGE_CONFIG[].VOUT_UV.FAULT_LIMIT
-    logic [15:0] field_storage_page_config_vout_uv_fault_limit_value [32] ;
-    logic [15:0] field_combo_page_config_vout_uv_fault_limit_next [32] ;
-    logic field_combo_page_config_vout_uv_fault_limit_load_next [32] ;
-    // Field: regblock.PAGE_CONFIG[].VOUT_UV.WARN_LIMIT
-    logic [15:0] field_storage_page_config_vout_uv_warn_limit_value [32] ;
-    logic [15:0] field_combo_page_config_vout_uv_warn_limit_next [32] ;
-    logic field_combo_page_config_vout_uv_warn_limit_load_next [32] ;
-    // Field: regblock.page_config64[].VOUT_OV.FAULT_LIMIT
-    logic [31:0] field_storage_page_config64_vout_ov_fault_limit_value [32] ;
-    logic [31:0] field_combo_page_config64_vout_ov_fault_limit_next [32] ;
-    logic field_combo_page_config64_vout_ov_fault_limit_load_next [32] ;
-    // Field: regblock.page_config64[].VOUT_OV.WARN_LIMIT
-    logic [31:0] field_storage_page_config64_vout_ov_warn_limit_value [32] ;
-    logic [31:0] field_combo_page_config64_vout_ov_warn_limit_next [32] ;
-    logic field_combo_page_config64_vout_ov_warn_limit_load_next [32] ;
-    // Field: regblock.page_config64[].VOUT_UV.FAULT_LIMIT
-    logic [31:0] field_storage_page_config64_vout_uv_fault_limit_value [32] ;
-    logic [31:0] field_combo_page_config64_vout_uv_fault_limit_next [32] ;
-    logic field_combo_page_config64_vout_uv_fault_limit_load_next [32] ;
-    // Field: regblock.page_config64[].VOUT_UV.WARN_LIMIT
-    logic [31:0] field_storage_page_config64_vout_uv_warn_limit_value [32] ;
-    logic [31:0] field_combo_page_config64_vout_uv_warn_limit_next [32] ;
-    logic field_combo_page_config64_vout_uv_warn_limit_load_next [32] ;
-    // Field: regblock.VOUT_OV[].FAULT_LIMIT
-    logic [15:0] field_storage_vout_ov_fault_limit_value [32] ;
-    logic [15:0] field_combo_vout_ov_fault_limit_next [32] ;
-    logic field_combo_vout_ov_fault_limit_load_next [32] ;
-    // Field: regblock.VOUT_OV[].WARN_LIMIT
-    logic [15:0] field_storage_vout_ov_warn_limit_value [32] ;
-    logic [15:0] field_combo_vout_ov_warn_limit_next [32] ;
-    logic field_combo_vout_ov_warn_limit_load_next [32] ;
-    // Field: regblock.VOUT_OV64[].FAULT_LIMIT
-    logic [31:0] field_storage_vout_ov64_fault_limit_value [32] ;
-    logic [31:0] field_combo_vout_ov64_fault_limit_next [32] ;
-    logic field_combo_vout_ov64_fault_limit_load_next [32] ;
-    // Field: regblock.VOUT_OV64[].WARN_LIMIT
-    logic [31:0] field_storage_vout_ov64_warn_limit_value [32] ;
-    logic [31:0] field_combo_vout_ov64_warn_limit_next [32] ;
-    logic field_combo_vout_ov64_warn_limit_load_next [32] ;
-    // Field: regblock.OT_FAULT_LIMIT[].WORD
-    logic [15:0] field_storage_ot_fault_limit_word_value [32] ;
-    logic [15:0] field_combo_ot_fault_limit_word_next [32] ;
-    logic field_combo_ot_fault_limit_word_load_next [32] ;
-    // Field: regblock.OT_FAULT_RESPONSE[].BYTE
-    logic [7:0] field_storage_ot_fault_response_byte_value [32] ;
-    logic [7:0] field_combo_ot_fault_response_byte_next [32] ;
-    logic field_combo_ot_fault_response_byte_load_next [32] ;
+    // Field: regblock.CONFIG.BYTE
+    logic [7:0] field_storage_config_byte_value;
+    logic [7:0] field_combo_config_byte_next;
+    logic field_combo_config_byte_load_next;
+    // Field: regblock.PAGE_CONFIG32_HWNA[].TOUT_MAX.UPPER
+    logic [15:0] field_storage_page_config32_hwna_tout_max_upper_value [8] ;
+    logic [15:0] field_combo_page_config32_hwna_tout_max_upper_next [8] ;
+    logic field_combo_page_config32_hwna_tout_max_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNA[].TOUT_MAX.LOWER
+    logic [15:0] field_storage_page_config32_hwna_tout_max_lower_value [8] ;
+    logic [15:0] field_combo_page_config32_hwna_tout_max_lower_next [8] ;
+    logic field_combo_page_config32_hwna_tout_max_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNA[].TOUT_MIN.UPPER
+    logic [15:0] field_storage_page_config32_hwna_tout_min_upper_value [8] ;
+    logic [15:0] field_combo_page_config32_hwna_tout_min_upper_next [8] ;
+    logic field_combo_page_config32_hwna_tout_min_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNA[].TOUT_MIN.LOWER
+    logic [15:0] field_storage_page_config32_hwna_tout_min_lower_value [8] ;
+    logic [15:0] field_combo_page_config32_hwna_tout_min_lower_next [8] ;
+    logic field_combo_page_config32_hwna_tout_min_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNA[].TOUT_MAX.UPPER
+    logic [31:0] field_storage_page_config64_hwna_tout_max_upper_value [8] ;
+    logic [31:0] field_combo_page_config64_hwna_tout_max_upper_next [8] ;
+    logic field_combo_page_config64_hwna_tout_max_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNA[].TOUT_MAX.LOWER
+    logic [31:0] field_storage_page_config64_hwna_tout_max_lower_value [8] ;
+    logic [31:0] field_combo_page_config64_hwna_tout_max_lower_next [8] ;
+    logic field_combo_page_config64_hwna_tout_max_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNA[].TOUT_MIN.UPPER
+    logic [31:0] field_storage_page_config64_hwna_tout_min_upper_value [8] ;
+    logic [31:0] field_combo_page_config64_hwna_tout_min_upper_next [8] ;
+    logic field_combo_page_config64_hwna_tout_min_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNA[].TOUT_MIN.LOWER
+    logic [31:0] field_storage_page_config64_hwna_tout_min_lower_value [8] ;
+    logic [31:0] field_combo_page_config64_hwna_tout_min_lower_next [8] ;
+    logic field_combo_page_config64_hwna_tout_min_lower_load_next [8] ;
+    // Field: regblock.TOUT_MAX32_HWNA[].UPPER
+    logic [15:0] field_storage_tout_max32_hwna_upper_value [8] ;
+    logic [15:0] field_combo_tout_max32_hwna_upper_next [8] ;
+    logic field_combo_tout_max32_hwna_upper_load_next [8] ;
+    // Field: regblock.TOUT_MAX32_HWNA[].LOWER
+    logic [15:0] field_storage_tout_max32_hwna_lower_value [8] ;
+    logic [15:0] field_combo_tout_max32_hwna_lower_next [8] ;
+    logic field_combo_tout_max32_hwna_lower_load_next [8] ;
+    // Field: regblock.TOUT_MAX64_HWNA[].UPPER
+    logic [31:0] field_storage_tout_max64_hwna_upper_value [8] ;
+    logic [31:0] field_combo_tout_max64_hwna_upper_next [8] ;
+    logic field_combo_tout_max64_hwna_upper_load_next [8] ;
+    // Field: regblock.TOUT_MAX64_HWNA[].LOWER
+    logic [31:0] field_storage_tout_max64_hwna_lower_value [8] ;
+    logic [31:0] field_combo_tout_max64_hwna_lower_next [8] ;
+    logic field_combo_tout_max64_hwna_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNR[].TOUT_MAX.UPPER
+    logic [15:0] field_storage_page_config32_hwnr_tout_max_upper_value [8] ;
+    logic [15:0] field_combo_page_config32_hwnr_tout_max_upper_next [8] ;
+    logic field_combo_page_config32_hwnr_tout_max_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNR[].TOUT_MAX.LOWER
+    logic [15:0] field_storage_page_config32_hwnr_tout_max_lower_value [8] ;
+    logic [15:0] field_combo_page_config32_hwnr_tout_max_lower_next [8] ;
+    logic field_combo_page_config32_hwnr_tout_max_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNR[].TOUT_MIN.UPPER
+    logic [15:0] field_storage_page_config32_hwnr_tout_min_upper_value [8] ;
+    logic [15:0] field_combo_page_config32_hwnr_tout_min_upper_next [8] ;
+    logic field_combo_page_config32_hwnr_tout_min_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG32_HWNR[].TOUT_MIN.LOWER
+    logic [15:0] field_storage_page_config32_hwnr_tout_min_lower_value [8] ;
+    logic [15:0] field_combo_page_config32_hwnr_tout_min_lower_next [8] ;
+    logic field_combo_page_config32_hwnr_tout_min_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNR[].TOUT_MAX.UPPER
+    logic [31:0] field_storage_page_config64_hwnr_tout_max_upper_value [8] ;
+    logic [31:0] field_combo_page_config64_hwnr_tout_max_upper_next [8] ;
+    logic field_combo_page_config64_hwnr_tout_max_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNR[].TOUT_MAX.LOWER
+    logic [31:0] field_storage_page_config64_hwnr_tout_max_lower_value [8] ;
+    logic [31:0] field_combo_page_config64_hwnr_tout_max_lower_next [8] ;
+    logic field_combo_page_config64_hwnr_tout_max_lower_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNR[].TOUT_MIN.UPPER
+    logic [31:0] field_storage_page_config64_hwnr_tout_min_upper_value [8] ;
+    logic [31:0] field_combo_page_config64_hwnr_tout_min_upper_next [8] ;
+    logic field_combo_page_config64_hwnr_tout_min_upper_load_next [8] ;
+    // Field: regblock.PAGE_CONFIG64_HWNR[].TOUT_MIN.LOWER
+    logic [31:0] field_storage_page_config64_hwnr_tout_min_lower_value [8] ;
+    logic [31:0] field_combo_page_config64_hwnr_tout_min_lower_next [8] ;
+    logic field_combo_page_config64_hwnr_tout_min_lower_load_next [8] ;
+    // Field: regblock.TOUT_MAX32_HWR[].UPPER
+    logic [15:0] field_storage_tout_max32_hwr_upper_value [8] ;
+    logic [15:0] field_combo_tout_max32_hwr_upper_next [8] ;
+    logic field_combo_tout_max32_hwr_upper_load_next [8] ;
+    // Field: regblock.TOUT_MAX32_HWR[].LOWER
+    logic [15:0] field_storage_tout_max32_hwr_lower_value [8] ;
+    logic [15:0] field_combo_tout_max32_hwr_lower_next [8] ;
+    logic field_combo_tout_max32_hwr_lower_load_next [8] ;
+    // Field: regblock.TOUT_MAX64_HWR[].UPPER
+    logic [31:0] field_storage_tout_max64_hwr_upper_value [8] ;
+    logic [31:0] field_combo_tout_max64_hwr_upper_next [8] ;
+    logic field_combo_tout_max64_hwr_upper_load_next [8] ;
+    // Field: regblock.TOUT_MAX64_HWR[].LOWER
+    logic [31:0] field_storage_tout_max64_hwr_lower_value [8] ;
+    logic [31:0] field_combo_tout_max64_hwr_lower_next [8] ;
+    logic field_combo_tout_max64_hwr_lower_load_next [8] ;
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
@@ -243,313 +310,529 @@ module regblock (
     always @(*) begin
         logic [7:0] next_c;
         logic load_next_c;
-        next_c = field_storage_on_off_config_byte_value;
+        next_c = field_storage_config_byte_value;
         load_next_c = '0;
-        if(decoded_reg_strb_on_off_config && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage_on_off_config_byte_value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+        if(decoded_reg_strb_config && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_config_byte_value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
             load_next_c = '1;
         end
-        field_combo_on_off_config_byte_next = next_c;
-        field_combo_on_off_config_byte_load_next = load_next_c;
+        field_combo_config_byte_next = next_c;
+        field_combo_config_byte_load_next = load_next_c;
     end
     always_ff @(posedge clk) begin
         if(rst) begin
-            field_storage_on_off_config_byte_value <= 8'h0;
-        end else if(field_combo_on_off_config_byte_load_next) begin
-            field_storage_on_off_config_byte_value <= field_combo_on_off_config_byte_next;
+            field_storage_config_byte_value <= 8'h0;
+        end else if(field_combo_config_byte_load_next) begin
+            field_storage_config_byte_value <= field_combo_config_byte_next;
         end
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_25
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_33
         // always_comb begin
         always @(*) begin
             logic [15:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config_vout_ov_fault_limit_value[i0];
+            next_c = field_storage_page_config32_hwna_tout_max_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config_vout_ov[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config_vout_ov_fault_limit_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            if(decoded_reg_strb_page_config32_hwna_tout_max[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwna_tout_max_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
                 load_next_c = '1;
             end
-            field_combo_page_config_vout_ov_fault_limit_next[i0] = next_c;
-            field_combo_page_config_vout_ov_fault_limit_load_next[i0] = load_next_c;
+            field_combo_page_config32_hwna_tout_max_upper_next[i0] = next_c;
+            field_combo_page_config32_hwna_tout_max_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config_vout_ov_fault_limit_value[i0] <= 16'h0;
-            end else if(field_combo_page_config_vout_ov_fault_limit_load_next[i0]) begin
-                field_storage_page_config_vout_ov_fault_limit_value[i0] <= field_combo_page_config_vout_ov_fault_limit_next[i0];
-            end
-        end
-        // always_comb begin
-        always @(*) begin
-            logic [15:0] next_c;
-            logic load_next_c;
-            next_c = field_storage_page_config_vout_ov_warn_limit_value[i0];
-            load_next_c = '0;
-            if(decoded_reg_strb_page_config_vout_ov[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config_vout_ov_warn_limit_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-                load_next_c = '1;
-            end
-            field_combo_page_config_vout_ov_warn_limit_next[i0] = next_c;
-            field_combo_page_config_vout_ov_warn_limit_load_next[i0] = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(rst) begin
-                field_storage_page_config_vout_ov_warn_limit_value[i0] <= 16'h0;
-            end else if(field_combo_page_config_vout_ov_warn_limit_load_next[i0]) begin
-                field_storage_page_config_vout_ov_warn_limit_value[i0] <= field_combo_page_config_vout_ov_warn_limit_next[i0];
+                field_storage_page_config32_hwna_tout_max_upper_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwna_tout_max_upper_load_next[i0]) begin
+                field_storage_page_config32_hwna_tout_max_upper_value[i0] <= field_combo_page_config32_hwna_tout_max_upper_next[i0];
             end
         end
         // always_comb begin
         always @(*) begin
             logic [15:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config_vout_uv_fault_limit_value[i0];
+            next_c = field_storage_page_config32_hwna_tout_max_lower_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config_vout_uv[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config_vout_uv_fault_limit_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            if(decoded_reg_strb_page_config32_hwna_tout_max[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwna_tout_max_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
                 load_next_c = '1;
             end
-            field_combo_page_config_vout_uv_fault_limit_next[i0] = next_c;
-            field_combo_page_config_vout_uv_fault_limit_load_next[i0] = load_next_c;
+            field_combo_page_config32_hwna_tout_max_lower_next[i0] = next_c;
+            field_combo_page_config32_hwna_tout_max_lower_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config_vout_uv_fault_limit_value[i0] <= 16'h0;
-            end else if(field_combo_page_config_vout_uv_fault_limit_load_next[i0]) begin
-                field_storage_page_config_vout_uv_fault_limit_value[i0] <= field_combo_page_config_vout_uv_fault_limit_next[i0];
+                field_storage_page_config32_hwna_tout_max_lower_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwna_tout_max_lower_load_next[i0]) begin
+                field_storage_page_config32_hwna_tout_max_lower_value[i0] <= field_combo_page_config32_hwna_tout_max_lower_next[i0];
             end
         end
         // always_comb begin
         always @(*) begin
             logic [15:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config_vout_uv_warn_limit_value[i0];
+            next_c = field_storage_page_config32_hwna_tout_min_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config_vout_uv[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config_vout_uv_warn_limit_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            if(decoded_reg_strb_page_config32_hwna_tout_min[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwna_tout_min_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
                 load_next_c = '1;
             end
-            field_combo_page_config_vout_uv_warn_limit_next[i0] = next_c;
-            field_combo_page_config_vout_uv_warn_limit_load_next[i0] = load_next_c;
+            field_combo_page_config32_hwna_tout_min_upper_next[i0] = next_c;
+            field_combo_page_config32_hwna_tout_min_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config_vout_uv_warn_limit_value[i0] <= 16'h0;
-            end else if(field_combo_page_config_vout_uv_warn_limit_load_next[i0]) begin
-                field_storage_page_config_vout_uv_warn_limit_value[i0] <= field_combo_page_config_vout_uv_warn_limit_next[i0];
+                field_storage_page_config32_hwna_tout_min_upper_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwna_tout_min_upper_load_next[i0]) begin
+                field_storage_page_config32_hwna_tout_min_upper_value[i0] <= field_combo_page_config32_hwna_tout_min_upper_next[i0];
+            end
+        end
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config32_hwna_tout_min_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config32_hwna_tout_min[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwna_tout_min_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+                load_next_c = '1;
+            end
+            field_combo_page_config32_hwna_tout_min_lower_next[i0] = next_c;
+            field_combo_page_config32_hwna_tout_min_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config32_hwna_tout_min_lower_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwna_tout_min_lower_load_next[i0]) begin
+                field_storage_page_config32_hwna_tout_min_lower_value[i0] <= field_combo_page_config32_hwna_tout_min_lower_next[i0];
             end
         end
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_26
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_34
         // always_comb begin
         always @(*) begin
             logic [31:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config64_vout_ov_fault_limit_value[i0];
+            next_c = field_storage_page_config64_hwna_tout_max_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config64_vout_ov[i0][0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config64_vout_ov_fault_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            if(decoded_reg_strb_page_config64_hwna_tout_max[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwna_tout_max_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
-            field_combo_page_config64_vout_ov_fault_limit_next[i0] = next_c;
-            field_combo_page_config64_vout_ov_fault_limit_load_next[i0] = load_next_c;
+            field_combo_page_config64_hwna_tout_max_upper_next[i0] = next_c;
+            field_combo_page_config64_hwna_tout_max_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config64_vout_ov_fault_limit_value[i0] <= 32'h0;
-            end else if(field_combo_page_config64_vout_ov_fault_limit_load_next[i0]) begin
-                field_storage_page_config64_vout_ov_fault_limit_value[i0] <= field_combo_page_config64_vout_ov_fault_limit_next[i0];
-            end
-        end
-        // always_comb begin
-        always @(*) begin
-            logic [31:0] next_c;
-            logic load_next_c;
-            next_c = field_storage_page_config64_vout_ov_warn_limit_value[i0];
-            load_next_c = '0;
-            if(decoded_reg_strb_page_config64_vout_ov[i0][1] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config64_vout_ov_warn_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-                load_next_c = '1;
-            end
-            field_combo_page_config64_vout_ov_warn_limit_next[i0] = next_c;
-            field_combo_page_config64_vout_ov_warn_limit_load_next[i0] = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(rst) begin
-                field_storage_page_config64_vout_ov_warn_limit_value[i0] <= 32'h0;
-            end else if(field_combo_page_config64_vout_ov_warn_limit_load_next[i0]) begin
-                field_storage_page_config64_vout_ov_warn_limit_value[i0] <= field_combo_page_config64_vout_ov_warn_limit_next[i0];
+                field_storage_page_config64_hwna_tout_max_upper_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwna_tout_max_upper_load_next[i0]) begin
+                field_storage_page_config64_hwna_tout_max_upper_value[i0] <= field_combo_page_config64_hwna_tout_max_upper_next[i0];
             end
         end
         // always_comb begin
         always @(*) begin
             logic [31:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config64_vout_uv_fault_limit_value[i0];
+            next_c = field_storage_page_config64_hwna_tout_max_lower_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config64_vout_uv[i0][0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config64_vout_uv_fault_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            if(decoded_reg_strb_page_config64_hwna_tout_max[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwna_tout_max_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
-            field_combo_page_config64_vout_uv_fault_limit_next[i0] = next_c;
-            field_combo_page_config64_vout_uv_fault_limit_load_next[i0] = load_next_c;
+            field_combo_page_config64_hwna_tout_max_lower_next[i0] = next_c;
+            field_combo_page_config64_hwna_tout_max_lower_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config64_vout_uv_fault_limit_value[i0] <= 32'h0;
-            end else if(field_combo_page_config64_vout_uv_fault_limit_load_next[i0]) begin
-                field_storage_page_config64_vout_uv_fault_limit_value[i0] <= field_combo_page_config64_vout_uv_fault_limit_next[i0];
+                field_storage_page_config64_hwna_tout_max_lower_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwna_tout_max_lower_load_next[i0]) begin
+                field_storage_page_config64_hwna_tout_max_lower_value[i0] <= field_combo_page_config64_hwna_tout_max_lower_next[i0];
             end
         end
         // always_comb begin
         always @(*) begin
             logic [31:0] next_c;
             logic load_next_c;
-            next_c = field_storage_page_config64_vout_uv_warn_limit_value[i0];
+            next_c = field_storage_page_config64_hwna_tout_min_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_page_config64_vout_uv[i0][1] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_page_config64_vout_uv_warn_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            if(decoded_reg_strb_page_config64_hwna_tout_min[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwna_tout_min_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
-            field_combo_page_config64_vout_uv_warn_limit_next[i0] = next_c;
-            field_combo_page_config64_vout_uv_warn_limit_load_next[i0] = load_next_c;
+            field_combo_page_config64_hwna_tout_min_upper_next[i0] = next_c;
+            field_combo_page_config64_hwna_tout_min_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_page_config64_vout_uv_warn_limit_value[i0] <= 32'h0;
-            end else if(field_combo_page_config64_vout_uv_warn_limit_load_next[i0]) begin
-                field_storage_page_config64_vout_uv_warn_limit_value[i0] <= field_combo_page_config64_vout_uv_warn_limit_next[i0];
-            end
-        end
-    end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_27
-        // always_comb begin
-        always @(*) begin
-            logic [15:0] next_c;
-            logic load_next_c;
-            next_c = field_storage_vout_ov_fault_limit_value[i0];
-            load_next_c = '0;
-            if(decoded_reg_strb_vout_ov[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_vout_ov_fault_limit_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-                load_next_c = '1;
-            end
-            field_combo_vout_ov_fault_limit_next[i0] = next_c;
-            field_combo_vout_ov_fault_limit_load_next[i0] = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(rst) begin
-                field_storage_vout_ov_fault_limit_value[i0] <= 16'h0;
-            end else if(field_combo_vout_ov_fault_limit_load_next[i0]) begin
-                field_storage_vout_ov_fault_limit_value[i0] <= field_combo_vout_ov_fault_limit_next[i0];
-            end
-        end
-        // always_comb begin
-        always @(*) begin
-            logic [15:0] next_c;
-            logic load_next_c;
-            next_c = field_storage_vout_ov_warn_limit_value[i0];
-            load_next_c = '0;
-            if(decoded_reg_strb_vout_ov[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_vout_ov_warn_limit_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-                load_next_c = '1;
-            end
-            field_combo_vout_ov_warn_limit_next[i0] = next_c;
-            field_combo_vout_ov_warn_limit_load_next[i0] = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(rst) begin
-                field_storage_vout_ov_warn_limit_value[i0] <= 16'h0;
-            end else if(field_combo_vout_ov_warn_limit_load_next[i0]) begin
-                field_storage_vout_ov_warn_limit_value[i0] <= field_combo_vout_ov_warn_limit_next[i0];
-            end
-        end
-    end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_28
-        // always_comb begin
-        always @(*) begin
-            logic [31:0] next_c;
-            logic load_next_c;
-            next_c = field_storage_vout_ov64_fault_limit_value[i0];
-            load_next_c = '0;
-            if(decoded_reg_strb_vout_ov64[i0][0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_vout_ov64_fault_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-                load_next_c = '1;
-            end
-            field_combo_vout_ov64_fault_limit_next[i0] = next_c;
-            field_combo_vout_ov64_fault_limit_load_next[i0] = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(rst) begin
-                field_storage_vout_ov64_fault_limit_value[i0] <= 32'h0;
-            end else if(field_combo_vout_ov64_fault_limit_load_next[i0]) begin
-                field_storage_vout_ov64_fault_limit_value[i0] <= field_combo_vout_ov64_fault_limit_next[i0];
+                field_storage_page_config64_hwna_tout_min_upper_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwna_tout_min_upper_load_next[i0]) begin
+                field_storage_page_config64_hwna_tout_min_upper_value[i0] <= field_combo_page_config64_hwna_tout_min_upper_next[i0];
             end
         end
         // always_comb begin
         always @(*) begin
             logic [31:0] next_c;
             logic load_next_c;
-            next_c = field_storage_vout_ov64_warn_limit_value[i0];
+            next_c = field_storage_page_config64_hwna_tout_min_lower_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_vout_ov64[i0][1] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_vout_ov64_warn_limit_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            if(decoded_reg_strb_page_config64_hwna_tout_min[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwna_tout_min_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
-            field_combo_vout_ov64_warn_limit_next[i0] = next_c;
-            field_combo_vout_ov64_warn_limit_load_next[i0] = load_next_c;
+            field_combo_page_config64_hwna_tout_min_lower_next[i0] = next_c;
+            field_combo_page_config64_hwna_tout_min_lower_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_vout_ov64_warn_limit_value[i0] <= 32'h0;
-            end else if(field_combo_vout_ov64_warn_limit_load_next[i0]) begin
-                field_storage_vout_ov64_warn_limit_value[i0] <= field_combo_vout_ov64_warn_limit_next[i0];
+                field_storage_page_config64_hwna_tout_min_lower_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwna_tout_min_lower_load_next[i0]) begin
+                field_storage_page_config64_hwna_tout_min_lower_value[i0] <= field_combo_page_config64_hwna_tout_min_lower_next[i0];
             end
         end
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_29
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_35
         // always_comb begin
         always @(*) begin
             logic [15:0] next_c;
             logic load_next_c;
-            next_c = field_storage_ot_fault_limit_word_value[i0];
+            next_c = field_storage_tout_max32_hwna_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_ot_fault_limit[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_ot_fault_limit_word_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            if(decoded_reg_strb_tout_max32_hwna[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max32_hwna_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
                 load_next_c = '1;
             end
-            field_combo_ot_fault_limit_word_next[i0] = next_c;
-            field_combo_ot_fault_limit_word_load_next[i0] = load_next_c;
+            field_combo_tout_max32_hwna_upper_next[i0] = next_c;
+            field_combo_tout_max32_hwna_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_ot_fault_limit_word_value[i0] <= 16'h0;
-            end else if(field_combo_ot_fault_limit_word_load_next[i0]) begin
-                field_storage_ot_fault_limit_word_value[i0] <= field_combo_ot_fault_limit_word_next[i0];
+                field_storage_tout_max32_hwna_upper_value[i0] <= 16'h0;
+            end else if(field_combo_tout_max32_hwna_upper_load_next[i0]) begin
+                field_storage_tout_max32_hwna_upper_value[i0] <= field_combo_tout_max32_hwna_upper_next[i0];
+            end
+        end
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max32_hwna_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max32_hwna[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max32_hwna_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max32_hwna_lower_next[i0] = next_c;
+            field_combo_tout_max32_hwna_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max32_hwna_lower_value[i0] <= 16'h0;
+            end else if(field_combo_tout_max32_hwna_lower_load_next[i0]) begin
+                field_storage_tout_max32_hwna_lower_value[i0] <= field_combo_tout_max32_hwna_lower_next[i0];
             end
         end
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_30
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_36
         // always_comb begin
         always @(*) begin
-            logic [7:0] next_c;
+            logic [31:0] next_c;
             logic load_next_c;
-            next_c = field_storage_ot_fault_response_byte_value[i0];
+            next_c = field_storage_tout_max64_hwna_upper_value[i0];
             load_next_c = '0;
-            if(decoded_reg_strb_ot_fault_response[i0] && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage_ot_fault_response_byte_value[i0] & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            if(decoded_reg_strb_tout_max64_hwna[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max64_hwna_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
                 load_next_c = '1;
             end
-            field_combo_ot_fault_response_byte_next[i0] = next_c;
-            field_combo_ot_fault_response_byte_load_next[i0] = load_next_c;
+            field_combo_tout_max64_hwna_upper_next[i0] = next_c;
+            field_combo_tout_max64_hwna_upper_load_next[i0] = load_next_c;
         end
         always_ff @(posedge clk) begin
             if(rst) begin
-                field_storage_ot_fault_response_byte_value[i0] <= 8'h0;
-            end else if(field_combo_ot_fault_response_byte_load_next[i0]) begin
-                field_storage_ot_fault_response_byte_value[i0] <= field_combo_ot_fault_response_byte_next[i0];
+                field_storage_tout_max64_hwna_upper_value[i0] <= 32'h0;
+            end else if(field_combo_tout_max64_hwna_upper_load_next[i0]) begin
+                field_storage_tout_max64_hwna_upper_value[i0] <= field_combo_tout_max64_hwna_upper_next[i0];
             end
         end
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max64_hwna_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max64_hwna[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max64_hwna_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max64_hwna_lower_next[i0] = next_c;
+            field_combo_tout_max64_hwna_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max64_hwna_lower_value[i0] <= 32'h0;
+            end else if(field_combo_tout_max64_hwna_lower_load_next[i0]) begin
+                field_storage_tout_max64_hwna_lower_value[i0] <= field_combo_tout_max64_hwna_lower_next[i0];
+            end
+        end
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_37
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config32_hwnr_tout_max_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config32_hwnr_tout_max[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwnr_tout_max_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config32_hwnr_tout_max_upper_next[i0] = next_c;
+            field_combo_page_config32_hwnr_tout_max_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config32_hwnr_tout_max_upper_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwnr_tout_max_upper_load_next[i0]) begin
+                field_storage_page_config32_hwnr_tout_max_upper_value[i0] <= field_combo_page_config32_hwnr_tout_max_upper_next[i0];
+            end
+        end
+        assign hwif_out_page_config32_hwnr_tout_max_upper[i0] = field_storage_page_config32_hwnr_tout_max_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config32_hwnr_tout_max_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config32_hwnr_tout_max[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwnr_tout_max_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+                load_next_c = '1;
+            end
+            field_combo_page_config32_hwnr_tout_max_lower_next[i0] = next_c;
+            field_combo_page_config32_hwnr_tout_max_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config32_hwnr_tout_max_lower_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwnr_tout_max_lower_load_next[i0]) begin
+                field_storage_page_config32_hwnr_tout_max_lower_value[i0] <= field_combo_page_config32_hwnr_tout_max_lower_next[i0];
+            end
+        end
+        assign hwif_out_page_config32_hwnr_tout_max_lower[i0] = field_storage_page_config32_hwnr_tout_max_lower_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config32_hwnr_tout_min_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config32_hwnr_tout_min[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwnr_tout_min_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config32_hwnr_tout_min_upper_next[i0] = next_c;
+            field_combo_page_config32_hwnr_tout_min_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config32_hwnr_tout_min_upper_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwnr_tout_min_upper_load_next[i0]) begin
+                field_storage_page_config32_hwnr_tout_min_upper_value[i0] <= field_combo_page_config32_hwnr_tout_min_upper_next[i0];
+            end
+        end
+        assign hwif_out_page_config32_hwnr_tout_min_upper[i0] = field_storage_page_config32_hwnr_tout_min_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config32_hwnr_tout_min_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config32_hwnr_tout_min[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config32_hwnr_tout_min_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+                load_next_c = '1;
+            end
+            field_combo_page_config32_hwnr_tout_min_lower_next[i0] = next_c;
+            field_combo_page_config32_hwnr_tout_min_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config32_hwnr_tout_min_lower_value[i0] <= 16'h0;
+            end else if(field_combo_page_config32_hwnr_tout_min_lower_load_next[i0]) begin
+                field_storage_page_config32_hwnr_tout_min_lower_value[i0] <= field_combo_page_config32_hwnr_tout_min_lower_next[i0];
+            end
+        end
+        assign hwif_out_page_config32_hwnr_tout_min_lower[i0] = field_storage_page_config32_hwnr_tout_min_lower_value[i0];
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_38
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config64_hwnr_tout_max_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config64_hwnr_tout_max[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwnr_tout_max_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config64_hwnr_tout_max_upper_next[i0] = next_c;
+            field_combo_page_config64_hwnr_tout_max_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config64_hwnr_tout_max_upper_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwnr_tout_max_upper_load_next[i0]) begin
+                field_storage_page_config64_hwnr_tout_max_upper_value[i0] <= field_combo_page_config64_hwnr_tout_max_upper_next[i0];
+            end
+        end
+        assign hwif_out_page_config64_hwnr_tout_max_upper[i0] = field_storage_page_config64_hwnr_tout_max_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config64_hwnr_tout_max_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config64_hwnr_tout_max[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwnr_tout_max_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config64_hwnr_tout_max_lower_next[i0] = next_c;
+            field_combo_page_config64_hwnr_tout_max_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config64_hwnr_tout_max_lower_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwnr_tout_max_lower_load_next[i0]) begin
+                field_storage_page_config64_hwnr_tout_max_lower_value[i0] <= field_combo_page_config64_hwnr_tout_max_lower_next[i0];
+            end
+        end
+        assign hwif_out_page_config64_hwnr_tout_max_lower[i0] = field_storage_page_config64_hwnr_tout_max_lower_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config64_hwnr_tout_min_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config64_hwnr_tout_min[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwnr_tout_min_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config64_hwnr_tout_min_upper_next[i0] = next_c;
+            field_combo_page_config64_hwnr_tout_min_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config64_hwnr_tout_min_upper_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwnr_tout_min_upper_load_next[i0]) begin
+                field_storage_page_config64_hwnr_tout_min_upper_value[i0] <= field_combo_page_config64_hwnr_tout_min_upper_next[i0];
+            end
+        end
+        assign hwif_out_page_config64_hwnr_tout_min_upper[i0] = field_storage_page_config64_hwnr_tout_min_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_page_config64_hwnr_tout_min_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_page_config64_hwnr_tout_min[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_page_config64_hwnr_tout_min_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_page_config64_hwnr_tout_min_lower_next[i0] = next_c;
+            field_combo_page_config64_hwnr_tout_min_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_page_config64_hwnr_tout_min_lower_value[i0] <= 32'h0;
+            end else if(field_combo_page_config64_hwnr_tout_min_lower_load_next[i0]) begin
+                field_storage_page_config64_hwnr_tout_min_lower_value[i0] <= field_combo_page_config64_hwnr_tout_min_lower_next[i0];
+            end
+        end
+        assign hwif_out_page_config64_hwnr_tout_min_lower[i0] = field_storage_page_config64_hwnr_tout_min_lower_value[i0];
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_39
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max32_hwr_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max32_hwr[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max32_hwr_upper_value[i0] & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max32_hwr_upper_next[i0] = next_c;
+            field_combo_tout_max32_hwr_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max32_hwr_upper_value[i0] <= 16'h0;
+            end else if(field_combo_tout_max32_hwr_upper_load_next[i0]) begin
+                field_storage_tout_max32_hwr_upper_value[i0] <= field_combo_tout_max32_hwr_upper_next[i0];
+            end
+        end
+        assign hwif_out_tout_max32_hwr_upper[i0] = field_storage_tout_max32_hwr_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [15:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max32_hwr_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max32_hwr[i0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max32_hwr_lower_value[i0] & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max32_hwr_lower_next[i0] = next_c;
+            field_combo_tout_max32_hwr_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max32_hwr_lower_value[i0] <= 16'h0;
+            end else if(field_combo_tout_max32_hwr_lower_load_next[i0]) begin
+                field_storage_tout_max32_hwr_lower_value[i0] <= field_combo_tout_max32_hwr_lower_next[i0];
+            end
+        end
+        assign hwif_out_tout_max32_hwr_lower[i0] = field_storage_tout_max32_hwr_lower_value[i0];
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_40
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max64_hwr_upper_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max64_hwr[i0][0] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max64_hwr_upper_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max64_hwr_upper_next[i0] = next_c;
+            field_combo_tout_max64_hwr_upper_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max64_hwr_upper_value[i0] <= 32'h0;
+            end else if(field_combo_tout_max64_hwr_upper_load_next[i0]) begin
+                field_storage_tout_max64_hwr_upper_value[i0] <= field_combo_tout_max64_hwr_upper_next[i0];
+            end
+        end
+        assign hwif_out_tout_max64_hwr_upper[i0] = field_storage_tout_max64_hwr_upper_value[i0];
+        // always_comb begin
+        always @(*) begin
+            logic [31:0] next_c;
+            logic load_next_c;
+            next_c = field_storage_tout_max64_hwr_lower_value[i0];
+            load_next_c = '0;
+            if(decoded_reg_strb_tout_max64_hwr[i0][1] && decoded_req_is_wr) begin // SW write
+                next_c = (field_storage_tout_max64_hwr_lower_value[i0] & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+                load_next_c = '1;
+            end
+            field_combo_tout_max64_hwr_lower_next[i0] = next_c;
+            field_combo_tout_max64_hwr_lower_load_next[i0] = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(rst) begin
+                field_storage_tout_max64_hwr_lower_value[i0] <= 32'h0;
+            end else if(field_combo_tout_max64_hwr_lower_load_next[i0]) begin
+                field_storage_tout_max64_hwr_lower_value[i0] <= field_combo_tout_max64_hwr_lower_next[i0];
+            end
+        end
+        assign hwif_out_tout_max64_hwr_lower[i0] = field_storage_tout_max64_hwr_lower_value[i0];
     end
 
     //--------------------------------------------------------------------------
@@ -570,40 +853,52 @@ module regblock (
     logic [31:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [31:0] readback_array[355];
+    logic [31:0] readback_array[147];
     assign readback_array[0][7:0] = (decoded_reg_strb_page && !decoded_req_is_wr) ? 8'h0 : '0;
     assign readback_array[0][31:8] = '0;
     assign readback_array[1][7:0] = (decoded_reg_strb_operaton && !decoded_req_is_wr) ? field_storage_operaton_byte_value : '0;
     assign readback_array[1][31:8] = '0;
-    assign readback_array[2][7:0] = (decoded_reg_strb_on_off_config && !decoded_req_is_wr) ? field_storage_on_off_config_byte_value : '0;
+    assign readback_array[2][7:0] = (decoded_reg_strb_config && !decoded_req_is_wr) ? field_storage_config_byte_value : '0;
     assign readback_array[2][31:8] = '0;
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_1
-        assign readback_array[i0*2 + 3][15:0] = (decoded_reg_strb_page_config_vout_ov[i0] && !decoded_req_is_wr) ? field_storage_page_config_vout_ov_fault_limit_value[i0] : '0;
-        assign readback_array[i0*2 + 3][31:16] = (decoded_reg_strb_page_config_vout_ov[i0] && !decoded_req_is_wr) ? field_storage_page_config_vout_ov_warn_limit_value[i0] : '0;
-        assign readback_array[i0*2 + 4][15:0] = (decoded_reg_strb_page_config_vout_uv[i0] && !decoded_req_is_wr) ? field_storage_page_config_vout_uv_fault_limit_value[i0] : '0;
-        assign readback_array[i0*2 + 4][31:16] = (decoded_reg_strb_page_config_vout_uv[i0] && !decoded_req_is_wr) ? field_storage_page_config_vout_uv_warn_limit_value[i0] : '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_1
+        assign readback_array[i0*2 + 3][15:0] = (decoded_reg_strb_page_config32_hwna_tout_max[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwna_tout_max_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 3][31:16] = (decoded_reg_strb_page_config32_hwna_tout_max[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwna_tout_max_lower_value[i0] : '0;
+        assign readback_array[i0*2 + 4][15:0] = (decoded_reg_strb_page_config32_hwna_tout_min[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwna_tout_min_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 4][31:16] = (decoded_reg_strb_page_config32_hwna_tout_min[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwna_tout_min_lower_value[i0] : '0;
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_2
-        assign readback_array[i0*4 + 67][31:0] = (decoded_reg_strb_page_config64_vout_ov[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_vout_ov_fault_limit_value[i0] : '0;
-        assign readback_array[i0*4 + 68][31:0] = (decoded_reg_strb_page_config64_vout_ov[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_vout_ov_warn_limit_value[i0] : '0;
-        assign readback_array[i0*4 + 69][31:0] = (decoded_reg_strb_page_config64_vout_uv[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_vout_uv_fault_limit_value[i0] : '0;
-        assign readback_array[i0*4 + 70][31:0] = (decoded_reg_strb_page_config64_vout_uv[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_vout_uv_warn_limit_value[i0] : '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_2
+        assign readback_array[i0*4 + 19][31:0] = (decoded_reg_strb_page_config64_hwna_tout_max[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_hwna_tout_max_upper_value[i0] : '0;
+        assign readback_array[i0*4 + 20][31:0] = (decoded_reg_strb_page_config64_hwna_tout_max[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_hwna_tout_max_lower_value[i0] : '0;
+        assign readback_array[i0*4 + 21][31:0] = (decoded_reg_strb_page_config64_hwna_tout_min[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_hwna_tout_min_upper_value[i0] : '0;
+        assign readback_array[i0*4 + 22][31:0] = (decoded_reg_strb_page_config64_hwna_tout_min[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_hwna_tout_min_lower_value[i0] : '0;
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_3
-        assign readback_array[i0*1 + 195][15:0] = (decoded_reg_strb_vout_ov[i0] && !decoded_req_is_wr) ? field_storage_vout_ov_fault_limit_value[i0] : '0;
-        assign readback_array[i0*1 + 195][31:16] = (decoded_reg_strb_vout_ov[i0] && !decoded_req_is_wr) ? field_storage_vout_ov_warn_limit_value[i0] : '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_3
+        assign readback_array[i0*1 + 51][15:0] = (decoded_reg_strb_tout_max32_hwna[i0] && !decoded_req_is_wr) ? field_storage_tout_max32_hwna_upper_value[i0] : '0;
+        assign readback_array[i0*1 + 51][31:16] = (decoded_reg_strb_tout_max32_hwna[i0] && !decoded_req_is_wr) ? field_storage_tout_max32_hwna_lower_value[i0] : '0;
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_4
-        assign readback_array[i0*2 + 227][31:0] = (decoded_reg_strb_vout_ov64[i0][0] && !decoded_req_is_wr) ? field_storage_vout_ov64_fault_limit_value[i0] : '0;
-        assign readback_array[i0*2 + 228][31:0] = (decoded_reg_strb_vout_ov64[i0][1] && !decoded_req_is_wr) ? field_storage_vout_ov64_warn_limit_value[i0] : '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_4
+        assign readback_array[i0*2 + 59][31:0] = (decoded_reg_strb_tout_max64_hwna[i0][0] && !decoded_req_is_wr) ? field_storage_tout_max64_hwna_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 60][31:0] = (decoded_reg_strb_tout_max64_hwna[i0][1] && !decoded_req_is_wr) ? field_storage_tout_max64_hwna_lower_value[i0] : '0;
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_5
-        assign readback_array[i0*1 + 291][15:0] = (decoded_reg_strb_ot_fault_limit[i0] && !decoded_req_is_wr) ? field_storage_ot_fault_limit_word_value[i0] : '0;
-        assign readback_array[i0*1 + 291][31:16] = '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_5
+        assign readback_array[i0*2 + 75][15:0] = (decoded_reg_strb_page_config32_hwnr_tout_max[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwnr_tout_max_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 75][31:16] = (decoded_reg_strb_page_config32_hwnr_tout_max[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwnr_tout_max_lower_value[i0] : '0;
+        assign readback_array[i0*2 + 76][15:0] = (decoded_reg_strb_page_config32_hwnr_tout_min[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwnr_tout_min_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 76][31:16] = (decoded_reg_strb_page_config32_hwnr_tout_min[i0] && !decoded_req_is_wr) ? field_storage_page_config32_hwnr_tout_min_lower_value[i0] : '0;
     end
-    for(genvar i0=0; i0<32; i0++) begin : gen_loop_6
-        assign readback_array[i0*1 + 323][7:0] = (decoded_reg_strb_ot_fault_response[i0] && !decoded_req_is_wr) ? field_storage_ot_fault_response_byte_value[i0] : '0;
-        assign readback_array[i0*1 + 323][31:8] = '0;
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_6
+        assign readback_array[i0*4 + 91][31:0] = (decoded_reg_strb_page_config64_hwnr_tout_max[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_hwnr_tout_max_upper_value[i0] : '0;
+        assign readback_array[i0*4 + 92][31:0] = (decoded_reg_strb_page_config64_hwnr_tout_max[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_hwnr_tout_max_lower_value[i0] : '0;
+        assign readback_array[i0*4 + 93][31:0] = (decoded_reg_strb_page_config64_hwnr_tout_min[i0][0] && !decoded_req_is_wr) ? field_storage_page_config64_hwnr_tout_min_upper_value[i0] : '0;
+        assign readback_array[i0*4 + 94][31:0] = (decoded_reg_strb_page_config64_hwnr_tout_min[i0][1] && !decoded_req_is_wr) ? field_storage_page_config64_hwnr_tout_min_lower_value[i0] : '0;
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_7
+        assign readback_array[i0*1 + 123][15:0] = (decoded_reg_strb_tout_max32_hwr[i0] && !decoded_req_is_wr) ? field_storage_tout_max32_hwr_upper_value[i0] : '0;
+        assign readback_array[i0*1 + 123][31:16] = (decoded_reg_strb_tout_max32_hwr[i0] && !decoded_req_is_wr) ? field_storage_tout_max32_hwr_lower_value[i0] : '0;
+    end
+    for(genvar i0=0; i0<8; i0++) begin : gen_loop_8
+        assign readback_array[i0*2 + 131][31:0] = (decoded_reg_strb_tout_max64_hwr[i0][0] && !decoded_req_is_wr) ? field_storage_tout_max64_hwr_upper_value[i0] : '0;
+        assign readback_array[i0*2 + 132][31:0] = (decoded_reg_strb_tout_max64_hwr[i0][1] && !decoded_req_is_wr) ? field_storage_tout_max64_hwr_lower_value[i0] : '0;
     end
 
     // Reduce the array
@@ -613,7 +908,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<355; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<147; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 

@@ -16,100 +16,102 @@ reg r_word  {
     } WORD [16] = 0;
 };
 
-reg vout {
-    // regwidth = 64;
+reg tout32_hwna {
     regwidth = 32;
     accesswidth = 32;
     default sw = rw;
     default hw = na;
-    desc = "
-    ";
     field {
-        desc = "The value of the output voltage measured at the sense or output pins that causes an output fault.
-        ";
-    } FAULT_LIMIT [16] = 0;
+    } UPPER [16] = 0;
     field {
-        desc = " the value of the output voltage at the sense or output pins that causes an output voltage high warning.
-        This value is typically less than the output overvoltage threshold.
-        ";
-    } WARN_LIMIT [16] = 0;
-    // field {
-    //     desc = "action to take in response to an output overvoltage fault.
-    //     ";
-    // } FAULT_RESPONSE [8] = 0;
+    } LOWER [16] = 0;
 };
 
-reg vout64 {
+reg tout32_hwr {
+    regwidth = 32;
+    accesswidth = 32;
+    default sw = rw;
+    default hw = r;
+    field {
+    } UPPER [16] = 0;
+    field {
+    } LOWER [16] = 0;
+};
+
+reg tout64_hwna {
     regwidth = 64;
     accesswidth = 32;
-    // regwidth = 32;
     default sw = rw;
     default hw = na;
-    desc = "
-    ";
     field {
-        desc = "The value of the output voltage measured at the sense or output pins that causes an output fault.
-        ";
-    } FAULT_LIMIT [32] = 0;
+    } UPPER [32] = 0;
     field {
-        desc = " the value of the output voltage at the sense or output pins that causes an output voltage high warning.
-        This value is typically less than the output overvoltage threshold.
-        ";
-    } WARN_LIMIT [32] = 0;
-    // field {
-    //     desc = "action to take in response to an output overvoltage fault.
-    //     ";
-    // } FAULT_RESPONSE [8] = 0;
+    } LOWER [32] = 0;
 };
 
-regfile page_config {
+reg tout64_hwr {
+    regwidth = 64;
+    accesswidth = 32;
+    default sw = rw;
+    default hw = r;
+    field {
+    } UPPER [32] = 0;
+    field {
+    } LOWER [32] = 0;
+};
+
+regfile page_config32_hwna {
     desc = "Contains all the registers that need to be maintained per page";
 
-    vout VOUT_OV;
-    VOUT_OV->desc = "VOUT Overvoltage register";
-    vout VOUT_UV;
-    VOUT_UV->desc = "VOUT Undervoltage register";
+    tout32_hwna TOUT_MAX;
+    tout32_hwna TOUT_MIN;
 };
 
-regfile page_config64 {
+regfile page_config32_hwr {
     desc = "Contains all the registers that need to be maintained per page";
 
-    vout64 VOUT_OV;
-    VOUT_OV->desc = "VOUT Overvoltage register";
-    vout64 VOUT_UV;
-    VOUT_UV->desc = "VOUT Undervoltage register";
+    tout32_hwr TOUT_MAX;
+    tout32_hwr TOUT_MIN;
 };
 
-addrmap PMBUS #(
-    longint PAGES = 32
+regfile page_config64_hwna {
+    desc = "Contains all the registers that need to be maintained per page";
+
+    tout64_hwna TOUT_MAX;
+    tout64_hwna TOUT_MIN;
+};
+
+regfile page_config64_hwr {
+    desc = "Contains all the registers that need to be maintained per page";
+
+    tout64_hwr TOUT_MAX;
+    tout64_hwr TOUT_MIN;
+};
+
+addrmap TBUS #(
+    longint PAGES = 8
 ) {
-//     default sw = rw;
-//     default hw = na;
-//     default regwidth = 32;
-//     default accesswidth = 32;
-
-    desc = "Register file containing PMBus registers";
-//     default accesswidth = 32;
+    desc = "Register file containing TBUS registers";
 
     r_byte PAGE;
     PAGE->desc = "PAGE contains the Operating Memory (and at the option of the device manufacturer, User Store and Default Store) for each outpu";
     PAGE.BYTE->sw=r;
-//     PAGE.BYTE->hw=w;
 
     r_byte OPERATON;
-    r_byte ON_OFF_CONFIG;
+    r_byte CONFIG;
 
-    page_config PAGE_CONFIG[PAGES]@0x100;
+    page_config32_hwna PAGE_CONFIG32_HWNA[PAGES]@0x1000;
 
-    page_config64 page_config64[PAGES]@0x1000;
-//     PAGE_CONFIG2.VOUT_OV.FAULT_LIMIT->sw=r;
+    page_config64_hwna PAGE_CONFIG64_HWNA[PAGES]@0x2000;
+//     PAGE_CONFIG2.TOUT_MAX.FAULT_LIMIT->sw=r;
 
-    vout VOUT_OV[PAGES]@0x2000;
-    vout64 VOUT_OV64[PAGES]@0x3000;
-    // VOUT_OV->desc = "VOUT Overvoltage register";
-    // vout VOUT_UV[PAGES];
-    // VOUT_UV->desc = "VOUT Undervoltage register";
+    tout32_hwna TOUT_MAX32_HWNA[PAGES]@0x3000;
+    tout64_hwna TOUT_MAX64_HWNA[PAGES]@0x4000;
 
-    r_word OT_FAULT_LIMIT[PAGES];
-    r_byte OT_FAULT_RESPONSE[PAGES];
+    page_config32_hwr PAGE_CONFIG32_HWNR[PAGES]@0x5000;
+    page_config64_hwr PAGE_CONFIG64_HWNR[PAGES]@0x6000;
+
+    tout32_hwr TOUT_MAX32_HWR[PAGES]@0x7000;
+    tout64_hwr TOUT_MAX64_HWR[PAGES]@0x8000;
+
 };
