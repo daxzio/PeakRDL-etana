@@ -241,20 +241,20 @@ module regblock (
             load_next_c = '1;
         end
         if(field_storage_saturate_via_bool_increment_value) begin // increment
-            if(((9)'(next_c) + field_storage_saturate_via_bool_step_value) > 8'hff) begin // up-counter saturated
+            if(((9)'(next_c) + (9)'(field_storage_saturate_via_bool_step_value)) > (9)'(8'hff)) begin // up-counter saturated
                 next_c = 8'hff;
             end else begin
-                next_c = next_c + field_storage_saturate_via_bool_step_value;
+                next_c = next_c + (8)'(field_storage_saturate_via_bool_step_value);
             end
             load_next_c = '1;
         end
         field_combo_saturate_via_bool_count_incrthreshold = (field_storage_saturate_via_bool_count_value >= 8'hff);
         field_combo_saturate_via_bool_count_incrsaturate = (field_storage_saturate_via_bool_count_value >= 8'hff);
         if(field_storage_saturate_via_bool_decrement_value) begin // decrement
-            if((9)'(next_c) < (field_storage_saturate_via_bool_step_value + 8'd0)) begin // down-counter saturated
+            if((9)'(next_c) < ((9)'(field_storage_saturate_via_bool_step_value) + (9)'(8'd0))) begin // down-counter saturated
                 next_c = 8'd0;
             end else begin
-                next_c = next_c - field_storage_saturate_via_bool_step_value;
+                next_c = next_c - (8)'(field_storage_saturate_via_bool_step_value);
             end
             load_next_c = '1;
         end
@@ -401,20 +401,20 @@ module regblock (
             load_next_c = '1;
         end
         if(field_storage_saturate_via_const_increment_value) begin // increment
-            if(((9)'(next_c) + field_storage_saturate_via_const_step_value) > 8'hfa) begin // up-counter saturated
+            if(((9)'(next_c) + (9)'(field_storage_saturate_via_const_step_value)) > (9)'(8'hfa)) begin // up-counter saturated
                 next_c = 8'hfa;
             end else begin
-                next_c = next_c + field_storage_saturate_via_const_step_value;
+                next_c = next_c + (8)'(field_storage_saturate_via_const_step_value);
             end
             load_next_c = '1;
         end
         field_combo_saturate_via_const_count_incrthreshold = (field_storage_saturate_via_const_count_value >= 8'hff);
         field_combo_saturate_via_const_count_incrsaturate = (field_storage_saturate_via_const_count_value >= 8'hfa);
         if(field_storage_saturate_via_const_decrement_value) begin // decrement
-            if((9)'(next_c) < (field_storage_saturate_via_const_step_value + 8'h5)) begin // down-counter saturated
+            if((9)'(next_c) < ((9)'(field_storage_saturate_via_const_step_value) + (9)'(8'h5))) begin // down-counter saturated
                 next_c = 8'h5;
             end else begin
-                next_c = next_c - field_storage_saturate_via_const_step_value;
+                next_c = next_c - (8)'(field_storage_saturate_via_const_step_value);
             end
             load_next_c = '1;
         end
@@ -561,20 +561,20 @@ module regblock (
             load_next_c = '1;
         end
         if(field_storage_saturate_via_ref_increment_value) begin // increment
-            if(((9)'(next_c) + field_storage_saturate_via_ref_step_value) > field_storage_saturate_control_max_value) begin // up-counter saturated
+            if(((9)'(next_c) + (9)'(field_storage_saturate_via_ref_step_value)) > (9)'(field_storage_saturate_control_max_value)) begin // up-counter saturated
                 next_c = field_storage_saturate_control_max_value;
             end else begin
-                next_c = next_c + field_storage_saturate_via_ref_step_value;
+                next_c = next_c + (8)'(field_storage_saturate_via_ref_step_value);
             end
             load_next_c = '1;
         end
         field_combo_saturate_via_ref_count_incrthreshold = (field_storage_saturate_via_ref_count_value >= 8'hff);
         field_combo_saturate_via_ref_count_incrsaturate = (field_storage_saturate_via_ref_count_value >= field_storage_saturate_control_max_value);
         if(field_storage_saturate_via_ref_decrement_value) begin // decrement
-            if((9)'(next_c) < (field_storage_saturate_via_ref_step_value + field_storage_saturate_control_min_value)) begin // down-counter saturated
+            if((9)'(next_c) < ((9)'(field_storage_saturate_via_ref_step_value) + (9)'(field_storage_saturate_control_min_value))) begin // down-counter saturated
                 next_c = field_storage_saturate_control_min_value;
             end else begin
-                next_c = next_c - field_storage_saturate_via_ref_step_value;
+                next_c = next_c - (8)'(field_storage_saturate_via_ref_step_value);
             end
             load_next_c = '1;
         end

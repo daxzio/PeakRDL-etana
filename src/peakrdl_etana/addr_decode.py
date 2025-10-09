@@ -299,7 +299,13 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             subword_stride = accesswidth // 8
             for i in range(n_subwords):
                 p = self.addr_decode.get_access_strobe(node)
-                rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"
+                if len(self._array_stride_stack):
+                    self.add_content(
+                        f"next_cpuif_addr = {self._get_address_str(node, subword_offset=(i*subword_stride))};"
+                    )
+                    rhs = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
+                else:
+                    rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"
                 if 0 == len(p.index):
                     s = f"{p.path}[{i}] = {rhs};"
                 else:

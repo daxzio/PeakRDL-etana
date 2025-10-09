@@ -194,8 +194,8 @@ module regblock (
         load_next_c = '0;
 
         if(field_storage_r1_f_sw_value) begin // increment
-            field_combo_r1_events_f_sw_count_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_r1_events_f_sw_count_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_r1_events_f_sw_count_overflow = '0;
@@ -219,8 +219,8 @@ module regblock (
         load_next_c = '0;
 
         if(field_storage_r1_f_hw_value) begin // increment
-            field_combo_r1_events_f_hw_count_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_r1_events_f_hw_count_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_r1_events_f_hw_count_overflow = '0;

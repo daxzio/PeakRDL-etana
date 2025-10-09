@@ -7,6 +7,7 @@ SIM="icarus"
 COCOTB_REV="2.0.0"
 YOSYS=0
 CPUIF="apb4-flat"
+GIT_CHECK=0
 
 for arg in "$@"; do
     case $arg in
@@ -25,9 +26,12 @@ for arg in "$@"; do
         CPUIF=*)
             CPUIF="${arg#*=}"
             ;;
+        GIT_CHECK=*)
+            GIT_CHECK="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1]"
             exit 1
             ;;
     esac
@@ -47,7 +51,7 @@ else
     SYNTH_INDICATOR=""
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF ==="
+echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF GIT_CHECK=$GIT_CHECK ==="
 echo ""
 
 # Define skip lists based on conditions
@@ -117,6 +121,9 @@ for dir in test_*/; do
         fi
         if [ -n "$CPUIF" ]; then
             make_cmd="$make_cmd CPUIF=$CPUIF"
+        fi
+        if [ "$GIT_CHECK" -eq 1 ]; then
+            make_cmd="$make_cmd GIT_CHECK=$GIT_CHECK"
         fi
 
         (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)

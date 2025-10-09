@@ -175,16 +175,16 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_threshold_via_bool_count_incr) begin // increment
-            field_combo_threshold_via_bool_count_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_threshold_via_bool_count_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_bool_count_overflow = '0;
         end
         field_combo_threshold_via_bool_count_incrthreshold = (field_storage_threshold_via_bool_count_value >= 4'hf);
         if(hwif_in_threshold_via_bool_count_decr) begin // decrement
-            field_combo_threshold_via_bool_count_underflow = (next_c < (4'h1));
-            next_c = next_c - 4'h1;
+            field_combo_threshold_via_bool_count_underflow = (next_c < (4)'(4'h1));
+            next_c = next_c - (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_bool_count_underflow = '0;
@@ -211,16 +211,16 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_threshold_via_const_count_incr) begin // increment
-            field_combo_threshold_via_const_count_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_threshold_via_const_count_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_const_count_overflow = '0;
         end
         field_combo_threshold_via_const_count_incrthreshold = (field_storage_threshold_via_const_count_value >= 4'ha);
         if(hwif_in_threshold_via_const_count_decr) begin // decrement
-            field_combo_threshold_via_const_count_underflow = (next_c < (4'h1));
-            next_c = next_c - 4'h1;
+            field_combo_threshold_via_const_count_underflow = (next_c < (4)'(4'h1));
+            next_c = next_c - (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_const_count_underflow = '0;
@@ -247,16 +247,16 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_threshold_via_ref_count_incr) begin // increment
-            field_combo_threshold_via_ref_count_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_threshold_via_ref_count_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_ref_count_overflow = '0;
         end
         field_combo_threshold_via_ref_count_incrthreshold = (field_storage_threshold_via_ref_count_value >= field_storage_threshold_control_max_value);
         if(hwif_in_threshold_via_ref_count_decr) begin // decrement
-            field_combo_threshold_via_ref_count_underflow = (next_c < (4'h1));
-            next_c = next_c - 4'h1;
+            field_combo_threshold_via_ref_count_underflow = (next_c < (4)'(4'h1));
+            next_c = next_c - (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_threshold_via_ref_count_underflow = '0;

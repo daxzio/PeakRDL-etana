@@ -17,6 +17,7 @@ UDPS?=
 REGBLOCK=0
 GHDL=0
 YOSYS=0
+GIT_CHECK=0
 
 SYNTH_OUTPUT?=synth-rtl
 
@@ -30,6 +31,8 @@ ifeq ($(REGBLOCK),1)
 	COMPILE_ARGS += -Wno-MULTIDRIVEN
 	COMPILE_ARGS += -Wno-ALWCOMBORDER
 	COMPILE_ARGS += -Wno-WIDTHTRUNC
+	# COMPILE_ARGS += -Wno-UNOPTFLAT
+	# COMPILE_ARGS += -Wno-WIDTHEXPAND
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 endif
@@ -53,8 +56,6 @@ endif
 include $(shell cocotb-config --makefiles)/Makefile.sim
 ifeq ($(SIM),verilator)
 	COMPILE_ARGS += --no-timing
-	# COMPILE_ARGS += -Wno-UNOPTFLAT
-	#COMPILE_ARGS += -Wno-WIDTHEXPAND
 endif
 ifeq ($(WAVES),1)
 	ifeq ($(SIM),verilator)
@@ -87,7 +88,9 @@ check-gen:
 etana:
 	rm -rf etana-rtl/*
 	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
-	@$(MAKE) check-etana
+	@if [ "$(GIT_CHECK)" -eq 1 ]; then \
+		$(MAKE) check-etana; \
+	fi
 
 check-etana:
 	@$(MAKE) check-gen DIR=etana-rtl
@@ -98,7 +101,9 @@ regblock:
 	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../../scripts/strip_trailing_whitespace.py regblock-rtl/
-	@$(MAKE) check-regblock
+	@if [ "$(GIT_CHECK)" -eq 1 ]; then \
+		$(MAKE) check-regblock; \
+	fi
 
 check-regblock:
 	@$(MAKE) check-gen DIR=regblock-rtl

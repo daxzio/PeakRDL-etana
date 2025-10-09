@@ -375,8 +375,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f1_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f1_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f1_overflow = '0;
@@ -401,8 +401,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f2_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f2_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f2_overflow = '0;
@@ -427,8 +427,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f3_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f3_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f3_overflow = '0;
@@ -453,8 +453,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f4_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f4_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f4_overflow = '0;
@@ -479,8 +479,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f5_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f5_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f5_overflow = '0;
@@ -505,8 +505,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f6_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f6_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f6_overflow = '0;
@@ -531,8 +531,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f7_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f7_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f7_overflow = '0;
@@ -557,8 +557,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f8_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f8_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f8_overflow = '0;
@@ -583,8 +583,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_f9_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_f9_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_f9_overflow = '0;
@@ -609,8 +609,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_fa_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_fa_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_fa_overflow = '0;
@@ -635,8 +635,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_fa_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_fa_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_fa_overflow = '0;
@@ -661,8 +661,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f9_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f9_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f9_overflow = '0;
@@ -687,8 +687,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f8_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f8_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f8_overflow = '0;
@@ -713,8 +713,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f7_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f7_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f7_overflow = '0;
@@ -739,8 +739,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f6_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f6_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f6_overflow = '0;
@@ -765,8 +765,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f5_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f5_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f5_overflow = '0;
@@ -791,8 +791,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f4_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f4_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f4_overflow = '0;
@@ -817,8 +817,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f3_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f3_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f3_overflow = '0;
@@ -843,8 +843,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f2_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f2_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f2_overflow = '0;
@@ -869,8 +869,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg1_msb0_f1_overflow = (((4)'(next_c) + 3'h1) > 3'h7);
-            next_c = next_c + 3'h1;
+            field_combo_reg1_msb0_f1_overflow = (((4)'(next_c) + (4)'(3'h1)) > 4'h7);
+            next_c = next_c + (3)'(3'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg1_msb0_f1_overflow = '0;
@@ -898,8 +898,8 @@ module regblock (
             load_next_c = '1;
         end
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg2_f1_overflow = (((6)'(next_c) + 5'h1) > 5'h1f);
-            next_c = next_c + 5'h1;
+            field_combo_reg2_f1_overflow = (((6)'(next_c) + (6)'(5'h1)) > 6'h1f);
+            next_c = next_c + (5)'(5'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg2_f1_overflow = '0;
@@ -927,8 +927,8 @@ module regblock (
             load_next_c = '1;
         end
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg2_f2_overflow = (((6)'(next_c) + 5'h1) > 5'h1f);
-            next_c = next_c + 5'h1;
+            field_combo_reg2_f2_overflow = (((6)'(next_c) + (6)'(5'h1)) > 6'h1f);
+            next_c = next_c + (5)'(5'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg2_f2_overflow = '0;
@@ -956,8 +956,8 @@ module regblock (
             load_next_c = '1;
         end
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg2_f3_overflow = (((6)'(next_c) + 5'h1) > 5'h1f);
-            next_c = next_c + 5'h1;
+            field_combo_reg2_f3_overflow = (((6)'(next_c) + (6)'(5'h1)) > 6'h1f);
+            next_c = next_c + (5)'(5'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg2_f3_overflow = '0;
@@ -985,8 +985,8 @@ module regblock (
             load_next_c = '1;
         end
         if(hwif_in_incr_en) begin // increment
-            field_combo_reg2_f4_overflow = (((6)'(next_c) + 5'h1) > 5'h1f);
-            next_c = next_c + 5'h1;
+            field_combo_reg2_f4_overflow = (((6)'(next_c) + (6)'(5'h1)) > 6'h1f);
+            next_c = next_c + (5)'(5'h1);
             load_next_c = '1;
         end else begin
             field_combo_reg2_f4_overflow = '0;
@@ -1011,8 +1011,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g1_r1_f1_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_g1_r1_f1_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_g1_r1_f1_overflow = '0;
@@ -1037,8 +1037,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g1_r2_f1_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_g1_r2_f1_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_g1_r2_f1_overflow = '0;
@@ -1063,8 +1063,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g2_r1_f1_overflow = (((17)'(next_c) + 16'h1) > 16'hffff);
-            next_c = next_c + 16'h1;
+            field_combo_g2_r1_f1_overflow = (((17)'(next_c) + (17)'(16'h1)) > 17'hffff);
+            next_c = next_c + (16)'(16'h1);
             load_next_c = '1;
         end else begin
             field_combo_g2_r1_f1_overflow = '0;
@@ -1089,8 +1089,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g2_r2_f1_overflow = (((17)'(next_c) + 16'h1) > 16'hffff);
-            next_c = next_c + 16'h1;
+            field_combo_g2_r2_f1_overflow = (((17)'(next_c) + (17)'(16'h1)) > 17'hffff);
+            next_c = next_c + (16)'(16'h1);
             load_next_c = '1;
         end else begin
             field_combo_g2_r2_f1_overflow = '0;
@@ -1139,8 +1139,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g4_r1_f1_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_g4_r1_f1_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_g4_r1_f1_overflow = '0;
@@ -1165,8 +1165,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_incr_en) begin // increment
-            field_combo_g4_r2_f1_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_g4_r2_f1_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_g4_r2_f1_overflow = '0;

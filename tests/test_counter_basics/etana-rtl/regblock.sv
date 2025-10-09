@@ -210,8 +210,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_simple_implied_up_incr) begin // increment
-            field_combo_simple_implied_up_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_simple_implied_up_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_simple_implied_up_overflow = '0;
@@ -235,8 +235,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_simple_up_incr) begin // increment
-            field_combo_simple_up_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_simple_up_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_simple_up_overflow = '0;
@@ -260,8 +260,8 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_simple_down_decr) begin // decrement
-            field_combo_simple_down_underflow = (next_c < (4'h1));
-            next_c = next_c - 4'h1;
+            field_combo_simple_down_underflow = (next_c < (4)'(4'h1));
+            next_c = next_c - (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_simple_down_underflow = '0;
@@ -285,16 +285,16 @@ module regblock (
         load_next_c = '0;
 
         if(hwif_in_simple_updown_incr) begin // increment
-            field_combo_simple_updown_overflow = (((5)'(next_c) + 4'h1) > 4'hf);
-            next_c = next_c + 4'h1;
+            field_combo_simple_updown_overflow = (((5)'(next_c) + (5)'(4'h1)) > 5'hf);
+            next_c = next_c + (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown_overflow = '0;
         end
         field_combo_simple_updown_incrthreshold = (field_storage_simple_updown_value >= 4'hf);
         if(hwif_in_simple_updown_decr) begin // decrement
-            field_combo_simple_updown_underflow = (next_c < (4'h1));
-            next_c = next_c - 4'h1;
+            field_combo_simple_updown_underflow = (next_c < (4)'(4'h1));
+            next_c = next_c - (4)'(4'h1);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown_underflow = '0;
@@ -321,16 +321,16 @@ module regblock (
         load_next_c = '0;
 
         if(field_storage_simple_do_count_up_value) begin // increment
-            field_combo_simple_updown2_overflow = (((5)'(next_c) + 4'h3) > 4'hf);
-            next_c = next_c + 4'h3;
+            field_combo_simple_updown2_overflow = (((5)'(next_c) + (5)'(4'h3)) > 5'hf);
+            next_c = next_c + (4)'(4'h3);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown2_overflow = '0;
         end
         field_combo_simple_updown2_incrthreshold = (field_storage_simple_updown2_value >= 4'hf);
         if(field_storage_simple_do_count_down_value) begin // decrement
-            field_combo_simple_updown2_underflow = (next_c < (4'h3));
-            next_c = next_c - 4'h3;
+            field_combo_simple_updown2_underflow = (next_c < (4)'(4'h3));
+            next_c = next_c - (4)'(4'h3);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown2_underflow = '0;
@@ -354,16 +354,16 @@ module regblock (
         load_next_c = '0;
 
         if(field_storage_simple_do_count_up_value) begin // increment
-            field_combo_simple_updown3_overflow = (((5)'(next_c) + hwif_in_simple_updown3_incrvalue) > 4'hf);
-            next_c = next_c + hwif_in_simple_updown3_incrvalue;
+            field_combo_simple_updown3_overflow = (((5)'(next_c) + (5)'(hwif_in_simple_updown3_incrvalue)) > 5'hf);
+            next_c = next_c + (4)'(hwif_in_simple_updown3_incrvalue);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown3_overflow = '0;
         end
         field_combo_simple_updown3_incrthreshold = (field_storage_simple_updown3_value >= 4'hf);
         if(field_storage_simple_do_count_down_value) begin // decrement
-            field_combo_simple_updown3_underflow = (next_c < (hwif_in_simple_updown3_decrvalue));
-            next_c = next_c - hwif_in_simple_updown3_decrvalue;
+            field_combo_simple_updown3_underflow = (next_c < (4)'(hwif_in_simple_updown3_decrvalue));
+            next_c = next_c - (4)'(hwif_in_simple_updown3_decrvalue);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown3_underflow = '0;
@@ -387,16 +387,16 @@ module regblock (
         load_next_c = '0;
 
         if(field_storage_simple_do_count_up_value) begin // increment
-            field_combo_simple_updown4_overflow = (((5)'(next_c) + field_storage_simple_step_value) > 4'hf);
-            next_c = next_c + field_storage_simple_step_value;
+            field_combo_simple_updown4_overflow = (((5)'(next_c) + (5)'(field_storage_simple_step_value)) > 5'hf);
+            next_c = next_c + (4)'(field_storage_simple_step_value);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown4_overflow = '0;
         end
         field_combo_simple_updown4_incrthreshold = (field_storage_simple_updown4_value >= 4'hf);
         if(field_storage_simple_do_count_down_value) begin // decrement
-            field_combo_simple_updown4_underflow = (next_c < (field_storage_simple_step_value));
-            next_c = next_c - field_storage_simple_step_value;
+            field_combo_simple_updown4_underflow = (next_c < (4)'(field_storage_simple_step_value));
+            next_c = next_c - (4)'(field_storage_simple_step_value);
             load_next_c = '1;
         end else begin
             field_combo_simple_updown4_underflow = '0;
@@ -491,8 +491,8 @@ module regblock (
             load_next_c = '1;
         end
         if(field_combo_simple_updown3_overflow) begin // increment
-            field_combo_wrap_counter_overflow_count_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_wrap_counter_overflow_count_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_wrap_counter_overflow_count_overflow = '0;
@@ -519,8 +519,8 @@ module regblock (
             load_next_c = '1;
         end
         if(field_combo_simple_updown3_underflow) begin // increment
-            field_combo_wrap_counter_underflow_count_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_wrap_counter_underflow_count_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_wrap_counter_underflow_count_overflow = '0;

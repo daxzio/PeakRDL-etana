@@ -528,8 +528,8 @@ module regblock (
         load_next_c = '0;
 
         if(|decoded_reg_strb_r_reg2[1:0]) begin // increment
-            field_combo_counter_reg_f1_cnt_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_counter_reg_f1_cnt_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_counter_reg_f1_cnt_overflow = '0;
@@ -553,8 +553,8 @@ module regblock (
         load_next_c = '0;
 
         if(decoded_reg_strb_r_reg2[3]) begin // increment
-            field_combo_counter_reg_f2_cnt_overflow = (((9)'(next_c) + 8'h1) > 8'hff);
-            next_c = next_c + 8'h1;
+            field_combo_counter_reg_f2_cnt_overflow = (((9)'(next_c) + (9)'(8'h1)) > 9'hff);
+            next_c = next_c + (8)'(8'h1);
             load_next_c = '1;
         end else begin
             field_combo_counter_reg_f2_cnt_overflow = '0;

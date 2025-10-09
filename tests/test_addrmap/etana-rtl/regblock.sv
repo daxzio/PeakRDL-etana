@@ -133,18 +133,24 @@ module regblock (
             decoded_reg_strb_page_config32_hwna_tout_min[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_18
-            decoded_reg_strb_page_config64_hwna_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h2000 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwna_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h2004 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwna_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h2008 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwna_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h200c + i0*16'h10);
+            next_cpuif_addr = 32'h2000 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwna_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h2004 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwna_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h2008 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwna_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h200c + i0*16'h10;
+            decoded_reg_strb_page_config64_hwna_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_19
             next_cpuif_addr = 32'h3000 + i0*16'h4;
             decoded_reg_strb_tout_max32_hwna[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_20
-            decoded_reg_strb_tout_max64_hwna[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h4000 + i0*16'h8);
-            decoded_reg_strb_tout_max64_hwna[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h4004 + i0*16'h8);
+            next_cpuif_addr = 32'h4000 + i0*16'h8;
+            decoded_reg_strb_tout_max64_hwna[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h4004 + i0*16'h8;
+            decoded_reg_strb_tout_max64_hwna[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_21
             next_cpuif_addr = 32'h5000 + i0*16'h8;
@@ -153,18 +159,24 @@ module regblock (
             decoded_reg_strb_page_config32_hwnr_tout_min[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_22
-            decoded_reg_strb_page_config64_hwnr_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h6000 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwnr_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h6004 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwnr_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h6008 + i0*16'h10);
-            decoded_reg_strb_page_config64_hwnr_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h600c + i0*16'h10);
+            next_cpuif_addr = 32'h6000 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwnr_tout_max[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h6004 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwnr_tout_max[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h6008 + i0*16'h10;
+            decoded_reg_strb_page_config64_hwnr_tout_min[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h600c + i0*16'h10;
+            decoded_reg_strb_page_config64_hwnr_tout_min[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_23
             next_cpuif_addr = 32'h7000 + i0*16'h4;
             decoded_reg_strb_tout_max32_hwr[i0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
         for(int i0=0; i0<8; i0++) begin : gen_loop_24
-            decoded_reg_strb_tout_max64_hwr[i0][0] = cpuif_req_masked & (cpuif_addr == 32'h8000 + i0*16'h8);
-            decoded_reg_strb_tout_max64_hwr[i0][1] = cpuif_req_masked & (cpuif_addr == 32'h8004 + i0*16'h8);
+            next_cpuif_addr = 32'h8000 + i0*16'h8;
+            decoded_reg_strb_tout_max64_hwr[i0][0] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
+            next_cpuif_addr = 32'h8004 + i0*16'h8;
+            decoded_reg_strb_tout_max64_hwr[i0][1] = cpuif_req_masked & (cpuif_addr == next_cpuif_addr[15:0]);
         end
     end
 
