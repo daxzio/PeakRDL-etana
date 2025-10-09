@@ -53,7 +53,10 @@ Use PeakRDL-etana via the PeakRDL command line tool:
     python3 -m pip install peakrdl
 
     # Export with flattened signals!
-    peakrdl regblock atxmega_spi.rdl -o regblock/ --cpuif axi4-lite
+    peakrdl etana atxmega_spi.rdl -o regblock/ --cpuif axi4-lite
+
+    # Flatten nested address map components
+    peakrdl etana my_design.rdl -o output/ --flatten-nested-blocks
 
 Links
 -----

@@ -116,6 +116,47 @@ Pipeline Optimization
     Retime outputs to external components. Specify a comma-separated list of targets:
     ``reg``, ``regfile``, ``mem``, ``addrmap``, or ``all``.
 
+Address Map Configuration
+-------------------------
+
+.. option:: --flatten-nested-blocks
+
+    Flatten nested ``regfile`` and ``addrmap`` components into the parent address space
+    instead of treating them as external interfaces. Memory (``mem``) blocks always remain
+    external per SystemRDL specification.
+
+    When this option is enabled:
+
+    * Nested regfile and addrmap components are integrated directly into the parent module
+    * No external bus interfaces are generated for these components
+    * All registers become directly accessible through the top-level CPU interface
+    * Simplifies integration and improves tool compatibility
+    * Reduces interface complexity for deeply nested designs
+
+    **Example:**
+
+    .. code-block:: systemrdl
+
+        regfile config_regs {
+            reg setting1 @ 0x0;
+            reg setting2 @ 0x4;
+        };
+
+        addrmap top {
+            config_regs cfg @ 0x1000;  // Without --flatten: external interface
+                                        // With --flatten: integrated registers
+        };
+
+    **Use Cases:**
+
+    * Simpler designs that don't need hierarchical external interfaces
+    * Legacy tool compatibility where external interfaces cause issues
+    * Flat address space requirements
+    * Reduced port count in top-level module
+
+    **Note:** Memory blocks (``mem``) are always treated as external regardless of this option,
+    as they require specialized memory interfaces per SystemRDL specification.
+
 Advanced Options
 ----------------
 

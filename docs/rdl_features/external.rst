@@ -10,6 +10,26 @@ are omitted and instead a user-interface is presented on the
 External component signals on the hardware interface closely follow the semantics
 of the :ref:`cpuif_protocol`.
 
+Flattening Nested Blocks
+-------------------------
+By default, PeakRDL-etana treats nested ``regfile`` and ``addrmap`` components as
+external interfaces. Use the ``--flatten-nested-blocks`` command-line option to
+integrate these components directly into the parent address space instead:
+
+.. code-block:: bash
+
+    peakrdl etana design.rdl --flatten-nested-blocks -o output/
+
+When this option is enabled:
+
+* Nested ``regfile`` and ``addrmap`` components are integrated into the parent module
+* All registers become directly accessible through the top-level CPU interface
+* No external bus interfaces are generated for these components
+* Memory (``mem``) blocks always remain external per SystemRDL specification
+
+**Note:** Explicitly external registers (marked with ``external`` keyword) remain
+external even with ``--flatten-nested-blocks`` enabled.
+
 
 Things you should know
 ----------------------

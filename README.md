@@ -70,6 +70,9 @@ peakrdl etana my_registers.rdl -o output_dir/
 # Specify CPU interface type
 peakrdl etana my_registers.rdl --cpuif axi4-lite -o output_dir/
 
+# Flatten nested address map components
+peakrdl etana my_registers.rdl --flatten-nested-blocks -o output_dir/
+
 # Enable additional features
 peakrdl etana my_registers.rdl --pipeline --reset-active-low -o output_dir/
 ```
@@ -141,6 +144,9 @@ module my_block (
 ### Pipeline Optimization
 - `--rt-read-response` - Enable additional retiming stage
 - `--rt-external <targets>` - Retime outputs to external components
+
+### Address Map Configuration
+- `--flatten-nested-blocks` - Flatten nested regfile and addrmap components into parent address space instead of treating them as external interfaces. Memory blocks remain external per SystemRDL specification. Useful for simpler integration and better tool compatibility.
 
 ### Other Options
 - `-o, --output <dir>` - Specify output directory
