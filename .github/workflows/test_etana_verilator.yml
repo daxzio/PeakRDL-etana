@@ -45,4 +45,4 @@ jobs:
       - name: Run Tests
         run: |
           unset PYTHONHOME
-          cd tests ; ./test_all.sh SIM=verilator COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=1 COCOTB_REV=1.9.2
