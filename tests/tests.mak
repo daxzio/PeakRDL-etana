@@ -12,7 +12,7 @@ endif
 CPUIF?=apb4-flat
 #UDPS?=../regblock_udps.rdl
 UDPS?=
-ETANA_HDL_SRC=$(shell python -c "import peakrdl_etana, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_etana.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_etana.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
+#ETANA_HDL_SRC=$(shell python -c "import peakrdl_etana, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_etana.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_etana.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
 #REGBLOCK_HDL_SRC=$(shell python -c "import peakrdl_regblock, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_regblock.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_regblock.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
 REGBLOCK=0
 GHDL=0
@@ -27,7 +27,9 @@ VERILOG_SOURCES?= \
 ifeq ($(REGBLOCK),1)
 	override SIM=verilator
     TOPLEVEL=regblock_wrapper
-	COMPILE_ARGS += -Wno-MULTIDRIVEN -Wno-ALWCOMBORDER -Wno-WIDTHTRUNC
+	COMPILE_ARGS += -Wno-MULTIDRIVEN
+	COMPILE_ARGS += -Wno-ALWCOMBORDER
+	COMPILE_ARGS += -Wno-WIDTHTRUNC
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 endif
@@ -50,7 +52,9 @@ endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 ifeq ($(SIM),verilator)
-	COMPILE_ARGS += --no-timing -Wno-UNOPTFLAT -Wno-WIDTHEXPAND
+	COMPILE_ARGS += --no-timing
+	# COMPILE_ARGS += -Wno-UNOPTFLAT
+	#COMPILE_ARGS += -Wno-WIDTHEXPAND
 endif
 ifeq ($(WAVES),1)
 	ifeq ($(SIM),verilator)
@@ -61,9 +65,32 @@ ifeq ($(WAVES),1)
 	endif
 endif
 
+check-gen:
+	@if [ -z "$(DIR)" ]; then \
+		echo "❌ ERROR: DIR variable not set!"; \
+		echo "Usage: make check-gen DIR=etana-rtl"; \
+		exit 1; \
+	fi
+	@if ! git diff --quiet --exit-code $(DIR)/ 2>/dev/null; then \
+		echo ""; \
+		echo "❌ ERROR: Generated code in $(DIR) differs from git!"; \
+		echo ""; \
+		git diff $(DIR)/; \
+		echo ""; \
+		echo "Generated files do not match committed versions."; \
+		echo "Either commit the changes or fix the generator."; \
+		exit 1; \
+	else \
+		echo "✅ Generated code in $(DIR) matches git"; \
+	fi
+
 etana:
 	rm -rf etana-rtl/*
 	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
+	@$(MAKE) check-etana
+
+check-etana:
+	@$(MAKE) check-gen DIR=etana-rtl
 
 regblock:
 	rm -rf regblock-rtl/*
@@ -71,6 +98,10 @@ regblock:
 	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../../scripts/strip_trailing_whitespace.py regblock-rtl/
+	@$(MAKE) check-regblock
+
+check-regblock:
+	@$(MAKE) check-gen DIR=regblock-rtl
 
 regblock-vhdl:
 	rm -rf regblock-vhdl-rtl/*
