@@ -307,7 +307,7 @@ class InputLogicGenerator(RDLListener):
 
             if node.is_sw_readable:
                 self.hwif_port.append(
-                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"  # type: ignore[arg-type]
+                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"
                 )
             if node.is_sw_writable:
                 x = self.hwif.get_output_identifier(node.parent)  # type: ignore[arg-type]

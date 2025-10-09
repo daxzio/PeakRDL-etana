@@ -170,7 +170,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             raise
 
     def process_reg(self, node: RegNode) -> None:
-        regwidth = node.get_property("regwidth")
         # Note: regwidth can be less than cpuif.data_width for narrow registers
         # The readback logic below handles padding automatically
         current_bit = 0
@@ -191,9 +190,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 )
 
             if self.policy.is_external(node):
-                value = self.exp.hwif.get_external_rd_data(field, True)  # type: ignore[arg-type]
+                value = self.exp.hwif.get_external_rd_data(field, True)
             else:
-                value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]  # type: ignore[assignment]
+                value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
             if field.msb < field.lsb:
                 # Field gets bitswapped since it is in [low:high] orientation
                 value = do_bitswap(value, field.width)  # type: ignore[assignment]
@@ -352,9 +351,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         subword_idx = 0
         current_bit = 0  # Bit-offset within the wide register
-        access_strb = self.exp.dereferencer.get_access_strobe(
-            node, reduce_substrobes=False
-        )
         # Fields are sorted by ascending low bit
         for field in node.fields():
             if not field.is_sw_readable:
@@ -415,10 +411,10 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     if self.policy.is_external(node):
                         value = self.exp.hwif.get_external_rd_data(field, True)
                     else:
-                        value = self.exp.dereferencer.get_value(field)
+                        value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                     if field.msb < field.lsb:
                         # Field gets bitswapped since it is in [low:high] orientation
-                        value = do_bitswap(value, field.width)
+                        value = do_bitswap(value, field.width)  # type: ignore[assignment]
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{high}:{low}] = {rd_strb} ? {value} : '0;"
@@ -455,8 +451,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                                 field, True
                             )
                         else:
-                            field_value = self.exp.dereferencer.get_value(field)
-                        value = do_bitswap(
+                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        value = do_bitswap(  # type: ignore[assignment]
                             do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
@@ -467,8 +463,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                                 field, True
                             )
                         else:
-                            field_value = self.exp.dereferencer.get_value(field)
-                        value = do_slice(field_value, f_high, f_low)
+                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        value = do_slice(field_value, f_high, f_low)  # type: ignore[assignment]
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"
@@ -504,8 +500,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                                 field, True
                             )
                         else:
-                            field_value = self.exp.dereferencer.get_value(field)
-                        value = do_bitswap(
+                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        value = do_bitswap(  # type: ignore[assignment]
                             do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
@@ -516,8 +512,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                                 field, True
                             )
                         else:
-                            field_value = self.exp.dereferencer.get_value(field)
-                        value = do_slice(field_value, f_high, f_low)
+                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        value = do_slice(field_value, f_high, f_low)  # type: ignore[assignment]
 
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"

@@ -10,13 +10,13 @@ Usage:
 If no directory is specified, processes current directory recursively.
 """
 
-import os
 import sys
 import argparse
 from pathlib import Path
+from typing import Tuple
 
 
-def strip_trailing_whitespace(file_path: Path) -> tuple[int, bool]:
+def strip_trailing_whitespace(file_path: Path) -> Tuple[int, bool]:
     """
     Strip trailing whitespace from a file.
 
@@ -60,7 +60,7 @@ def strip_trailing_whitespace(file_path: Path) -> tuple[int, bool]:
 
 def process_directory(
     directory: Path, pattern: str = "*.sv", recursive: bool = True
-) -> tuple[int, int]:
+) -> Tuple[int, int]:
     """
     Process all files matching pattern in directory.
 

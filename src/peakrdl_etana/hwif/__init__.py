@@ -162,7 +162,9 @@ class Hwif:
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
-    def get_external_rd_data(self, node: AddressableNode, index: bool = False) -> str:
+    def get_external_rd_data(
+        self, node: Union[FieldNode, AddressableNode], index: bool = False
+    ) -> str:
         """
         Returns the identifier string for an external component's rd_data signal
         """

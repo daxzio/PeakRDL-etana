@@ -120,7 +120,6 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         super().enter_AddressableComponent(node)
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
-        policy = external_policy(self.addr_decode.exp.ds)
         if self.policy.is_external(node):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
