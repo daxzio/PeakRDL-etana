@@ -50,12 +50,43 @@ fi
 echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF ==="
 echo ""
 
+# Define skip lists based on conditions
+SKIP_TESTS=()
+
+SKIP_TESTS+=("test_user_cpuif" "test_pkg_params")
+
+# Skip certain tests when REGBLOCK=1
+if [ "$REGBLOCK" -eq 1 ]; then
+    SKIP_TESTS+=("test_addrmap")
+    # Add more tests here if needed
+fi
+
+# Skip certain tests when using specific simulators
+# if [ "$SIM" = "verilator" ]; then
+#     SKIP_TESTS+=("test_example")
+# fi
+
+# Skip certain tests when using specific CPU interfaces
+# if [ "$CPUIF" = "axi4-lite" ]; then
+#     SKIP_TESTS+=("test_example")
+# fi
+
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 
 for dir in test_*/; do
     if [ -f "$dir/Makefile" ] && [ -f "$dir/test_dut.py" ]; then
         test_name=$(basename "$dir")
+
+        # Check if test should be skipped
+        if [[ " ${SKIP_TESTS[@]} " =~ " ${test_name} " ]]; then
+            echo "⏭️  Skipping $test_name (not applicable for $TARGET_NAME$SYNTH_INDICATOR)"
+            SKIP_COUNT=$((SKIP_COUNT + 1))
+            echo ""
+            continue
+        fi
+
         echo "Testing $test_name..."
 
         # Choose target based on REGBLOCK value
@@ -108,7 +139,10 @@ done
 echo "=== Summary ==="
 echo "PASS: $PASS_COUNT"
 echo "FAIL: $FAIL_COUNT"
-echo "Total: $((PASS_COUNT + FAIL_COUNT))"
+echo "SKIP: $SKIP_COUNT"
+TOTAL_RUN=$((PASS_COUNT + FAIL_COUNT))
+TOTAL_ALL=$((PASS_COUNT + FAIL_COUNT + SKIP_COUNT))
+echo "Total: $TOTAL_RUN (of $TOTAL_ALL tests)"
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
     exit 1

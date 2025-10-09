@@ -591,7 +591,7 @@ module regblock (
     logic [15:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [15:0] readback_array[20];
+    logic [15:0] readback_array[25];
     assign readback_array[0][7:0] = (decoded_reg_strb_rw_reg1[0] && !decoded_req_is_wr) ? field_storage_rw_reg1_f1_value : '0;
     assign readback_array[0][11:8] = '0;
     assign readback_array[0][14:12] = (decoded_reg_strb_rw_reg1[0] && !decoded_req_is_wr) ? field_storage_rw_reg1_f2_value : '0;
@@ -600,41 +600,46 @@ module regblock (
     assign readback_array[1][4:4] = (decoded_reg_strb_rw_reg1[2] && !decoded_req_is_wr) ? field_storage_rw_reg1_f3_value : '0;
     assign readback_array[1][7:5] = '0;
     assign readback_array[1][15:8] = (decoded_reg_strb_rw_reg1[2] && !decoded_req_is_wr) ? field_storage_rw_reg1_f4_value : '0;
-    assign readback_array[2][3:0] = (decoded_reg_strb_rw_reg2[1] && !decoded_req_is_wr) ? field_storage_rw_reg2_f1_value : '0;
-    assign readback_array[2][15:4] = '0;
-    assign readback_array[3][15:0] = (decoded_reg_strb_rw_reg2[3] && !decoded_req_is_wr) ? field_storage_rw_reg2_f2_value : '0;
-    assign readback_array[4][7:0] = (decoded_reg_strb_rw_reg1_lsb0[0] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f1_value[0], field_storage_rw_reg1_lsb0_f1_value[1], field_storage_rw_reg1_lsb0_f1_value[2], field_storage_rw_reg1_lsb0_f1_value[3], field_storage_rw_reg1_lsb0_f1_value[4], field_storage_rw_reg1_lsb0_f1_value[5], field_storage_rw_reg1_lsb0_f1_value[6], field_storage_rw_reg1_lsb0_f1_value[7]} : '0;
-    assign readback_array[4][11:8] = '0;
-    assign readback_array[4][14:12] = (decoded_reg_strb_rw_reg1_lsb0[0] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f2_value[0], field_storage_rw_reg1_lsb0_f2_value[1], field_storage_rw_reg1_lsb0_f2_value[2]} : '0;
-    assign readback_array[4][15:15] = '0;
-    assign readback_array[5][3:0] = '0;
-    assign readback_array[5][4:4] = (decoded_reg_strb_rw_reg1_lsb0[2] && !decoded_req_is_wr) ? field_storage_rw_reg1_lsb0_f3_value : '0;
-    assign readback_array[5][7:5] = '0;
-    assign readback_array[5][15:8] = (decoded_reg_strb_rw_reg1_lsb0[2] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f4_value[0], field_storage_rw_reg1_lsb0_f4_value[1], field_storage_rw_reg1_lsb0_f4_value[2], field_storage_rw_reg1_lsb0_f4_value[3], field_storage_rw_reg1_lsb0_f4_value[4], field_storage_rw_reg1_lsb0_f4_value[5], field_storage_rw_reg1_lsb0_f4_value[6], field_storage_rw_reg1_lsb0_f4_value[7]} : '0;
-    assign readback_array[6][3:0] = (decoded_reg_strb_rw_reg2_lsb0[1] && !decoded_req_is_wr) ? {field_storage_rw_reg2_lsb0_f1_value[0], field_storage_rw_reg2_lsb0_f1_value[1], field_storage_rw_reg2_lsb0_f1_value[2], field_storage_rw_reg2_lsb0_f1_value[3]} : '0;
-    assign readback_array[6][15:4] = '0;
-    assign readback_array[7][15:0] = (decoded_reg_strb_rw_reg2_lsb0[3] && !decoded_req_is_wr) ? {field_storage_rw_reg2_lsb0_f2_value[0], field_storage_rw_reg2_lsb0_f2_value[1], field_storage_rw_reg2_lsb0_f2_value[2], field_storage_rw_reg2_lsb0_f2_value[3], field_storage_rw_reg2_lsb0_f2_value[4], field_storage_rw_reg2_lsb0_f2_value[5], field_storage_rw_reg2_lsb0_f2_value[6], field_storage_rw_reg2_lsb0_f2_value[7], field_storage_rw_reg2_lsb0_f2_value[8], field_storage_rw_reg2_lsb0_f2_value[9], field_storage_rw_reg2_lsb0_f2_value[10], field_storage_rw_reg2_lsb0_f2_value[11], field_storage_rw_reg2_lsb0_f2_value[12], field_storage_rw_reg2_lsb0_f2_value[13], field_storage_rw_reg2_lsb0_f2_value[14], field_storage_rw_reg2_lsb0_f2_value[15]} : '0;
-    assign readback_array[8][11:0] = '0;
-    assign readback_array[8][15:12] = (decoded_reg_strb_r_reg[0] && !decoded_req_is_wr) ? hwif_in_r_reg_f1[3:0] : '0;
-    assign readback_array[9][3:0] = (decoded_reg_strb_r_reg[1] && !decoded_req_is_wr) ? hwif_in_r_reg_f1[7:4] : '0;
-    assign readback_array[9][14:4] = (decoded_reg_strb_r_reg[1] && !decoded_req_is_wr) ? hwif_in_r_reg_f2 : '0;
-    assign readback_array[9][15:15] = '0;
+    assign readback_array[2] = (decoded_reg_strb_rw_reg1[3] && !decoded_req_is_wr) ? 16'h0 : '0;
+    assign readback_array[3][3:0] = (decoded_reg_strb_rw_reg2[1] && !decoded_req_is_wr) ? field_storage_rw_reg2_f1_value : '0;
+    assign readback_array[3][15:4] = '0;
+    assign readback_array[4][15:0] = (decoded_reg_strb_rw_reg2[3] && !decoded_req_is_wr) ? field_storage_rw_reg2_f2_value : '0;
+    assign readback_array[5][7:0] = (decoded_reg_strb_rw_reg1_lsb0[0] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f1_value[0], field_storage_rw_reg1_lsb0_f1_value[1], field_storage_rw_reg1_lsb0_f1_value[2], field_storage_rw_reg1_lsb0_f1_value[3], field_storage_rw_reg1_lsb0_f1_value[4], field_storage_rw_reg1_lsb0_f1_value[5], field_storage_rw_reg1_lsb0_f1_value[6], field_storage_rw_reg1_lsb0_f1_value[7]} : '0;
+    assign readback_array[5][11:8] = '0;
+    assign readback_array[5][14:12] = (decoded_reg_strb_rw_reg1_lsb0[0] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f2_value[0], field_storage_rw_reg1_lsb0_f2_value[1], field_storage_rw_reg1_lsb0_f2_value[2]} : '0;
+    assign readback_array[5][15:15] = '0;
+    assign readback_array[6][3:0] = '0;
+    assign readback_array[6][4:4] = (decoded_reg_strb_rw_reg1_lsb0[2] && !decoded_req_is_wr) ? field_storage_rw_reg1_lsb0_f3_value : '0;
+    assign readback_array[6][7:5] = '0;
+    assign readback_array[6][15:8] = (decoded_reg_strb_rw_reg1_lsb0[2] && !decoded_req_is_wr) ? {field_storage_rw_reg1_lsb0_f4_value[0], field_storage_rw_reg1_lsb0_f4_value[1], field_storage_rw_reg1_lsb0_f4_value[2], field_storage_rw_reg1_lsb0_f4_value[3], field_storage_rw_reg1_lsb0_f4_value[4], field_storage_rw_reg1_lsb0_f4_value[5], field_storage_rw_reg1_lsb0_f4_value[6], field_storage_rw_reg1_lsb0_f4_value[7]} : '0;
+    assign readback_array[7] = (decoded_reg_strb_rw_reg1_lsb0[3] && !decoded_req_is_wr) ? 16'h0 : '0;
+    assign readback_array[8][3:0] = (decoded_reg_strb_rw_reg2_lsb0[1] && !decoded_req_is_wr) ? {field_storage_rw_reg2_lsb0_f1_value[0], field_storage_rw_reg2_lsb0_f1_value[1], field_storage_rw_reg2_lsb0_f1_value[2], field_storage_rw_reg2_lsb0_f1_value[3]} : '0;
+    assign readback_array[8][15:4] = '0;
+    assign readback_array[9][15:0] = (decoded_reg_strb_rw_reg2_lsb0[3] && !decoded_req_is_wr) ? {field_storage_rw_reg2_lsb0_f2_value[0], field_storage_rw_reg2_lsb0_f2_value[1], field_storage_rw_reg2_lsb0_f2_value[2], field_storage_rw_reg2_lsb0_f2_value[3], field_storage_rw_reg2_lsb0_f2_value[4], field_storage_rw_reg2_lsb0_f2_value[5], field_storage_rw_reg2_lsb0_f2_value[6], field_storage_rw_reg2_lsb0_f2_value[7], field_storage_rw_reg2_lsb0_f2_value[8], field_storage_rw_reg2_lsb0_f2_value[9], field_storage_rw_reg2_lsb0_f2_value[10], field_storage_rw_reg2_lsb0_f2_value[11], field_storage_rw_reg2_lsb0_f2_value[12], field_storage_rw_reg2_lsb0_f2_value[13], field_storage_rw_reg2_lsb0_f2_value[14], field_storage_rw_reg2_lsb0_f2_value[15]} : '0;
     assign readback_array[10][11:0] = '0;
-    assign readback_array[10][15:12] = (decoded_reg_strb_r_reg_lsb0[0] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f1[4], hwif_in_r_reg_lsb0_f1[5], hwif_in_r_reg_lsb0_f1[6], hwif_in_r_reg_lsb0_f1[7]} : '0;
-    assign readback_array[11][3:0] = (decoded_reg_strb_r_reg_lsb0[1] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f1[0], hwif_in_r_reg_lsb0_f1[1], hwif_in_r_reg_lsb0_f1[2], hwif_in_r_reg_lsb0_f1[3]} : '0;
-    assign readback_array[11][14:4] = (decoded_reg_strb_r_reg_lsb0[1] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f2[0], hwif_in_r_reg_lsb0_f2[1], hwif_in_r_reg_lsb0_f2[2], hwif_in_r_reg_lsb0_f2[3], hwif_in_r_reg_lsb0_f2[4], hwif_in_r_reg_lsb0_f2[5], hwif_in_r_reg_lsb0_f2[6], hwif_in_r_reg_lsb0_f2[7], hwif_in_r_reg_lsb0_f2[8], hwif_in_r_reg_lsb0_f2[9], hwif_in_r_reg_lsb0_f2[10]} : '0;
+    assign readback_array[10][15:12] = (decoded_reg_strb_r_reg[0] && !decoded_req_is_wr) ? hwif_in_r_reg_f1[3:0] : '0;
+    assign readback_array[11][3:0] = (decoded_reg_strb_r_reg[1] && !decoded_req_is_wr) ? hwif_in_r_reg_f1[7:4] : '0;
+    assign readback_array[11][14:4] = (decoded_reg_strb_r_reg[1] && !decoded_req_is_wr) ? hwif_in_r_reg_f2 : '0;
     assign readback_array[11][15:15] = '0;
-    assign readback_array[12][11:0] = '0;
-    assign readback_array[12][15:12] = (decoded_reg_strb_r_reg2[0] && !decoded_req_is_wr) ? hwif_in_r_reg2_f1[3:0] : '0;
-    assign readback_array[13][15:0] = (decoded_reg_strb_r_reg2[1] && !decoded_req_is_wr) ? hwif_in_r_reg2_f1[19:4] : '0;
-    assign readback_array[14][1:0] = (decoded_reg_strb_r_reg2[3] && !decoded_req_is_wr) ? hwif_in_r_reg2_f2 : '0;
-    assign readback_array[14][15:2] = '0;
-    assign readback_array[15][7:0] = (decoded_reg_strb_counter_reg && !decoded_req_is_wr) ? field_storage_counter_reg_f1_cnt_value : '0;
-    assign readback_array[15][15:8] = (decoded_reg_strb_counter_reg && !decoded_req_is_wr) ? field_storage_counter_reg_f2_cnt_value : '0;
-    assign readback_array[16][15:0] = (decoded_reg_strb_r_reg3[0] && !decoded_req_is_wr) ? 16'h5678 : '0;
-    assign readback_array[17][15:0] = (decoded_reg_strb_r_reg3[1] && !decoded_req_is_wr) ? 16'h1234 : '0;
-    assign readback_array[18][15:0] = (decoded_reg_strb_r_reg4[0] && !decoded_req_is_wr) ? 16'h2c48 : '0;
-    assign readback_array[19][15:0] = (decoded_reg_strb_r_reg4[1] && !decoded_req_is_wr) ? 16'h1e6a : '0;
+    assign readback_array[12] = (decoded_reg_strb_r_reg[1] && !decoded_req_is_wr) ? 16'h0 : '0;
+    assign readback_array[13][11:0] = '0;
+    assign readback_array[13][15:12] = (decoded_reg_strb_r_reg_lsb0[0] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f1[4], hwif_in_r_reg_lsb0_f1[5], hwif_in_r_reg_lsb0_f1[6], hwif_in_r_reg_lsb0_f1[7]} : '0;
+    assign readback_array[14][3:0] = (decoded_reg_strb_r_reg_lsb0[1] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f1[0], hwif_in_r_reg_lsb0_f1[1], hwif_in_r_reg_lsb0_f1[2], hwif_in_r_reg_lsb0_f1[3]} : '0;
+    assign readback_array[14][14:4] = (decoded_reg_strb_r_reg_lsb0[1] && !decoded_req_is_wr) ? {hwif_in_r_reg_lsb0_f2[0], hwif_in_r_reg_lsb0_f2[1], hwif_in_r_reg_lsb0_f2[2], hwif_in_r_reg_lsb0_f2[3], hwif_in_r_reg_lsb0_f2[4], hwif_in_r_reg_lsb0_f2[5], hwif_in_r_reg_lsb0_f2[6], hwif_in_r_reg_lsb0_f2[7], hwif_in_r_reg_lsb0_f2[8], hwif_in_r_reg_lsb0_f2[9], hwif_in_r_reg_lsb0_f2[10]} : '0;
+    assign readback_array[14][15:15] = '0;
+    assign readback_array[15] = (decoded_reg_strb_r_reg_lsb0[1] && !decoded_req_is_wr) ? 16'h0 : '0;
+    assign readback_array[16][11:0] = '0;
+    assign readback_array[16][15:12] = (decoded_reg_strb_r_reg2[0] && !decoded_req_is_wr) ? hwif_in_r_reg2_f1[3:0] : '0;
+    assign readback_array[17][15:0] = (decoded_reg_strb_r_reg2[1] && !decoded_req_is_wr) ? hwif_in_r_reg2_f1[19:4] : '0;
+    assign readback_array[18][1:0] = (decoded_reg_strb_r_reg2[3] && !decoded_req_is_wr) ? hwif_in_r_reg2_f2 : '0;
+    assign readback_array[18][15:2] = '0;
+    assign readback_array[19] = (decoded_reg_strb_r_reg2[3] && !decoded_req_is_wr) ? 16'h0 : '0;
+    assign readback_array[20][7:0] = (decoded_reg_strb_counter_reg && !decoded_req_is_wr) ? field_storage_counter_reg_f1_cnt_value : '0;
+    assign readback_array[20][15:8] = (decoded_reg_strb_counter_reg && !decoded_req_is_wr) ? field_storage_counter_reg_f2_cnt_value : '0;
+    assign readback_array[21][15:0] = (decoded_reg_strb_r_reg3[0] && !decoded_req_is_wr) ? 16'h5678 : '0;
+    assign readback_array[22][15:0] = (decoded_reg_strb_r_reg3[1] && !decoded_req_is_wr) ? 16'h1234 : '0;
+    assign readback_array[23][15:0] = (decoded_reg_strb_r_reg4[0] && !decoded_req_is_wr) ? 16'h2c48 : '0;
+    assign readback_array[24][15:0] = (decoded_reg_strb_r_reg4[1] && !decoded_req_is_wr) ? 16'h1e6a : '0;
 
     // Reduce the array
     // always_comb begin
@@ -643,7 +648,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<20; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<25; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 
