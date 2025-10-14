@@ -71,11 +71,13 @@ Links
     :hidden:
 
     self
-    architecture
-    hwif
-    configuring
-    limitations
-    licensing
+   architecture
+   hwif
+   template_generation
+   hwif_report
+   configuring
+   limitations
+   licensing
     api
 
 .. toctree::

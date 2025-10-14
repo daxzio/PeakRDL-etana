@@ -36,10 +36,11 @@ This approach eliminates the need for complex struct hierarchies and provides:
 - **Flattened signal interface** - Individual ports for clean integration
 - **Full SystemRDL 2.0 support** - Complete standard compliance
 - **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, and more
+- **Integration templates** - Auto-generated example modules for easy integration
+- **Signal documentation** - Comprehensive reports mapping RDL to signals
 - **Configurable pipelining** - Optimization options for high-speed designs
 - **Enhanced safety checks** - Width validation and assertion guards
 - **Optimized field logic** - Improved reset handling and interrupt management
-- **Comprehensive documentation** - Generated interface documentation
 - **Flexible addressing** - Support for various memory maps and alignments
 
 ## Installation
@@ -73,8 +74,18 @@ peakrdl etana my_registers.rdl --cpuif axi4-lite -o output_dir/
 # Flatten nested address map components
 peakrdl etana my_registers.rdl --flatten-nested-blocks -o output_dir/
 
-# Enable additional features
-peakrdl etana my_registers.rdl --pipeline --reset-active-low -o output_dir/
+# Generate integration template and signal reports
+peakrdl etana my_registers.rdl --generate-template --hwif-report -o output_dir/
+
+# Complete workflow with all features
+peakrdl etana my_registers.rdl \
+    --cpuif apb4-flat \
+    --in-str i --out-str o \
+    --default-reset arst_n \
+    --flatten-nested-blocks \
+    --generate-template \
+    --hwif-report \
+    -o output_dir/
 ```
 
 ## Usage Example
@@ -148,6 +159,10 @@ module my_block (
 ### Address Map Configuration
 - `--flatten-nested-blocks` - Flatten nested regfile and addrmap components into parent address space instead of treating them as external interfaces. Memory blocks remain external per SystemRDL specification. Useful for simpler integration and better tool compatibility.
 
+### Output and Documentation
+- `--generate-template` - Generate an integration template module (`{module}_example.sv`) showing how to instantiate the register block with proper signal declarations. The template includes APB interface at top-level and hardware interface signals declared internally with `w_` prefix.
+- `--hwif-report` - Generate hardware interface signal reports mapping RDL fields to flattened signal names. Produces both markdown (`.rpt`) and CSV (`.csv`) formats with signal names, widths, RDL paths, addresses, and access types.
+
 ### Other Options
 - `-o, --output <dir>` - Specify output directory
 - `--rename <name>` - Override top-level module name
@@ -165,15 +180,10 @@ Detailed documentation is available in the `docs/` directory, including:
 
 PeakRDL-etana includes comprehensive test frameworks:
 
-### Test Frameworks
+### Test Framework
 
-- **tests-cocotb/** - Modern Python-based testing framework using cocotb
-- **tests-regblock/** - Legacy framework using Jinja2 + SystemVerilog templates
+- **tests/** - Modern Python-based testing framework using cocotb
 
-### Testing Documentation
-
-**📚 [TESTING_MIGRATION_README.md](TESTING_MIGRATION_README.md)** - Start here for overview and quick start
-**📖 [COCOTB_MIGRATION_GUIDE.md](COCOTB_MIGRATION_GUIDE.md)** - Complete step-by-step migration guide
 
 ### Quick Start (cocotb)
 
@@ -192,26 +202,13 @@ make clean etana sim SIM=verilator REGBLOCK=0
 make
 ```
 
-**All 26 tests migrated (100% coverage) ✅**
-
-### Quick Start (tests-regblock)
-
-```bash
-# Install dependencies
-cd tests-regblock
-pip install -r requirements.txt
-
-# Run tests
-pytest
-```
-
 ## Contributing
 
 Contributions are welcome! Please see `CONTRIBUTING.md` for development guidelines and coding standards.
 
 ## License
 
-This project is licensed under the GPL-3.0 license. See the LICENSE file for details.
+This project is licensed under the LGPL-3.0 license. See the LICENSE file for details.
 
 ---
 
