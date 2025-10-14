@@ -154,22 +154,16 @@ class RegblockExporter:
                 f"got an unexpected keyword argument '{list(kwargs.keys())[0]}'"
             )
 
-        if generate_hwif_report:
-            path = os.path.join(output_dir, f"{self.ds.module_name}_hwif.rpt")
-            hwif_report_file = open(
-                path, "w", encoding="utf-8"
-            )  # pylint: disable=consider-using-with
-        else:
-            hwif_report_file = None
-
         # Construct exporter components
         self.cpuif = cpuif_cls(self)
         self.hwif = Hwif(
             self,
-            hwif_report_file=hwif_report_file,
             hwif_in_str=self.ds.hwif_in_str,
             hwif_out_str=self.ds.hwif_out_str,
         )
+
+        # Store hwif report flag for later use
+        self.generate_hwif_report = generate_hwif_report
         self.readback = Readback(self)
         self.address_decode = AddressDecode(self)
         self.field_logic = FieldLogic(self)
@@ -230,8 +224,13 @@ class RegblockExporter:
             template_gen = TemplateGenerator(self)
             template_gen.generate(output_dir, self.ds.module_name)
 
-        if hwif_report_file:
-            hwif_report_file.close()
+        # Generate hwif report if requested
+        if self.generate_hwif_report:
+            from .hwif_report_generator import HwifReportGenerator
+
+            report_path = os.path.join(output_dir, f"{self.ds.module_name}_hwif.rpt")
+            report_gen = HwifReportGenerator(self)
+            report_gen.generate(report_path)
 
 
 class DesignState:

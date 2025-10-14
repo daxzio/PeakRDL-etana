@@ -5,7 +5,7 @@ Generates example SystemVerilog modules showing how to instantiate
 the generated register block with proper signal declarations.
 """
 
-from typing import TYPE_CHECKING, List, Dict, Optional
+from typing import TYPE_CHECKING, List
 from dataclasses import dataclass
 import re
 
@@ -73,7 +73,7 @@ class TemplateGenerator:
 
         Returns list of APB signals (clk, reset, and bus interface signals).
         """
-        signals = []
+        signals: List[SignalInfo] = []
 
         # Add clk and reset first - these come from the design state, not cpuif
         signals.append(
@@ -86,35 +86,24 @@ class TemplateGenerator:
             )
         )
 
-        # Add reset signal - determine the actual reset name being used
-        reset_signal = None
-        if self.cpuif.reset:
-            reset_signal = self.cpuif.reset
-        elif self.ds.top_node.cpuif_reset:
-            reset_signal = self.ds.top_node.cpuif_reset
+        # Add reset signal - get from cpuif or top_node
+        reset_name = "arst_n"  # Default
+        cpuif_reset = self.cpuif.reset  # type: ignore[has-type]
 
-        if reset_signal:
-            reset_name = reset_signal.name
-            signals.append(
-                SignalInfo(
-                    name=reset_name,
-                    direction="input",
-                    wire_type="wire",
-                    packed_dim="",
-                    base_name=reset_name,
-                )
+        if cpuif_reset is not None:
+            reset_name = cpuif_reset.inst_name
+        elif self.ds.top_node.cpuif_reset is not None:
+            reset_name = self.ds.top_node.cpuif_reset.inst_name
+
+        signals.append(
+            SignalInfo(
+                name=reset_name,
+                direction="input",
+                wire_type="wire",
+                packed_dim="",
+                base_name=reset_name,
             )
-        else:
-            # Default to arst_n if no reset is defined
-            signals.append(
-                SignalInfo(
-                    name="arst_n",
-                    direction="input",
-                    wire_type="wire",
-                    packed_dim="",
-                    base_name="arst_n",
-                )
-            )
+        )
 
         # Get cpuif port declarations
         cpuif_ports = self.cpuif.port_declaration
@@ -158,7 +147,7 @@ class TemplateGenerator:
 
         Returns list of hwif signals with w_ prefix applied to base names.
         """
-        signals = []
+        signals: List[SignalInfo] = []
 
         # Get hwif port declarations
         if not self.hwif.has_hwif_ports:
@@ -236,35 +225,20 @@ class TemplateGenerator:
         other_apb = [s for s in apb_signals if s != clk_sig and s not in reset_sigs]
 
         # Add ports with leading comma style: clk, reset(s), then other APB
-        first = True
         if clk_sig:
-            lines.append(f"         input wire clk")
-            first = False
+            lines.append("         input wire clk")
         for rst in reset_sigs:
-            if first:
-                lines.append(f"         input wire {rst.name}")
-                first = False
-            else:
-                lines.append(f"        ,input wire {rst.name}")
+            lines.append(f"        ,input wire {rst.name}")
 
         # Add comment for APB section
         if other_apb:
-            if not first:
-                lines.append("        // APB interface")
+            lines.append("        // APB interface")
 
             for sig in other_apb:
                 type_str = f"{sig.wire_type} " if sig.wire_type != "wire" else ""
                 dim_str = f"{sig.packed_dim} " if sig.packed_dim else ""
 
-                if first:
-                    lines.append(
-                        f"         {sig.direction} {type_str}{dim_str}{sig.name}"
-                    )
-                    first = False
-                else:
-                    lines.append(
-                        f"        ,{sig.direction} {type_str}{dim_str}{sig.name}"
-                    )
+                lines.append(f"        ,{sig.direction} {type_str}{dim_str}{sig.name}")
 
         lines.append(");")
         lines.append("")
@@ -291,25 +265,16 @@ class TemplateGenerator:
         other_apb = [s for s in apb_signals if s != clk_sig and s not in reset_sigs]
 
         if clk_sig:
-            conn_lines.append(f"         .clk(clk)")
-            first = False
+            conn_lines.append("         .clk(clk)")
         for rst in reset_sigs:
-            if first:
-                conn_lines.append(f"         .{rst.name}({rst.name})")
-                first = False
-            else:
-                conn_lines.append(f"        ,.{rst.name}({rst.name})")
+            conn_lines.append(f"        ,.{rst.name}({rst.name})")
 
         # Add APB interface signals
         if other_apb:
             if not first:
                 conn_lines.append("        // APB interface")
             for sig in other_apb:
-                if first:
-                    conn_lines.append(f"         .{sig.name}({sig.name})")
-                    first = False
-                else:
-                    conn_lines.append(f"        ,.{sig.name}({sig.name})")
+                conn_lines.append(f"        ,.{sig.name}({sig.name})")
 
         # Add comment before hwif signals if present
         if hwif_signals and apb_signals:

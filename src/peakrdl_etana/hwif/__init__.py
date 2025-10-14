@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union, Optional, TextIO
+from typing import TYPE_CHECKING, Union, Optional
 
 from systemrdl.node import (
     AddrmapNode,
@@ -32,14 +32,12 @@ class Hwif:
     def __init__(
         self,
         exp: "RegblockExporter",
-        hwif_report_file: Optional[TextIO],
         hwif_in_str: str = "hwif_in",
         hwif_out_str: str = "hwif_out",
     ):
         self.exp = exp
         self.hwif_in_str = hwif_in_str
         self.hwif_out_str = hwif_out_str
-        self.hwif_report_file = hwif_report_file
 
     @property
     def ds(self) -> "DesignState":
