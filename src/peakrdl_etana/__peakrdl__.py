@@ -198,6 +198,15 @@ class Exporter(ExporterSubcommandPlugin):
             per SystemRDL specification. Useful for simpler integration and better tool compatibility.""",
         )
 
+        arg_group.add_argument(
+            "--generate-template",
+            action="store_true",
+            default=False,
+            help="""Generate an example template module showing how to instantiate the register block.
+            The template includes APB interface at top-level and hardware interface signals declared
+            internally with w_ prefix. Output file: {module_name}_example.sv""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -266,4 +275,5 @@ class Exporter(ExporterSubcommandPlugin):
             out_str=options.out_str,
             allow_wide_field_subwords=options.allow_wide_field_subwords,
             flatten_nested_blocks=options.flatten_nested_blocks,
+            generate_template=options.generate_template,
         )

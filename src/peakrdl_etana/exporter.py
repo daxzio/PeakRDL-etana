@@ -223,6 +223,13 @@ class RegblockExporter:
             for line in lines:
                 f.write(line.rstrip() + "\n")
 
+        # Generate template example if requested
+        if self.ds.generate_template:
+            from .template_generator import TemplateGenerator
+
+            template_gen = TemplateGenerator(self)
+            template_gen.generate(output_dir, self.ds.module_name)
+
         if hwif_report_file:
             hwif_report_file.close()
 
@@ -282,6 +289,7 @@ class DesignState:
         self.flatten_nested_blocks = kwargs.pop(
             "flatten_nested_blocks", False
         )  # type: bool
+        self.generate_template = kwargs.pop("generate_template", False)  # type: bool
 
         # ------------------------
         # Info about the design
