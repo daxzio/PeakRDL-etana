@@ -11,12 +11,17 @@ This guide documents how to migrate SystemVerilog-based tests to Python/Cocotb t
 
 **Workflow**: Read PeakRDL-regblock tests → Translate using this guide → Validate with REGBLOCK=1 → Test with REGBLOCK=0
 
+**CRITICAL RULE**: **NEVER EDIT RDL FILES** - Always copy them directly from PeakRDL-regblock. RDL files should be byte-for-byte identical to upstream.
+
+**📚 For detailed troubleshooting and recent fixes, see**: `MIGRATION_SESSION_OCT_2025.md`
+
 ---
 
 ## Prerequisites
 
 ```bash
-# Python virtual environment with:
+# Python virtual environment (use venv-3.12.3/):
+source venv-3.12.3/bin/activate
 pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-etana
 
 # Clone PeakRDL-regblock for reference (if not already available):
@@ -31,6 +36,12 @@ pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-eta
 **Required setup:**
 - Local checkout of PeakRDL-regblock repository (PRIMARY source for tests)
 - Access to tests-regblock directory (optional, legacy implementations only)
+- Use venv-3.12.3/ virtual environment for consistency
+
+**Standard test command:**
+```bash
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+```
 
 ---
 
@@ -75,10 +86,23 @@ cd tests/test_<name>
 ls  # Should have: Makefile, regblock.rdl, tb_base.py (symlink), interfaces (symlink)
 ```
 
-**If missing:** Copy from existing test or create symlinks:
+**If new test:** Create directory and symlinks:
 ```bash
-ln -s ../tb_base.py tb_base.py
-ln -s ../interfaces interfaces
+mkdir -p tests/test_<name>
+cd tests/test_<name>
+ln -sf ../tb_base.py tb_base.py
+ln -sf ../interfaces interfaces
+```
+
+**Create Makefile:**
+```makefile
+TEST_NAME := test_<name>
+include ../tests.mak
+```
+
+**CRITICAL**: Copy RDL from upstream - NEVER edit:
+```bash
+cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl .
 ```
 
 ### Step 2: Read Original Test
@@ -190,20 +214,259 @@ await tb.clk.wait_clkn(5)  # Wait 5 cycles
 ### Step 5: Test with Regblock Reference
 
 ```bash
-source ../../venv.2.0.0/bin/activate
-make clean regblock sim SIM=verilator REGBLOCK=1
+source ../../venv-3.12.3/bin/activate
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
 ```
 
 **If it passes:** ✅ Test is correct!
 **If it fails:** Debug and fix the test logic
 
-### Step 6: Test with Etana
+**Testing with different interfaces:**
+```bash
+# APB4 (default)
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+
+# AXI4-Lite
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
+
+# AHB
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
+
+# Passthrough (for bit-level strobes)
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
+```
+
+### Step 6: Test with Etana (Optional)
 
 ```bash
-make clean etana sim SIM=verilator REGBLOCK=0
+make clean etana sim COCOTB_REV=1.9.2 REGBLOCK=0
 ```
 
 **If it fails:** Bug in PeakRDL-etana (not your test)
+
+---
+
+## Critical Lessons Learned (Oct 2025 Migration Session)
+
+### Lesson 1: NEVER Edit RDL Files
+
+**Issue**: Temptation to modify RDL files when porting tests
+
+**Rule**: RDL files MUST be byte-for-byte identical to upstream PeakRDL-regblock
+
+**Process**:
+```bash
+# ✅ CORRECT - Copy from upstream
+cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl tests/test_<name>/
+
+# ❌ WRONG - Do NOT manually edit RDL files
+vim tests/test_<name>/regblock.rdl
+```
+
+**Why**: RDL files are the specification - any differences from upstream make it harder to track changes and sync updates.
+
+### Lesson 2: Wrapper Generator Missing Interface Support
+
+**Issue**: Wrapper generator had incomplete CPU interface support
+
+**Symptoms**:
+- `generate_wrapper.py: error: invalid choice: 'ahb-flat'`
+- Generated wrapper uses wrong interface (e.g., APB3 when AHB requested)
+
+**Root Causes**:
+1. Missing from `choices` list in argument parser
+2. Missing from `cpuif_map` dictionary
+3. Missing import statement
+
+**Fix Location**: `scripts/hwif_wrapper_tool/generate_wrapper.py`
+
+**Required Changes**:
+```python
+# Add to imports
+from peakrdl_regblock.cpuif import ahb, obi
+
+# Add to cpuif_map
+cpuif_map = {
+    "ahb": ahb.AHB_Cpuif,
+    "ahb-flat": ahb.AHB_Cpuif_flattened,
+    "obi": obi.OBI_Cpuif,
+    "obi-flat": obi.OBI_Cpuif_flattened,
+    # ... existing entries
+}
+
+# Add to choices list in parser.add_argument("--cpuif", ...)
+```
+
+**Verification**:
+```bash
+../../scripts/hwif_wrapper_tool/generate_wrapper.py --help | grep ahb
+# Should show ahb and ahb-flat in choices
+```
+
+### Lesson 3: Wrapper Generator Port Name Parsing Bug
+
+**Issue**: Port declarations without spaces caused malformed connections
+
+**Symptom**:
+```
+%Error: .[3:0]s_axil_wstrb([3:0]s_axil_wstrb),
+         ^
+```
+
+**Root Cause**:
+- PeakRDL-regblock generates: `input wire [3:0]s_axil_wstrb,` (no space)
+- Wrapper used `port_decl.split()[-1]` which returns `[3:0]s_axil_wstrb`
+- Creates invalid connection: `.[3:0]s_axil_wstrb([3:0]s_axil_wstrb)`
+
+**Fix**: `scripts/hwif_wrapper_tool/hwif_wrapper_tool/wrapper_builder.py`
+```python
+# Use regex to extract port name handling edge case
+port_match = re.search(r'\[[\d:]+\](\w+)|\b(\w+)$', port_decl)
+if port_match:
+    port_name = port_match.group(1) if port_match.group(1) else port_match.group(2)
+else:
+    port_name = port_decl.split()[-1]
+```
+
+### Lesson 4: Interface Driver Error Response Support
+
+**Issue**: Tests for error responses need `error_expected` parameter
+
+**Required for**: test_cpuif_err_rsp and any test validating error behavior
+
+**Implementation Needed**: All interface wrappers need `error_expected` parameter
+
+**Files to Update**:
+1. `tests/interfaces/axi_wrapper.py` (AxiWrapper class)
+2. `tests/interfaces/ahb_wrapper.py` (AHBLiteMasterDX class)
+3. `tests/interfaces/passthrough.py` (PTMaster class) - if needed
+
+**Pattern for AXI/AHB**:
+```python
+async def read(self, addr, data=None, error_expected=False):
+    # ... perform read ...
+
+    # Check response code
+    if hasattr(result, 'resp'):
+        resp_val = int(result.resp)
+        has_error = (resp_val != 0)  # 0=OKAY, 2=SLVERR, 3=DECERR
+
+        if error_expected and not has_error:
+            raise Exception(f"Expected error but got OKAY")
+        elif not error_expected and has_error:
+            raise Exception(f"Unexpected error: resp={resp_val}")
+```
+
+**Pattern for APB4**:
+```python
+# cocotbext-apb already supports error_expected parameter
+await tb.intf.read(addr, data, error_expected=True)
+```
+
+### Lesson 5: External Register Emulators
+
+**Issue**: External registers need Python emulators (not SystemVerilog modules)
+
+**Key Points**:
+- Use pattern from `test_external/external_reg_emulator_simple.py`
+- Signal names include field names: `hwif_out_er_rw_wr_data_f` (note the `_f` suffix)
+- Emulators must respond on same clock cycle (no delays with passthrough/APB4)
+- Initialize all response signals in `__init__`: `rd_ack`, `wr_ack`, `rd_data`
+
+**Timing Pattern**:
+```python
+async def run(self):
+    while True:
+        await RisingEdge(self.clk)
+
+        # Clear acks at start of cycle
+        self.rd_ack.value = 0
+        self.wr_ack.value = 0
+
+        # Check request and respond immediately (same cycle)
+        if int(self.req.value) == 1:
+            if int(self.req_is_wr.value) == 1:
+                # Write
+                self.wr_ack.value = 1
+            else:
+                # Read
+                self.rd_data.value = self.value
+                self.rd_ack.value = 1
+```
+
+**DO NOT**:
+- ❌ Use `await Timer()` delays before asserting acks
+- ❌ Use `await ReadOnly()` (causes "write during read-only phase" errors)
+- ❌ Use `await RisingEdge()` delays before responding (causes hangs)
+
+### Lesson 6: Identifying Test Enhancements vs New Tests
+
+**Issue**: Need to distinguish between new tests and enhancements to existing tests
+
+**Process**:
+```bash
+# Check what changed in upstream
+cd /path/to/PeakRDL-regblock
+git log --oneline --since="6 months ago" -- tests/ | head -50
+
+# Compare specific test RDL
+diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
+     /path/to/PeakRDL-etana/tests/test_<name>/regblock.rdl
+
+# If differences exist, it's an enhancement
+```
+
+**Common Enhancement Pattern**:
+- External components added to validate generator doesn't create buffering logic for them
+- Example: test_write_buffer and test_read_buffer had external components added
+
+**Process for Enhancements**:
+1. Copy updated RDL from upstream
+2. Run existing test - it should still pass
+3. No test code changes needed (passive validation)
+
+### Lesson 7: Testing Across Multiple Interfaces
+
+**Discovery**: Some tests work with multiple CPU interfaces
+
+**Supported Interfaces**:
+- APB4 (apb4-flat) - Default, widest support
+- AXI4-Lite (axi4-lite-flat) - Requires proper AxiLiteBus usage
+- AHB (ahb-flat) - Recently added
+- Passthrough - For bit-level strobes, complex with external emulators
+
+**Test Matrix**:
+```bash
+# Test with each interface
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=apb4-flat
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
+```
+
+**Interface-Specific Issues**:
+- **APB4**: Native `error_expected` support via `pslverr`
+- **AXI4-Lite**: Need to use `AxiLiteBus`/`AxiLiteMaster`, not full AXI4 classes
+- **AHB**: Response codes in returned dict: `x.get("resp", 0)`
+- **Passthrough**: Bit-level strobes, `req_stall` signals, complex timing with external emulators
+
+### Lesson 8: Checking Installed vs Local PeakRDL-regblock
+
+**Issue**: Feature flags might exist in local repo but not in installed package
+
+**Example**: `--err-if-bad-addr` and `--err-if-bad-rw` flags
+
+**Check Command**:
+```bash
+source venv-3.12.3/bin/activate
+peakrdl regblock --help | grep -A3 "err"
+pip show peakrdl-regblock | grep Version
+```
+
+**If Missing**:
+- Feature is in development but not released
+- Test is future-proofing for when feature is available
+- Document in test that it requires newer version
 
 ---
 
@@ -741,3 +1004,158 @@ The local `tests-regblock/` directory is considered **legacy** and should only b
 - Understanding historical context
 
 **Always start with PeakRDL-regblock tests as your primary source.**
+
+---
+
+## Quick Troubleshooting Guide (Added Oct 2025)
+
+### Issue: Wrapper Generator Fails with "invalid choice"
+
+**Symptom**:
+```
+generate_wrapper.py: error: argument --cpuif: invalid choice: 'ahb-flat'
+```
+
+**Solution**: Add missing interface to `generate_wrapper.py`:
+1. Add to import: `from peakrdl_regblock.cpuif import ahb, obi`
+2. Add to `cpuif_map` dictionary
+3. Add to `choices` list in argument parser
+
+**File**: `scripts/hwif_wrapper_tool/generate_wrapper.py`
+
+### Issue: Test Hangs During Compilation
+
+**Symptom**: `make` hangs for minutes during `Vtop__ALL.o` compilation
+
+**Cause**: Complex RTL with many external components compiles slowly with Verilator
+
+**Solutions**:
+1. Be patient - can take 2-5 minutes for complex designs
+2. Try Icarus instead: `make ... SIM=icarus` (faster compilation)
+3. Check if compilation eventually completes
+
+**Not Actually Hanging**: If you see CPU activity, it's compiling, not hung
+
+### Issue: Test Hangs During External Register Access
+
+**Symptom**: Test hangs when reading/writing external registers
+
+**Debug Steps**:
+1. Add logging to emulator to see if it's receiving requests
+2. Check if emulator is asserting acks
+3. Verify signal names match (check for field name suffixes like `_f`)
+
+**Common Causes**:
+- Emulator not started with `start_soon(emulator.run())`
+- Wrong signal names (missing field suffix)
+- Timing issues (using delays when shouldn't)
+
+### Issue: "Write during read-only phase" Error
+
+**Symptom**:
+```
+Exception: Write to object hwif_in_er_rw_rd_data_f was scheduled during a read-only sync phase.
+```
+
+**Cause**: Using `await ReadOnly()` then trying to write signals
+
+**Solution**: Remove `await ReadOnly()` - emulators should respond immediately
+
+```python
+# ❌ WRONG
+await ReadOnly()
+self.rd_data.value = value  # Fails!
+
+# ✅ CORRECT
+await RisingEdge(self.clk)
+self.rd_data.value = value  # Works!
+```
+
+### Issue: TypeError: got unexpected keyword argument 'error_expected'
+
+**Symptom**:
+```
+TypeError: AHBLiteMaster.write() got an unexpected keyword argument 'error_expected'
+```
+
+**Cause**: Interface wrapper doesn't support `error_expected` parameter
+
+**Solution**: Add parameter to wrapper class's read/write methods
+
+**Files That Need It**:
+- `tests/interfaces/axi_wrapper.py` ✅ Already added
+- `tests/interfaces/ahb_wrapper.py` ✅ Already added
+- `tests/interfaces/passthrough.py` - May need in future
+
+### Issue: AttributeError: contains no object named hwif_out_X
+
+**Symptom**:
+```
+AttributeError: regblock_wrapper contains no object named hwif_out_er_rw_wr_data
+Did you mean: 'hwif_out_er_rw_wr_data_f'?
+```
+
+**Cause**: Signal name includes field name from RDL
+
+**Solution**: Check RDL for field names and add to signal path
+
+```python
+# If RDL has: field {} f[31:0];
+# Then signal is: hwif_out_er_rw_wr_data_f (note the _f)
+
+# ❌ WRONG
+self.wr_data = getattr(dut, f"{prefix}_wr_data")
+
+# ✅ CORRECT
+self.wr_data = getattr(dut, f"{prefix}_wr_data_f")
+```
+
+### Issue: Compilation Error About Interface Not Found
+
+**Symptom**:
+```
+%Error: Cannot find file containing interface: 'apb3_intf'
+```
+
+**Cause**: Wrapper generator using wrong CPU interface (defaulting to APB3)
+
+**Solution**:
+1. Verify `cpuif_map` in generate_wrapper.py has the requested interface
+2. Regenerate wrapper with correct `--cpuif` flag
+3. Check wrapper file has correct signals
+
+### Finding What Tests Need Migration
+
+**Quick Commands**:
+```bash
+# List tests in upstream
+ls -1 /path/to/PeakRDL-regblock/tests/ | grep "^test_" | sort
+
+# List tests in etana
+ls -1 tests/ | grep "^test_" | sort
+
+# Find missing tests
+comm -13 <(ls -1 tests/ | grep "^test_" | sort) \
+         <(ls -1 /path/to/PeakRDL-regblock/tests/ | grep "^test_" | sort)
+
+# Find recently changed tests
+cd /path/to/PeakRDL-regblock
+git log --oneline --since="6 months ago" -- tests/ | head -50
+```
+
+### Checking for Test Enhancements
+
+**Process**:
+```bash
+# Compare RDL files
+diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
+     tests/test_<name>/regblock.rdl
+
+# If output shows differences, copy upstream version (DO NOT EDIT)
+cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl tests/test_<name>/
+
+# Test to verify enhancement doesn't break existing test
+cd tests/test_<name>
+source ../../venv-3.12.3/bin/activate
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+```

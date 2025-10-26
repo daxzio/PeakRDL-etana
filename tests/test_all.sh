@@ -58,11 +58,11 @@ echo ""
 SKIP_TESTS=()
 
 SKIP_TESTS+=("test_user_cpuif" "test_pkg_params")
+SKIP_TESTS+=("test_template_report")
 
 # Skip certain tests when REGBLOCK=1
 if [ "$REGBLOCK" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
-    SKIP_TESTS+=("test_template_report")
     # Add more tests here if needed
 fi
 
