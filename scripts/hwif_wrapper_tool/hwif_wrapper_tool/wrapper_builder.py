@@ -192,7 +192,15 @@ class WrapperBuilder:
 
         # Connect all non-hwif ports (pass-through)
         for port_decl in self.non_hwif_ports:
-            port_name = port_decl.split()[-1]
+            # Extract port name, handling edge case where bit width has no space
+            # e.g., "input wire [3:0]s_axil_wstrb" -> "s_axil_wstrb"
+            port_match = re.search(r"\[[\d:]+\](\w+)|\b(\w+)$", port_decl)
+            if port_match:
+                port_name = (
+                    port_match.group(1) if port_match.group(1) else port_match.group(2)
+                )
+            else:
+                port_name = port_decl.split()[-1]
             ports.append(f"        .{port_name}({port_name})")
 
         # Connect hwif ports to internal structs

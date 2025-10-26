@@ -31,3 +31,5 @@ top_edit.sv
 cursor_work/
 venv*/
 repos/
+*_example.sv
+*_hwif.csv

@@ -21,6 +21,11 @@ module regblock_wrapper (
         input logic hwif_in_trigger_sig_n,
         input logic [7:0] hwif_in_g3_r1_f1,
         input logic [7:0] hwif_in_g3_r2_f1,
+        input logic hwif_in_ext_reg1_rd_ack,
+        input logic [7:0] hwif_in_ext_reg1_rd_data,
+        input logic hwif_in_ext_block_rd_ack,
+        input logic [7:0] hwif_in_ext_block_rd_data,
+        input logic hwif_in_ext_block_wr_ack,
         output logic [2:0] hwif_out_reg1_f1,
         output logic [2:0] hwif_out_reg1_f2,
         output logic [2:0] hwif_out_reg1_f3,
@@ -51,7 +56,14 @@ module regblock_wrapper (
         output logic [15:0] hwif_out_g2_r2_f1,
         output logic hwif_out_g4_trig,
         output logic [7:0] hwif_out_g4_r1_f1,
-        output logic [7:0] hwif_out_g4_r2_f1
+        output logic [7:0] hwif_out_g4_r2_f1,
+        output logic [1:0] hwif_out_ext_reg1_req,
+        output logic hwif_out_ext_reg1_req_is_wr,
+        output logic hwif_out_ext_block_req,
+        output logic hwif_out_ext_block_addr,
+        output logic hwif_out_ext_block_req_is_wr,
+        output logic [7:0] hwif_out_ext_block_wr_data,
+        output logic [7:0] hwif_out_ext_block_wr_biten
     );
 
     //--------------------------------------------------------------------------
@@ -68,6 +80,11 @@ module regblock_wrapper (
     assign hwif_in.trigger_sig_n = hwif_in_trigger_sig_n;
     assign hwif_in.g3_r1.f1.next = hwif_in_g3_r1_f1;
     assign hwif_in.g3_r2.f1.next = hwif_in_g3_r2_f1;
+    assign hwif_in.ext_reg1.rd_ack = hwif_in_ext_reg1_rd_ack;
+    assign hwif_in.ext_reg1.rd_data = hwif_in_ext_reg1_rd_data;
+    assign hwif_in.ext_block.rd_ack = hwif_in_ext_block_rd_ack;
+    assign hwif_in.ext_block.rd_data = hwif_in_ext_block_rd_data;
+    assign hwif_in.ext_block.wr_ack = hwif_in_ext_block_wr_ack;
 
     assign hwif_out_reg1_f1 = hwif_out.reg1.f1.value;
     assign hwif_out_reg1_f2 = hwif_out.reg1.f2.value;
@@ -100,6 +117,13 @@ module regblock_wrapper (
     assign hwif_out_g4_trig = hwif_out.g4_trig.trig.value;
     assign hwif_out_g4_r1_f1 = hwif_out.g4_r1.f1.value;
     assign hwif_out_g4_r2_f1 = hwif_out.g4_r2.f1.value;
+    assign hwif_out_ext_reg1_req = hwif_out.ext_reg1.req;
+    assign hwif_out_ext_reg1_req_is_wr = hwif_out.ext_reg1.req_is_wr;
+    assign hwif_out_ext_block_req = hwif_out.ext_block.req;
+    assign hwif_out_ext_block_addr = hwif_out.ext_block.addr;
+    assign hwif_out_ext_block_req_is_wr = hwif_out.ext_block.req_is_wr;
+    assign hwif_out_ext_block_wr_data = hwif_out.ext_block.wr_data;
+    assign hwif_out_ext_block_wr_biten = hwif_out.ext_block.wr_biten;
 
     //--------------------------------------------------------------------------
     // Instantiate the main regblock module

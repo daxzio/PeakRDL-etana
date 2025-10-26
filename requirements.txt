@@ -1,6 +1,8 @@
 cocotb
 peakrdl
 pytest
+pytest-cov
+coverage[toml]
 mypy
 black
 pyflakes

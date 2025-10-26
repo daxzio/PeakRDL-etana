@@ -241,11 +241,21 @@ class PTMaster:
                 await RisingEdge(self.clock)
                 while not self.bus.wr_ack.value or self.bus.req_stall_wr.value:
                     await RisingEdge(self.clock)
+                if not self.bus.wr_err.value == error_expected:
+                    msg = f"WR_ERR: incorrect error received {self.bus.wr_err.value}"
+                    self.log.critical(msg)
+                    raise Exception(msg)
+            #                 if self.bus.rd_err.value:
+            #                     raise Exception(f"RD_ERR received in write mode")
             else:
                 self.log.info(f"Read addr: 0x{addr:08x}")
                 await RisingEdge(self.clock)
                 while not self.bus.rd_ack.value or self.bus.req_stall_rd.value:
                     await RisingEdge(self.clock)
+                if not self.bus.rd_err.value == error_expected:
+                    msg = f"RD_ERR: incorrect error received {self.bus.rd_err.value}"
+                    self.log.critical(msg)
+                    raise Exception(msg)
                 #                 ret = resolve_x_int(self.bus.rd_data)
                 ret = int(self.bus.rd_data.value)
                 self.log.info(f"Value read: 0x{ret:08x}")
@@ -256,16 +266,6 @@ class PTMaster:
                             f"Expected 0x{data_int:08x} doesn't match returned 0x{ret:08x}"
                         )
                 self.queue_rx.append((ret.to_bytes(self.rbytes, "little"), tx_id))
-
-            #             if self.pslverr_present and bool(self.bus.pslverr.value):
-            #                 msg = "PSLVERR detected!"
-            #                 if self.pprot_present:
-            #                     msg += f" PPROT - {ApbProt(self.bus.pprot.value).name}"
-            #                 if error_expected:
-            #                     self.log.info(msg)
-            #                 else:
-            #                     self.log.critical(msg)
-            #             if not write:
 
             self.bus.req.value = 0
             self.bus.req_is_wr.value = 0

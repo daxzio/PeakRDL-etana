@@ -99,12 +99,17 @@ module regblock (
         logic [1:0] r_reg4;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [15:0] decoded_wr_data;
     logic [15:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.rw_reg1[0] = cpuif_req_masked & (cpuif_addr == 6'h0);
         decoded_reg_strb.rw_reg1[1] = cpuif_req_masked & (cpuif_addr == 6'h2);
         decoded_reg_strb.rw_reg1[2] = cpuif_req_masked & (cpuif_addr == 6'h4);
@@ -123,17 +128,18 @@ module regblock (
         decoded_reg_strb.rw_reg2_lsb0[3] = cpuif_req_masked & (cpuif_addr == 6'h1e);
         decoded_reg_strb.r_reg[0] = cpuif_req_masked & (cpuif_addr == 6'h20);
         decoded_reg_strb.r_reg[1] = cpuif_req_masked & (cpuif_addr == 6'h22);
-        decoded_reg_strb.r_reg_lsb0[0] = cpuif_req_masked & (cpuif_addr == 6'h24);
-        decoded_reg_strb.r_reg_lsb0[1] = cpuif_req_masked & (cpuif_addr == 6'h26);
-        decoded_reg_strb.r_reg2[0] = cpuif_req_masked & (cpuif_addr == 6'h28);
-        decoded_reg_strb.r_reg2[1] = cpuif_req_masked & (cpuif_addr == 6'h2a);
-        decoded_reg_strb.r_reg2[2] = cpuif_req_masked & (cpuif_addr == 6'h2c);
-        decoded_reg_strb.r_reg2[3] = cpuif_req_masked & (cpuif_addr == 6'h2e);
-        decoded_reg_strb.counter_reg = cpuif_req_masked & (cpuif_addr == 6'h30);
-        decoded_reg_strb.r_reg3[0] = cpuif_req_masked & (cpuif_addr == 6'h34);
-        decoded_reg_strb.r_reg3[1] = cpuif_req_masked & (cpuif_addr == 6'h36);
-        decoded_reg_strb.r_reg4[0] = cpuif_req_masked & (cpuif_addr == 6'h38);
-        decoded_reg_strb.r_reg4[1] = cpuif_req_masked & (cpuif_addr == 6'h3a);
+        decoded_reg_strb.r_reg_lsb0[0] = cpuif_req_masked & (cpuif_addr == 6'h24) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg_lsb0[1] = cpuif_req_masked & (cpuif_addr == 6'h26) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg2[0] = cpuif_req_masked & (cpuif_addr == 6'h28) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg2[1] = cpuif_req_masked & (cpuif_addr == 6'h2a) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg2[2] = cpuif_req_masked & (cpuif_addr == 6'h2c) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg2[3] = cpuif_req_masked & (cpuif_addr == 6'h2e) & !cpuif_req_is_wr;
+        decoded_reg_strb.counter_reg = cpuif_req_masked & (cpuif_addr == 6'h30) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg3[0] = cpuif_req_masked & (cpuif_addr == 6'h34) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg3[1] = cpuif_req_masked & (cpuif_addr == 6'h36) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg4[0] = cpuif_req_masked & (cpuif_addr == 6'h38) & !cpuif_req_is_wr;
+        decoded_reg_strb.r_reg4[1] = cpuif_req_masked & (cpuif_addr == 6'h3a) & !cpuif_req_is_wr;
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

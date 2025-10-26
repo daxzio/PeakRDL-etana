@@ -111,12 +111,17 @@ module regblock (
         logic ctrl_wel;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.level_irqs_1 = cpuif_req_masked & (cpuif_addr == 9'h0);
         decoded_reg_strb.level_irqs_2 = cpuif_req_masked & (cpuif_addr == 9'h4);
         decoded_reg_strb.level_irqs_3 = cpuif_req_masked & (cpuif_addr == 9'h8);
@@ -131,7 +136,7 @@ module regblock (
         decoded_reg_strb.bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h40);
         decoded_reg_strb.bothedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h44);
         decoded_reg_strb.bothedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h48);
-        decoded_reg_strb.top_irq = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb.top_irq = cpuif_req_masked & (cpuif_addr == 9'h50) & !cpuif_req_is_wr;
         decoded_reg_strb.stickyreg = cpuif_req_masked & (cpuif_addr == 9'h60);
         decoded_reg_strb.ctrl_enable = cpuif_req_masked & (cpuif_addr == 9'h100);
         decoded_reg_strb.ctrl_mask = cpuif_req_masked & (cpuif_addr == 9'h104);
@@ -139,6 +144,7 @@ module regblock (
         decoded_reg_strb.ctrl_haltmask = cpuif_req_masked & (cpuif_addr == 9'h10c);
         decoded_reg_strb.ctrl_we = cpuif_req_masked & (cpuif_addr == 9'h110);
         decoded_reg_strb.ctrl_wel = cpuif_req_masked & (cpuif_addr == 9'h114);
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

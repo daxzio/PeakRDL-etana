@@ -6,6 +6,8 @@ from cocotb.triggers import RisingEdge
 from cocotbext.axi import (
     AxiBus,
     AxiMaster,
+    AxiLiteBus,
+    AxiLiteMaster,
     AxiStreamBus,
     AxiStreamSource,
     AxiStreamSink,
@@ -41,24 +43,44 @@ def cycle_pause(seednum=7):
     return itertools.cycle(array)
 
 
-class AxiDriver:
+class AxiWrapper:
     def __init__(
         self, dut, axi_prefix="s_axi", clk_name="s_aclk", reset_name=None, seednum=None
     ):
-        self.log = logging.getLogger("cocotb.AxiDriver")
+        self.log = logging.getLogger("cocotb.AxiWrapper")
         self.enable_logging()
-        if reset_name is None:
-            self.axi_master = AxiMaster(
-                AxiBus.from_prefix(dut, axi_prefix), getattr(dut, clk_name)
-            )
+
+        # Detect if this is AXI4-Lite (prefix contains "axil") or full AXI4
+        is_axi_lite = "axil" in axi_prefix.lower()
+
+        if is_axi_lite:
+            # Use AXI4-Lite bus and master
+            if reset_name is None:
+                self.axi_master = AxiLiteMaster(
+                    AxiLiteBus.from_prefix(dut, axi_prefix), getattr(dut, clk_name)
+                )
+            else:
+                self.axi_master = AxiLiteMaster(
+                    AxiLiteBus.from_prefix(dut, axi_prefix),
+                    getattr(dut, clk_name),
+                    getattr(dut, reset_name),
+                )
         else:
-            self.axi_master = AxiMaster(
-                AxiBus.from_prefix(dut, axi_prefix),
-                getattr(dut, clk_name),
-                getattr(dut, reset_name),
-            )
-        self.arid = 4
-        self.awid = 4
+            # Use full AXI4 bus and master
+            if reset_name is None:
+                self.axi_master = AxiMaster(
+                    AxiBus.from_prefix(dut, axi_prefix), getattr(dut, clk_name)
+                )
+            else:
+                self.axi_master = AxiMaster(
+                    AxiBus.from_prefix(dut, axi_prefix),
+                    getattr(dut, clk_name),
+                    getattr(dut, reset_name),
+                )
+        self.is_axi_lite = is_axi_lite
+        if not is_axi_lite:
+            self.arid = 4
+            self.awid = 4
         self.axi_master.write_if.log.setLevel(logging.WARNING)
         self.axi_master.read_if.log.setLevel(logging.WARNING)
         if seednum is not None:
@@ -188,17 +210,45 @@ class AxiDriver:
                 f"Expected 0x{self.data:08x} doesn't match returned 0x{self.returned_val:08x}"
             )
 
-    async def read(self, addr, data=None, length=None, debug=True):
+    async def read(
+        self, addr, data=None, length=None, debug=True, error_expected=False
+    ):
         self.addr = addr
         self.data = data
         self.len = length
-        self.read_op = await self.axi_master.read(
-            self.addr, self.length, arid=self.arid
-        )
-        self.check_read(debug)
+        if self.is_axi_lite:
+            self.read_op = await self.axi_master.read(self.addr, self.length)
+        else:
+            self.read_op = await self.axi_master.read(
+                self.addr, self.length, arid=self.arid
+            )
+
+        # Check for error response
+        if hasattr(self.read_op, "resp"):
+            # resp values: 0b00=OKAY, 0b01=EXOKAY, 0b10=SLVERR, 0b11=DECERR
+            resp_val = (
+                int(self.read_op.resp)
+                if hasattr(self.read_op.resp, "__int__")
+                else self.read_op.resp
+            )
+            has_error = resp_val != 0  # Non-zero response indicates error
+
+            if error_expected and not has_error:
+                raise Exception(
+                    f"Expected error response at 0x{addr:08x} but got OKAY (resp={resp_val})"
+                )
+            elif not error_expected and has_error:
+                raise Exception(
+                    f"Unexpected error response at 0x{addr:08x}: resp={resp_val}"
+                )
+
+        if not error_expected:
+            self.check_read(debug)
         return self.read_op
 
-    async def write(self, addr, data=None, length=None, debug=True):
+    async def write(
+        self, addr, data=None, length=None, debug=True, error_expected=False
+    ):
         self.len = length
         self.addr = addr
         if data is None:
@@ -211,7 +261,29 @@ class AxiDriver:
         if debug:
             self.log.debug(f"Write 0x{self.addr:08x}: 0x{self.data:0{self.length*2}x}")
         bytesdata = tobytes(self.data, self.length)
-        await self.axi_master.write(addr, bytesdata, awid=self.arid)
+        if self.is_axi_lite:
+            write_resp = await self.axi_master.write(addr, bytesdata)
+        else:
+            write_resp = await self.axi_master.write(addr, bytesdata, awid=self.arid)
+
+        # Check for error response
+        if write_resp is not None and hasattr(write_resp, "resp"):
+            # resp values: 0b00=OKAY, 0b01=EXOKAY, 0b10=SLVERR, 0b11=DECERR
+            resp_val = (
+                int(write_resp.resp)
+                if hasattr(write_resp.resp, "__int__")
+                else write_resp.resp
+            )
+            has_error = resp_val != 0  # Non-zero response indicates error
+
+            if error_expected and not has_error:
+                raise Exception(
+                    f"Expected error response for write to 0x{addr:08x} but got OKAY (resp={resp_val})"
+                )
+            elif not error_expected and has_error:
+                raise Exception(
+                    f"Unexpected error response for write to 0x{addr:08x}: resp={resp_val}"
+                )
 
     async def rmodw(self, addr, data, length=None, debug=True):
         await self.read(addr, length=None, debug=False)
@@ -244,7 +316,10 @@ class AxiDriver:
         self.addr = addr
         self.data = data
         self.len = length
-        self.init_read(self.addr, self.length, arid=self.arid)
+        if self.is_axi_lite:
+            self.init_read(self.addr, self.length)
+        else:
+            self.init_read(self.addr, self.length, arid=self.arid)
         if debug:
             self.log.debug(f"Read  0x{addr:08x}:")
 
@@ -261,7 +336,12 @@ class AxiDriver:
         if debug:
             self.log.debug(f"Write 0x{self.addr:08x}: 0x{self.data:08x}")
         bytesdata = tobytes(self.data, self.length)
-        self.write_op = self.axi_master.init_write(self.addr, bytesdata, awid=self.arid)
+        if self.is_axi_lite:
+            self.write_op = self.axi_master.init_write(self.addr, bytesdata)
+        else:
+            self.write_op = self.axi_master.init_write(
+                self.addr, bytesdata, awid=self.arid
+            )
 
 
 class AxiStreamDriver:

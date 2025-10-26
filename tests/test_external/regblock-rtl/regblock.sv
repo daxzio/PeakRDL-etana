@@ -119,6 +119,7 @@ module regblock (
         logic [1:0] wide_wo_reg;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_strb_is_external;
 
     logic [14:0] decoded_addr;
@@ -129,8 +130,12 @@ module regblock (
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
         automatic logic is_external;
         is_external = '0;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.ext_reg = cpuif_req_masked & (cpuif_addr == 15'h0);
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h0);
         decoded_reg_strb.int_reg = cpuif_req_masked & (cpuif_addr == 15'h4);
@@ -148,18 +153,19 @@ module regblock (
         is_external |= cpuif_req_masked & (cpuif_addr >= 15'h2000) & (cpuif_addr <= 15'h2000 + 15'h1f);
         decoded_reg_strb.mm = cpuif_req_masked & (cpuif_addr >= 15'h3000) & (cpuif_addr <= 15'h3000 + 15'h1f);
         is_external |= cpuif_req_masked & (cpuif_addr >= 15'h3000) & (cpuif_addr <= 15'h3000 + 15'h1f);
-        decoded_reg_strb.ro_reg = cpuif_req_masked & (cpuif_addr == 15'h4000);
+        decoded_reg_strb.ro_reg = cpuif_req_masked & (cpuif_addr == 15'h4000) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4000) & !cpuif_req_is_wr;
-        decoded_reg_strb.wo_reg = cpuif_req_masked & (cpuif_addr == 15'h4004);
+        decoded_reg_strb.wo_reg = cpuif_req_masked & (cpuif_addr == 15'h4004) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4004) & cpuif_req_is_wr;
-        decoded_reg_strb.wide_ro_reg[0] = cpuif_req_masked & (cpuif_addr == 15'h4010);
+        decoded_reg_strb.wide_ro_reg[0] = cpuif_req_masked & (cpuif_addr == 15'h4010) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4010) & !cpuif_req_is_wr;
-        decoded_reg_strb.wide_ro_reg[1] = cpuif_req_masked & (cpuif_addr == 15'h4014);
+        decoded_reg_strb.wide_ro_reg[1] = cpuif_req_masked & (cpuif_addr == 15'h4014) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4014) & !cpuif_req_is_wr;
-        decoded_reg_strb.wide_wo_reg[0] = cpuif_req_masked & (cpuif_addr == 15'h4018);
+        decoded_reg_strb.wide_wo_reg[0] = cpuif_req_masked & (cpuif_addr == 15'h4018) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4018) & cpuif_req_is_wr;
-        decoded_reg_strb.wide_wo_reg[1] = cpuif_req_masked & (cpuif_addr == 15'h401c);
+        decoded_reg_strb.wide_wo_reg[1] = cpuif_req_masked & (cpuif_addr == 15'h401c) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h401c) & cpuif_req_is_wr;
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
         decoded_strb_is_external = is_external;
         external_req = is_external;
     end
@@ -194,7 +200,7 @@ module regblock (
     } field_storage_t;
     field_storage_t field_storage;
 
-
+    // External register: regblock.ext_reg
     assign hwif_out.ext_reg.req = decoded_reg_strb.ext_reg;
     assign hwif_out.ext_reg.req_is_wr = decoded_req_is_wr;
     assign hwif_out.ext_reg.wr_data = decoded_wr_data;
@@ -222,44 +228,51 @@ module regblock (
         end
     end
     assign hwif_out.int_reg.whatever.value = field_storage.int_reg.whatever.value;
-
+    // External register: regblock.wide_ext_reg
     assign hwif_out.wide_ext_reg.req = decoded_reg_strb.wide_ext_reg;
     assign hwif_out.wide_ext_reg.req_is_wr = decoded_req_is_wr;
     assign hwif_out.wide_ext_reg.wr_data = decoded_wr_data;
     assign hwif_out.wide_ext_reg.wr_biten = decoded_wr_biten;
     for(genvar i0=0; i0<32; i0++) begin
-
+        // External register: regblock.ext_reg_array[]
         assign hwif_out.ext_reg_array[i0].req = decoded_reg_strb.ext_reg_array[i0];
         assign hwif_out.ext_reg_array[i0].req_is_wr = decoded_req_is_wr;
         assign hwif_out.ext_reg_array[i0].wr_data = decoded_wr_data;
         assign hwif_out.ext_reg_array[i0].wr_biten = decoded_wr_biten;
     end
+    // External region: regblock.rf
     assign hwif_out.rf.req = decoded_reg_strb.rf;
     assign hwif_out.rf.addr = decoded_addr[4:0];
     assign hwif_out.rf.req_is_wr = decoded_req_is_wr;
     assign hwif_out.rf.wr_data = decoded_wr_data;
     assign hwif_out.rf.wr_biten = decoded_wr_biten;
+    // External region: regblock.am
     assign hwif_out.am.req = decoded_reg_strb.am;
     assign hwif_out.am.addr = decoded_addr[4:0];
     assign hwif_out.am.req_is_wr = decoded_req_is_wr;
     assign hwif_out.am.wr_data = decoded_wr_data;
     assign hwif_out.am.wr_biten = decoded_wr_biten;
+    // External region: regblock.mm
     assign hwif_out.mm.req = decoded_reg_strb.mm;
     assign hwif_out.mm.addr = decoded_addr[4:0];
     assign hwif_out.mm.req_is_wr = decoded_req_is_wr;
     assign hwif_out.mm.wr_data = decoded_wr_data;
     assign hwif_out.mm.wr_biten = decoded_wr_biten;
+    // External register: regblock.ro_reg
 
     assign hwif_out.ro_reg.req = !decoded_req_is_wr ? decoded_reg_strb.ro_reg : '0;
     assign hwif_out.ro_reg.req_is_wr = decoded_req_is_wr;
+    // External register: regblock.wo_reg
 
     assign hwif_out.wo_reg.req = decoded_req_is_wr ? decoded_reg_strb.wo_reg : '0;
     assign hwif_out.wo_reg.req_is_wr = decoded_req_is_wr;
     assign hwif_out.wo_reg.wr_data = decoded_wr_data;
     assign hwif_out.wo_reg.wr_biten = decoded_wr_biten;
+    // External register: regblock.wide_ro_reg
 
     assign hwif_out.wide_ro_reg.req = !decoded_req_is_wr ? decoded_reg_strb.wide_ro_reg : '0;
     assign hwif_out.wide_ro_reg.req_is_wr = decoded_req_is_wr;
+    // External register: regblock.wide_wo_reg
 
     assign hwif_out.wide_wo_reg.req = decoded_req_is_wr ? decoded_reg_strb.wide_wo_reg : '0;
     assign hwif_out.wide_wo_reg.req_is_wr = decoded_req_is_wr;

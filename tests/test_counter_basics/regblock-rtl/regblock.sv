@@ -91,14 +91,20 @@ module regblock (
         logic wrap_counter;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.simple = cpuif_req_masked & (cpuif_addr == 3'h0);
-        decoded_reg_strb.wrap_counter = cpuif_req_masked & (cpuif_addr == 3'h4);
+        decoded_reg_strb.wrap_counter = cpuif_req_masked & (cpuif_addr == 3'h4) & !cpuif_req_is_wr;
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

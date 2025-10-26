@@ -33,9 +33,9 @@ class testbench:
 
             # self.intf = AHBMaster(ahb_bus, getattr(dut, "clk"), getattr(dut, "rst"))
         elif hasattr(dut, "s_axil_awvalid"):
-            from interfaces.axi_driver import AxiDriver
+            from interfaces.axi_wrapper import AxiWrapper
 
-            self.intf = AxiDriver(dut, "s_axil", "clk")
+            self.intf = AxiWrapper(dut, "s_axil", "clk")
         else:
             raise Exception("Unsupported interface")
 

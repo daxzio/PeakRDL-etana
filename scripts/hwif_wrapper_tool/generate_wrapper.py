@@ -40,6 +40,8 @@ def main():
         default="apb3",
         choices=[
             "passthrough",
+            "ahb",
+            "ahb-flat",
             "apb3",
             "apb3-flat",
             "apb4",
@@ -48,6 +50,8 @@ def main():
             "axi4-lite-flat",
             "avalon-mm",
             "avalon-mm-flat",
+            "obi",
+            "obi-flat",
         ],
         help="CPU interface type (default: apb3)",
     )
@@ -73,13 +77,23 @@ def main():
         # Import here to avoid issues if not installed
         from systemrdl import RDLCompiler
         from peakrdl_regblock import RegblockExporter
-        from peakrdl_regblock.cpuif import apb3, apb4, axi4lite, passthrough, avalon
+        from peakrdl_regblock.cpuif import (
+            apb3,
+            apb4,
+            axi4lite,
+            passthrough,
+            avalon,
+            ahb,
+            obi,
+        )
         from peakrdl_regblock.udps import ALL_UDPS
         from peakrdl_regblock.identifier_filter import kw_filter as kwf
 
         # Map CPU interface names to classes
         cpuif_map = {
             "passthrough": passthrough.PassthroughCpuif,
+            "ahb": ahb.AHB_Cpuif,
+            "ahb-flat": ahb.AHB_Cpuif_flattened,
             "apb3": apb3.APB3_Cpuif,
             "apb3-flat": apb3.APB3_Cpuif_flattened,
             "apb4": apb4.APB4_Cpuif,
@@ -88,6 +102,8 @@ def main():
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
             "avalon-mm": avalon.Avalon_Cpuif,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
+            "obi": obi.OBI_Cpuif,
+            "obi-flat": obi.OBI_Cpuif_flattened,
         }
 
         # Compile RDL

@@ -4,6 +4,7 @@
 module regblock (
         input wire clk,
         input wire rst,
+
         input wire root_cpuif_reset,
         input wire [15:0] r5f2_resetvalue,
 
@@ -95,17 +96,23 @@ module regblock (
         logic r5;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.r1 = cpuif_req_masked & (cpuif_addr == 5'h0);
         decoded_reg_strb.r2 = cpuif_req_masked & (cpuif_addr == 5'h4);
         decoded_reg_strb.r3 = cpuif_req_masked & (cpuif_addr == 5'h8);
         decoded_reg_strb.r4 = cpuif_req_masked & (cpuif_addr == 5'hc);
         decoded_reg_strb.r5 = cpuif_req_masked & (cpuif_addr == 5'h10);
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

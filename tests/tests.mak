@@ -9,6 +9,7 @@ else
 	MODULE?=test_dut
 endif
 
+PEAKRDL_ARGS+=
 CPUIF?=apb4-flat
 #UDPS?=../regblock_udps.rdl
 UDPS?=
@@ -98,7 +99,7 @@ check-etana:
 regblock:
 	rm -rf regblock-rtl/*
 	#peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --hwif-wrapper --cpuif ${CPUIF} --rename regblock
-	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
+	peakrdl regblock ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} ${PEAKRDL_ARGS} --rename regblock
 	../../scripts/hwif_wrapper_tool/generate_wrapper.py ${UDPS} regblock.rdl -o regblock-rtl/ --cpuif ${CPUIF} --rename regblock
 	../../scripts/strip_trailing_whitespace.py regblock-rtl/
 	@if [ "$(GIT_CHECK)" -eq 1 ]; then \
@@ -110,7 +111,7 @@ check-regblock:
 
 regblock-vhdl:
 	rm -rf regblock-vhdl-rtl/*
-	peakrdl regblock-vhdl ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
+	peakrdl regblock-vhdl ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} ${PEAKRDL_ARGS} --rename regblock
 	../../scripts/hwif_wrapper_tool_vhdl/generate_wrapper_vhdl.py ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
 
 # Synthesize the design using Yosys

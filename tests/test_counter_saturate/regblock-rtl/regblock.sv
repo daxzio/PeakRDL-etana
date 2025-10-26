@@ -92,16 +92,22 @@ module regblock (
         logic saturate_control;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         decoded_reg_strb.saturate_via_bool = cpuif_req_masked & (cpuif_addr == 4'h0);
         decoded_reg_strb.saturate_via_const = cpuif_req_masked & (cpuif_addr == 4'h4);
         decoded_reg_strb.saturate_via_ref = cpuif_req_masked & (cpuif_addr == 4'h8);
         decoded_reg_strb.saturate_control = cpuif_req_masked & (cpuif_addr == 4'hc);
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

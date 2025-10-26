@@ -114,13 +114,28 @@ class AHBLiteMasterDX(AHBLiteMaster):
         address: Union[int, Sequence[int]],
         value: Union[int, Sequence[int]],
         length: Optional[int] = 1,
+        error_expected: bool = False,
         **kwargs,
     ) -> Sequence[dict]:
         self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
 
         ret = await super().write(self.addresses, self.values, **kwargs)
+
+        # Check for error response (hresp != 0)
         for i, x in enumerate(ret):
             self.log.info(f"Write 0x{self.addresses[i]:08x}: 0x{self.values[i]:08x}")
+            resp_val = x.get("resp", 0)
+            has_error = resp_val != 0
+
+            if error_expected and not has_error:
+                raise Exception(
+                    f"Expected error response for write to 0x{self.addresses[i]:08x} but got OKAY (resp={resp_val})"
+                )
+            elif not error_expected and has_error:
+                raise Exception(
+                    f"Unexpected error response for write to 0x{self.addresses[i]:08x}: resp={resp_val}"
+                )
+
         return ret
 
     async def read(
@@ -128,13 +143,31 @@ class AHBLiteMasterDX(AHBLiteMaster):
         address: Union[int, Sequence[int]],
         value: Optional[Union[int, Sequence[int]]] = -1,
         length: Optional[int] = 1,
+        error_expected: bool = False,
         **kwargs,
     ) -> Sequence[dict]:
         self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
         ret = await super().read(self.addresses, **kwargs)
+
         for i, x in enumerate(ret):
             self.returned_val = int(x["data"], 16)
             self.value = self.values[i]
             self.log.info(f"Read  0x{self.addresses[i]:08x}: 0x{self.returned_val:08x}")
-            self.check_read(self.addresses[i])
+
+            # Check for error response (hresp != 0)
+            resp_val = x.get("resp", 0)
+            has_error = resp_val != 0
+
+            if error_expected and not has_error:
+                raise Exception(
+                    f"Expected error response at 0x{self.addresses[i]:08x} but got OKAY (resp={resp_val})"
+                )
+            elif not error_expected and has_error:
+                raise Exception(
+                    f"Unexpected error response at 0x{self.addresses[i]:08x}: resp={resp_val}"
+                )
+
+            if not error_expected:
+                self.check_read(self.addresses[i])
+
         return int(ret[0]["data"], 16)  # type: ignore[return-value]

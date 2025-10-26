@@ -15,8 +15,6 @@ module regblock (
         output logic s_apb_pready,
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr
-
-
     );
 
     //--------------------------------------------------------------------------
@@ -89,15 +87,21 @@ module regblock (
         logic regs[1];
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
     logic [31:0] decoded_wr_biten;
 
     always_comb begin
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
         for(int i0=0; i0<1; i0++) begin
             decoded_reg_strb.regs[i0] = cpuif_req_masked & (cpuif_addr == 3'h0 + (3)'(i0) * 3'h4);
         end
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     end
 
     // Pass down signals to next stage

@@ -5,11 +5,29 @@ package regblock_pkg;
 
     localparam REGBLOCK_DATA_WIDTH = 16;
     localparam REGBLOCK_MIN_ADDR_WIDTH = 6;
-    localparam REGBLOCK_SIZE = 'h30;
+    localparam REGBLOCK_SIZE = 'h34;
+
+    typedef struct packed {
+        logic [15:0] f1;
+    } top__myreg__external__fields__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        top__myreg__external__fields__in_t rd_data;
+        logic wr_ack;
+    } top__myreg__external__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        logic [15:0] rd_data;
+        logic wr_ack;
+    } top__ext_block__external__in_t;
 
     typedef struct {
         logic trigger_sig;
         logic trigger_sig_n;
+        top__myreg__external__in_t ext_reg1;
+        top__ext_block__external__in_t ext_block;
     } regblock__in_t;
 
     typedef struct {
@@ -118,6 +136,25 @@ package regblock_pkg;
         top__myreg_f1_286ee21d_wbuffer_trigger_1af3644f__f1_rclr_t__out_t f1;
     } top__myreg_f1_286ee21d_wbuffer_trigger_1af3644f__out_t;
 
+    typedef struct packed {
+        logic [15:0] f1;
+    } top__myreg__external__fields__out_t;
+
+    typedef struct {
+        logic req;
+        logic req_is_wr;
+        top__myreg__external__fields__out_t wr_data;
+        top__myreg__external__fields__out_t wr_biten;
+    } top__myreg__external__out_t;
+
+    typedef struct {
+        logic req;
+        logic addr;
+        logic req_is_wr;
+        logic [15:0] wr_data;
+        logic [15:0] wr_biten;
+    } top__ext_block__external__out_t;
+
     typedef struct {
         top__reg1__out_t reg1;
         top__reg1_msb0__out_t reg1_msb0;
@@ -132,5 +169,7 @@ package regblock_pkg;
         top__myreg_wbuffer_trigger_834b4123__out_t g4_r1;
         top__myreg_wbuffer_trigger_1af3644f__out_t g5_r1;
         top__myreg_f1_286ee21d_wbuffer_trigger_1af3644f__out_t g6_r1;
+        top__myreg__external__out_t ext_reg1;
+        top__ext_block__external__out_t ext_block;
     } regblock__out_t;
 endpackage

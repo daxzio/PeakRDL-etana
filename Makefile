@@ -27,6 +27,28 @@ lint:
 mypy:
 	mypy src
 
+.PHONY: coverage
+coverage:
+	@echo "Running tests with coverage..."
+	cd tests && ./run_coverage.sh
+
+.PHONY: coverage-report
+coverage-report:
+	@echo "Generating coverage report..."
+	coverage report --skip-covered
+	@echo ""
+	@echo "For detailed HTML report, run: make coverage-html"
+
+.PHONY: coverage-html
+coverage-html:
+	coverage html
+	@echo "HTML report generated in htmlcov/"
+	@echo "View with: cd htmlcov && python -m http.server 8000"
+
+.PHONY: coverage-clean
+coverage-clean:
+	rm -rf htmlcov/ .coverage .coverage.* tests/.coverage tests/.coverage.*
+
 format:
 # 	black src
 	black cocotb

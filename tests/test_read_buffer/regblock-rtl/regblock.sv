@@ -75,10 +75,29 @@ module regblock (
     assign s_apb_pslverr = cpuif_rd_err | cpuif_wr_err;
 
     logic cpuif_req_masked;
+    logic external_req;
+    logic external_pending;
+    logic external_wr_ack;
+    logic external_rd_ack;
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            external_pending <= '0;
+        end else begin
+            if(external_req & ~external_wr_ack & ~external_rd_ack) external_pending <= '1;
+            else if(external_wr_ack | external_rd_ack) external_pending <= '0;
+            `ifndef SYNTHESIS
+                assert_bad_ext_wr_ack: assert(!external_wr_ack || (external_pending | external_req))
+                    else $error("An external wr_ack strobe was asserted when no external request was active");
+                assert_bad_ext_rd_ack: assert(!external_rd_ack || (external_pending | external_req))
+                    else $error("An external rd_ack strobe was asserted when no external request was active");
+            `endif
+        end
+    end
 
     // Read & write latencies are balanced. Stalls not required
-    assign cpuif_req_stall_rd = '0;
-    assign cpuif_req_stall_wr = '0;
+    // except if external
+    assign cpuif_req_stall_rd = external_pending;
+    assign cpuif_req_stall_wr = external_pending;
     assign cpuif_req_masked = cpuif_req
                             & !(!cpuif_req_is_wr & cpuif_req_stall_rd)
                             & !(cpuif_req_is_wr & cpuif_req_stall_wr);
@@ -99,40 +118,64 @@ module regblock (
         logic g4_trig;
         logic g4_r1;
         logic g4_r2;
+        logic [1:0] ext_reg1;
+        logic ext_block;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
+    logic decoded_err;
+    logic decoded_strb_is_external;
+
+    logic [4:0] decoded_addr;
+
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [7:0] decoded_wr_data;
     logic [7:0] decoded_wr_biten;
 
     always_comb begin
-        decoded_reg_strb.reg1[0] = cpuif_req_masked & (cpuif_addr == 5'h0);
-        decoded_reg_strb.reg1[1] = cpuif_req_masked & (cpuif_addr == 5'h1);
-        decoded_reg_strb.reg1[2] = cpuif_req_masked & (cpuif_addr == 5'h2);
-        decoded_reg_strb.reg1[3] = cpuif_req_masked & (cpuif_addr == 5'h3);
-        decoded_reg_strb.reg1_msb0[0] = cpuif_req_masked & (cpuif_addr == 5'h4);
-        decoded_reg_strb.reg1_msb0[1] = cpuif_req_masked & (cpuif_addr == 5'h5);
-        decoded_reg_strb.reg1_msb0[2] = cpuif_req_masked & (cpuif_addr == 5'h6);
-        decoded_reg_strb.reg1_msb0[3] = cpuif_req_masked & (cpuif_addr == 5'h7);
-        decoded_reg_strb.reg2[0] = cpuif_req_masked & (cpuif_addr == 5'h8);
-        decoded_reg_strb.reg2[1] = cpuif_req_masked & (cpuif_addr == 5'h9);
-        decoded_reg_strb.reg2[2] = cpuif_req_masked & (cpuif_addr == 5'ha);
-        decoded_reg_strb.reg2[3] = cpuif_req_masked & (cpuif_addr == 5'hb);
-        decoded_reg_strb.g1_r1 = cpuif_req_masked & (cpuif_addr == 5'hc);
-        decoded_reg_strb.g1_r2 = cpuif_req_masked & (cpuif_addr == 5'hd);
-        decoded_reg_strb.g2_r1[0] = cpuif_req_masked & (cpuif_addr == 5'h10);
-        decoded_reg_strb.g2_r1[1] = cpuif_req_masked & (cpuif_addr == 5'h11);
-        decoded_reg_strb.g2_r2[0] = cpuif_req_masked & (cpuif_addr == 5'h12);
-        decoded_reg_strb.g2_r2[1] = cpuif_req_masked & (cpuif_addr == 5'h13);
-        decoded_reg_strb.g3_r1 = cpuif_req_masked & (cpuif_addr == 5'h14);
-        decoded_reg_strb.g3_r2 = cpuif_req_masked & (cpuif_addr == 5'h15);
-        decoded_reg_strb.g4_trig = cpuif_req_masked & (cpuif_addr == 5'h16);
-        decoded_reg_strb.g4_r1 = cpuif_req_masked & (cpuif_addr == 5'h17);
-        decoded_reg_strb.g4_r2 = cpuif_req_masked & (cpuif_addr == 5'h18);
+        automatic logic is_valid_addr;
+        automatic logic is_invalid_rw;
+        automatic logic is_external;
+        is_external = '0;
+        is_valid_addr = '1; // No error checking on valid address access
+        is_invalid_rw = '0;
+        decoded_reg_strb.reg1[0] = cpuif_req_masked & (cpuif_addr == 5'h0) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1[1] = cpuif_req_masked & (cpuif_addr == 5'h1) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1[2] = cpuif_req_masked & (cpuif_addr == 5'h2) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1[3] = cpuif_req_masked & (cpuif_addr == 5'h3) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1_msb0[0] = cpuif_req_masked & (cpuif_addr == 5'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1_msb0[1] = cpuif_req_masked & (cpuif_addr == 5'h5) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1_msb0[2] = cpuif_req_masked & (cpuif_addr == 5'h6) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg1_msb0[3] = cpuif_req_masked & (cpuif_addr == 5'h7) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg2[0] = cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg2[1] = cpuif_req_masked & (cpuif_addr == 5'h9) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg2[2] = cpuif_req_masked & (cpuif_addr == 5'ha) & !cpuif_req_is_wr;
+        decoded_reg_strb.reg2[3] = cpuif_req_masked & (cpuif_addr == 5'hb) & !cpuif_req_is_wr;
+        decoded_reg_strb.g1_r1 = cpuif_req_masked & (cpuif_addr == 5'hc) & !cpuif_req_is_wr;
+        decoded_reg_strb.g1_r2 = cpuif_req_masked & (cpuif_addr == 5'hd) & !cpuif_req_is_wr;
+        decoded_reg_strb.g2_r1[0] = cpuif_req_masked & (cpuif_addr == 5'h10) & !cpuif_req_is_wr;
+        decoded_reg_strb.g2_r1[1] = cpuif_req_masked & (cpuif_addr == 5'h11) & !cpuif_req_is_wr;
+        decoded_reg_strb.g2_r2[0] = cpuif_req_masked & (cpuif_addr == 5'h12) & !cpuif_req_is_wr;
+        decoded_reg_strb.g2_r2[1] = cpuif_req_masked & (cpuif_addr == 5'h13) & !cpuif_req_is_wr;
+        decoded_reg_strb.g3_r1 = cpuif_req_masked & (cpuif_addr == 5'h14) & !cpuif_req_is_wr;
+        decoded_reg_strb.g3_r2 = cpuif_req_masked & (cpuif_addr == 5'h15) & !cpuif_req_is_wr;
+        decoded_reg_strb.g4_trig = cpuif_req_masked & (cpuif_addr == 5'h16) & cpuif_req_is_wr;
+        decoded_reg_strb.g4_r1 = cpuif_req_masked & (cpuif_addr == 5'h17) & !cpuif_req_is_wr;
+        decoded_reg_strb.g4_r2 = cpuif_req_masked & (cpuif_addr == 5'h18) & !cpuif_req_is_wr;
+        decoded_reg_strb.ext_reg1[0] = cpuif_req_masked & (cpuif_addr == 5'h1a) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 5'h1a) & !cpuif_req_is_wr;
+        decoded_reg_strb.ext_reg1[1] = cpuif_req_masked & (cpuif_addr == 5'h1b) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 5'h1b) & !cpuif_req_is_wr;
+        decoded_reg_strb.ext_block = cpuif_req_masked & (cpuif_addr >= 5'h1c) & (cpuif_addr <= 5'h1c + 5'h1);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 5'h1c) & (cpuif_addr <= 5'h1c + 5'h1);
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
+        decoded_strb_is_external = is_external;
+        external_req = is_external;
     end
 
     // Pass down signals to next stage
+    assign decoded_addr = cpuif_addr;
+
     assign decoded_req = cpuif_req_masked;
     assign decoded_req_is_wr = cpuif_req_is_wr;
     assign decoded_wr_data = cpuif_wr_data;
@@ -1344,6 +1387,16 @@ module regblock (
         end
     end
     assign hwif_out.g4_r2.f1.value = field_storage.g4_r2.f1.value;
+    // External register: regblock.ext_reg1
+
+    assign hwif_out.ext_reg1.req = !decoded_req_is_wr ? decoded_reg_strb.ext_reg1 : '0;
+    assign hwif_out.ext_reg1.req_is_wr = decoded_req_is_wr;
+    // External region: regblock.ext_block
+    assign hwif_out.ext_block.req = decoded_reg_strb.ext_block;
+    assign hwif_out.ext_block.addr = decoded_addr[0:0];
+    assign hwif_out.ext_block.req_is_wr = decoded_req_is_wr;
+    assign hwif_out.ext_block.wr_data = decoded_wr_data;
+    assign hwif_out.ext_block.wr_biten = decoded_wr_biten;
 
     //--------------------------------------------------------------------------
     // Read double-buffers
@@ -1470,20 +1523,38 @@ module regblock (
     //--------------------------------------------------------------------------
     // Write response
     //--------------------------------------------------------------------------
-    assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
+    always_comb begin
+        automatic logic wr_ack;
+        wr_ack = '0;
+        wr_ack |= hwif_in.ext_block.wr_ack;
+        external_wr_ack = wr_ack;
+    end
+    assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
     // Writes are always granted with no error response
     assign cpuif_wr_err = '0;
 
     //--------------------------------------------------------------------------
     // Readback
     //--------------------------------------------------------------------------
+    logic readback_external_rd_ack_c;
+    always_comb begin
+        automatic logic rd_ack;
+        rd_ack = '0;
+        rd_ack |= hwif_in.ext_reg1.rd_ack;
+        rd_ack |= hwif_in.ext_block.rd_ack;
+        readback_external_rd_ack_c = rd_ack;
+    end
+
+    logic readback_external_rd_ack;
+
+    assign readback_external_rd_ack = readback_external_rd_ack_c;
 
     logic readback_err;
     logic readback_done;
     logic [7:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [7:0] readback_array[22];
+    logic [7:0] readback_array[24];
     assign readback_array[0][2:0] = (decoded_reg_strb.reg1[0] && !decoded_req_is_wr) ? field_storage.reg1.f1.value : '0;
     assign readback_array[0][5:3] = (decoded_reg_strb.reg1[0] && !decoded_req_is_wr) ? field_storage.reg1.f2.value : '0;
     assign readback_array[0][7:6] = (decoded_reg_strb.reg1[0] && !decoded_req_is_wr) ? field_storage.reg1.f3.value[1:0] : '0;
@@ -1512,18 +1583,21 @@ module regblock (
     assign readback_array[19][7:0] = (decoded_reg_strb.g3_r2 && !decoded_req_is_wr) ? rbuf_storage.g3_r2.data : '0;
     assign readback_array[20][7:0] = (decoded_reg_strb.g4_r1 && !decoded_req_is_wr) ? rbuf_storage.g4_r1.data : '0;
     assign readback_array[21][7:0] = (decoded_reg_strb.g4_r2 && !decoded_req_is_wr) ? rbuf_storage.g4_r2.data : '0;
+    assign readback_array[22] = hwif_in.ext_reg1.rd_ack ? hwif_in.ext_reg1.rd_data : '0;
+    assign readback_array[23] = hwif_in.ext_block.rd_ack ? hwif_in.ext_block.rd_data : '0;
 
     // Reduce the array
     always_comb begin
         automatic logic [7:0] readback_data_var;
-        readback_done = decoded_req & ~decoded_req_is_wr;
+        readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_strb_is_external;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<22; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<24; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 
-    assign cpuif_rd_ack = readback_done;
+    assign external_rd_ack = readback_external_rd_ack;
+    assign cpuif_rd_ack = readback_done | readback_external_rd_ack;
     assign cpuif_rd_data = readback_data;
     assign cpuif_rd_err = readback_err;
 endmodule

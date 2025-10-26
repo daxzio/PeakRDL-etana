@@ -25,7 +25,7 @@ class SignalMetadata:
     direction: str  # 'input' or 'output'
     width: int
     rdl_path: str  # Full RDL path (e.g., "PMBUS.PAGE.PAGE")
-    address: int
+    address: Optional[int]  # None for array elements without resolved index
     sw_access: str  # 'r', 'w', 'rw', etc.
     hw_access: str  # 'r', 'w', 'rw', etc.
     reset_value: Optional[int]
@@ -54,7 +54,13 @@ class SignalCollector(RDLListener):
         p = IndexedPath(self.ds.top_node, node)
 
         # Get address from parent register
-        address = node.parent.absolute_address
+        # Handle array registers gracefully
+        try:
+            address = node.parent.absolute_address
+        except (ValueError, AttributeError):
+            # Array registers without resolved index can't provide absolute_address
+            # Use None to indicate address is instance-dependent
+            address = None
 
         # Get access properties and convert AccessType enum to string
         sw_prop = node.get_property("sw", default="na")
@@ -131,7 +137,7 @@ class SignalCollector(RDLListener):
                 direction="input",
                 width=node.width,
                 rdl_path=rdl_path,
-                address=0,  # Signals don't have addresses
+                address=None,  # Signals don't have addresses
                 sw_access="na",
                 hw_access="na",
                 reset_value=None,
