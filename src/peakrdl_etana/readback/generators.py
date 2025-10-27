@@ -10,6 +10,8 @@ from ..utils import (
     do_slice,
     is_inside_external_block,
     external_policy,
+    has_sw_readable_descendants,
+    is_wide_single_field_register,
 )
 
 if TYPE_CHECKING:
@@ -95,12 +97,14 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
         if node.external:
-            strb = self.exp.hwif.get_external_rd_ack(node, True)
-            data = self.exp.hwif.get_external_rd_data(node, True)
-            self.add_content(
-                f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;"
-            )
-            self.current_offset += 1
+            # Only generate readback for sw-readable memories (skip write-only)
+            if node.is_sw_readable:
+                strb = self.exp.hwif.get_external_rd_ack(node, True)
+                data = self.exp.hwif.get_external_rd_data(node, True)
+                self.add_content(
+                    f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;"
+                )
+                self.current_offset += 1
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
@@ -108,7 +112,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         # For external regfiles, use bus interface readback
         self.policy = external_policy(self.exp.ds)
         if self.policy.is_external(node):
-            self.process_external_block(node)
+            # Only generate readback for sw-readable regfiles (skip write-only)
+            if has_sw_readable_descendants(node):
+                self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
@@ -119,12 +125,23 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         # For external addrmaps, use bus interface readback
         if self.policy.is_external(node):
-            self.process_external_block(node)
+            # Only generate readback for sw-readable addrmaps (skip write-only)
+            if has_sw_readable_descendants(node):
+                self.process_external_block(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
     def enter_Reg(self, node: RegNode) -> WalkerAction:
         if not node.has_sw_readable:
+            return WalkerAction.SkipDescendants
+
+        # Skip external registers - they use external rd_data protocol
+        # External modules handle their own buffering
+        if node.external:
+            # External registers always generate ONE readback entry (not per-subword)
+            # For wide external registers, the external module handles subword access
+            # and returns the appropriate data via rd_ack/rd_data
+            self.process_reg(node)
             return WalkerAction.SkipDescendants
 
         # Check if this register is inside an external regfile/addrmap
@@ -159,8 +176,19 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         rd_data = self.exp.hwif.get_external_rd_data(node, True)
         rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
 
+        # External block rd_data might be wider than accesswidth if it contains
+        # registers wider than the bus. Slice to accesswidth.
+        bus_width = self.exp.cpuif.data_width
+        # For external blocks, the rd_data width is typically cpuif.data_width,
+        # but could be wider if internal registers are wider
+        # Slice to match readback_array entry width
+        if bus_width < 32:  # If we have a narrow bus
+            rd_data_sliced = f"{rd_data}[{bus_width-1}:0]"
+        else:
+            rd_data_sliced = rd_data
+
         self.add_content(
-            f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data} : '0;"
+            f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data_sliced} : '0;"
         )
         self.current_offset += 1
 
@@ -172,6 +200,33 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     def process_reg(self, node: RegNode) -> None:
         # Note: regwidth can be less than cpuif.data_width for narrow registers
         # The readback logic below handles padding automatically
+
+        # Special handling for single-field external registers (wide or not)
+        # For these, the rd_data signal is register-level (not field-level)
+        if self.policy.is_external(node):
+            # Check if this is a single-field register
+            n_sw_readable_fields = sum(1 for f in node.fields() if f.is_sw_readable)
+            if n_sw_readable_fields == 1:
+                # Single-field external register
+                # The rd_data signal is register-level, assign the full signal
+                regwidth = node.get_property("regwidth")
+                rd_data = self.exp.hwif.get_external_rd_data(node, True)
+                rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
+
+                if regwidth < self.exp.cpuif.data_width:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_ack} ? {rd_data} : '0;"
+                    )
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}][{self.exp.cpuif.data_width-1}:{regwidth}] = '0;"
+                    )
+                else:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data} : '0;"
+                    )
+                self.current_offset += 1
+                return
+
         current_bit = 0
         p = self.exp.dereferencer.get_access_strobe(node)
         if self.policy.is_external(node):
@@ -341,11 +396,27 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             rd_data = self.exp.hwif.get_external_rd_data(node, True)
             rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
 
+            # For external registers with buffering enabled, they still don't get
+            # buffer logic generated (handled by external module), but we need to handle
+            # readback correctly by checking which subword is being accessed
+            astrb = self.exp.dereferencer.get_access_strobe(
+                node, reduce_substrobes=False
+            )
+
             for subword_idx in range(n_subwords):
                 # Each subword gets its own readback entry
-                self.add_content(
-                    f"assign readback_array[{self.current_offset_str}] = {rd_ack} ? {rd_data} : '0;"
-                )
+                # For external registers, rd_data is accesswidth-sized, not regwidth
+                # The external module returns only the accessed subword (32-bit)
+                rd_strb = f"({rd_ack} && {astrb.path}{astrb.index_str}[{subword_idx}])"
+                # rd_data is accesswidth wide (32-bit), return full signal
+                if accesswidth < bus_width:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {rd_data} : '0;"
+                    )
+                else:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {rd_data} : '0;"
+                    )
                 self.current_offset += 1
             return
 

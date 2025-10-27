@@ -105,7 +105,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
     def enter_Field(self, node: "FieldNode") -> None:
         if is_external_for_codegen(node, self.ds):
-            if node.is_hw_readable:
+            # For external registers, track fields for wr_data/rd_data generation
+            # We need sw_writable fields for wr_data and sw_readable fields for rd_data
+            if node.is_sw_writable or node.is_sw_readable:
                 self.fields.append(node)
             return
         if node.implements_storage:
@@ -411,23 +413,42 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             bslice = ""
 
         accesswidth = node.get_property("accesswidth")
-        inst_names = []
+        regwidth = node.get_property("regwidth")
+        wr_inst_names = []  # Only writable fields
+        rd_inst_names = []  # Only readable fields
 
-        # For wide external registers with only ONE field,
-        # regblock generates per-register signals without field name suffix at accesswidth
-        if is_wide_single_field_register(node) and len(self.fields) == 1:
-            # Generate per-register signal without field name, using accesswidth
-            vslice = f"[{accesswidth-1}:0]"
-            inst_names.append(["", vslice])  # Empty string for field name
+        # For external registers with only ONE field,
+        # regblock generates per-register signals without field name suffix
+        # Check if this is a single-field register
+        n_fields = sum(1 for f in node.fields() if f.is_sw_readable or f.is_sw_writable)
+        is_single_field = n_fields == 1
+
+        if is_single_field and len(self.fields) == 1:
+            # Single-field external register - generate per-register signal without field name
+            # For wide registers, use accesswidth; for normal registers, use regwidth
+            if accesswidth < regwidth:
+                # Wide register - use accesswidth
+                vslice = f"[{accesswidth-1}:0]"
+            else:
+                # Normal register - use regwidth
+                vslice = f"[{regwidth-1}:0]"
+            field = self.fields[0]
+            if field.is_sw_writable:
+                wr_inst_names.append(["", vslice])
+            if field.is_sw_readable:
+                rd_inst_names.append(["", vslice])
         else:
-            # Not a wide register or multiple fields - use per-field naming
+            # Multi-field register - use per-field naming
             for field in self.fields:
                 x = IndexedPath(self.exp.ds.top_node, field)
                 path = re.sub(p.path, "", x.path)
                 # For external registers, always use the full field width
                 # The external module handles wide register access internally.
                 vslice = f"[{field.msb}:{field.lsb}]"
-                inst_names.append([path, vslice])
+                if field.is_sw_writable:
+                    wr_inst_names.append([path, vslice])
+                if field.is_sw_readable:
+                    rd_inst_names.append([path, vslice])
 
         context = {
             "has_sw_writable": node.has_sw_writable,
@@ -437,7 +458,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "prefix": prefix,
             "strb": strb,
             "index_str": index_str,
-            "inst_names": inst_names,
+            "inst_names": wr_inst_names,  # Only writable fields for wr_data/wr_biten
             "bslice": bslice,
             "retime": self.ds.retime_external_reg,
             "get_always_ff_event": self.exp.dereferencer.get_always_ff_event,

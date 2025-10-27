@@ -38,9 +38,9 @@ module regblock (
         output logic [31:0] hwif_out_ext_reg_array_req_is_wr,
         input wire [31:0] hwif_in_ext_reg_array_rd_ack,
         input wire [31:0] hwif_in_ext_reg_array_wr_ack,
-        input wire [31:0] [31:0] hwif_in_ext_reg_array_rd_data_whatever,
-        output logic [31:0] [31:0] hwif_out_ext_reg_array_wr_data_whatever,
-        output logic [31:0] [31:0] hwif_out_ext_reg_array_wr_biten_whatever,
+        input wire [31:0] [31:0] hwif_in_ext_reg_array_rd_data,
+        output logic [31:0] [31:0] hwif_out_ext_reg_array_wr_data,
+        output logic [31:0] [31:0] hwif_out_ext_reg_array_wr_biten,
         output logic hwif_out_rf_req,
         output logic [4:0] hwif_out_rf_addr,
         output logic hwif_out_rf_req_is_wr,
@@ -68,12 +68,12 @@ module regblock (
         output logic hwif_out_ro_reg_req,
         output logic hwif_out_ro_reg_req_is_wr,
         input wire hwif_in_ro_reg_rd_ack,
-        input wire [31:0] hwif_in_ro_reg_rd_data_whatever,
+        input wire [31:0] hwif_in_ro_reg_rd_data,
         output logic hwif_out_wo_reg_req,
         output logic hwif_out_wo_reg_req_is_wr,
         input wire hwif_in_wo_reg_wr_ack,
-        output logic [31:0] hwif_out_wo_reg_wr_data_whatever,
-        output logic [31:0] hwif_out_wo_reg_wr_biten_whatever,
+        output logic [31:0] hwif_out_wo_reg_wr_data,
+        output logic [31:0] hwif_out_wo_reg_wr_biten,
         output logic [1:0] hwif_out_wide_ro_reg_req,
         output logic hwif_out_wide_ro_reg_req_is_wr,
         input wire hwif_in_wide_ro_reg_rd_ack,
@@ -218,9 +218,9 @@ module regblock (
         is_external |= cpuif_req_masked & (cpuif_addr >= 15'h2000) & (cpuif_addr <= 15'h2000 + 15'h1f);
         decoded_reg_strb_mm = cpuif_req_masked & (cpuif_addr >= 15'h3000) & (cpuif_addr <= 15'h3000 + 15'h1f);
         is_external |= cpuif_req_masked & (cpuif_addr >= 15'h3000) & (cpuif_addr <= 15'h3000 + 15'h1f);
-        decoded_reg_strb_ro_reg = cpuif_req_masked & (cpuif_addr == 15'h4000);
+        decoded_reg_strb_ro_reg = cpuif_req_masked & (cpuif_addr == 15'h4000) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4000) & !cpuif_req_is_wr;
-        decoded_reg_strb_wo_reg = cpuif_req_masked & (cpuif_addr == 15'h4004);
+        decoded_reg_strb_wo_reg = cpuif_req_masked & (cpuif_addr == 15'h4004) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4004) & cpuif_req_is_wr;
         decoded_reg_strb_wide_ro_reg[0] = cpuif_req_masked & (cpuif_addr == 15'h4010);
         is_external |= cpuif_req_masked & (cpuif_addr == 15'h4010) & !cpuif_req_is_wr;
@@ -291,8 +291,8 @@ module regblock (
 
         assign hwif_out_ext_reg_array_req[i0] = decoded_reg_strb_ext_reg_array[i0];
         assign hwif_out_ext_reg_array_req_is_wr[i0] = decoded_req_is_wr;
-        assign hwif_out_ext_reg_array_wr_data_whatever[i0] = decoded_wr_data[31:0];
-        assign hwif_out_ext_reg_array_wr_biten_whatever[i0] = decoded_wr_biten[31:0];
+        assign hwif_out_ext_reg_array_wr_data[i0] = decoded_wr_data[31:0];
+        assign hwif_out_ext_reg_array_wr_biten[i0] = decoded_wr_biten[31:0];
     end
 
     assign hwif_out_rf_addr = decoded_addr[4:0];
@@ -318,8 +318,8 @@ module regblock (
 
     assign hwif_out_wo_reg_req = decoded_req_is_wr ? decoded_reg_strb_wo_reg : '0;
     assign hwif_out_wo_reg_req_is_wr = decoded_req_is_wr;
-    assign hwif_out_wo_reg_wr_data_whatever = decoded_wr_data[31:0];
-    assign hwif_out_wo_reg_wr_biten_whatever = decoded_wr_biten[31:0];
+    assign hwif_out_wo_reg_wr_data = decoded_wr_data[31:0];
+    assign hwif_out_wo_reg_wr_biten = decoded_wr_biten[31:0];
 
     assign hwif_out_wide_ro_reg_req = !decoded_req_is_wr ? decoded_reg_strb_wide_ro_reg: '0;
     assign hwif_out_wide_ro_reg_req_is_wr = decoded_req_is_wr;
@@ -379,7 +379,7 @@ module regblock (
     logic [31:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [31:0] readback_array[42];
+    logic [31:0] readback_array[40];
     assign readback_array[0][1:0] = '0;
     assign readback_array[0][3:2] = hwif_in_ext_reg_rd_ack ? hwif_in_ext_reg_rd_data_whatever_a : '0;
     assign readback_array[0][7:4] = '0;
@@ -387,16 +387,14 @@ module regblock (
     assign readback_array[0][31:16] = '0;
     assign readback_array[1][31:0] = (decoded_reg_strb_int_reg && !decoded_req_is_wr) ? field_storage_int_reg_whatever_value : '0;
     assign readback_array[2] = hwif_in_wide_ext_reg_rd_ack ? hwif_in_wide_ext_reg_rd_data : '0;
-    assign readback_array[3] = hwif_in_wide_ext_reg_rd_ack ? hwif_in_wide_ext_reg_rd_data : '0;
     for(genvar i0=0; i0<32; i0++) begin : gen_loop_1
-        assign readback_array[i0*1 + 4][31:0] = hwif_in_ext_reg_array_rd_ack[i0] ? hwif_in_ext_reg_array_rd_data_whatever[i0] : '0;
+        assign readback_array[i0*1 + 3] = hwif_in_ext_reg_array_rd_ack[i0] ? hwif_in_ext_reg_array_rd_data[i0] : '0;
     end
-    assign readback_array[36] = hwif_in_rf_rd_ack ? hwif_in_rf_rd_data : '0;
-    assign readback_array[37] = hwif_in_am_rd_ack ? hwif_in_am_rd_data : '0;
-    assign readback_array[38] = hwif_in_mm_rd_ack ? hwif_in_mm_rd_data : '0;
-    assign readback_array[39][31:0] = hwif_in_ro_reg_rd_ack ? hwif_in_ro_reg_rd_data_whatever : '0;
-    assign readback_array[40] = hwif_in_wide_ro_reg_rd_ack ? hwif_in_wide_ro_reg_rd_data : '0;
-    assign readback_array[41] = hwif_in_wide_ro_reg_rd_ack ? hwif_in_wide_ro_reg_rd_data : '0;
+    assign readback_array[35] = hwif_in_rf_rd_ack ? hwif_in_rf_rd_data : '0;
+    assign readback_array[36] = hwif_in_am_rd_ack ? hwif_in_am_rd_data : '0;
+    assign readback_array[37] = hwif_in_mm_rd_ack ? hwif_in_mm_rd_data : '0;
+    assign readback_array[38] = hwif_in_ro_reg_rd_ack ? hwif_in_ro_reg_rd_data : '0;
+    assign readback_array[39] = hwif_in_wide_ro_reg_rd_ack ? hwif_in_wide_ro_reg_rd_data : '0;
 
     // Reduce the array
     // always_comb begin
@@ -405,7 +403,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_strb_is_external;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<42; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<40; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 

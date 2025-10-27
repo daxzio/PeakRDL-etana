@@ -151,7 +151,7 @@ module regblock (
         decoded_reg_strb_r_reg2[1] = cpuif_req_masked & (cpuif_addr == 6'h2a);
         decoded_reg_strb_r_reg2[2] = cpuif_req_masked & (cpuif_addr == 6'h2c);
         decoded_reg_strb_r_reg2[3] = cpuif_req_masked & (cpuif_addr == 6'h2e);
-        decoded_reg_strb_counter_reg = cpuif_req_masked & (cpuif_addr == 6'h30);
+        decoded_reg_strb_counter_reg = cpuif_req_masked & (cpuif_addr == 6'h30) & !cpuif_req_is_wr;
         decoded_reg_strb_r_reg3[0] = cpuif_req_masked & (cpuif_addr == 6'h34);
         decoded_reg_strb_r_reg3[1] = cpuif_req_masked & (cpuif_addr == 6'h36);
         decoded_reg_strb_r_reg4[0] = cpuif_req_masked & (cpuif_addr == 6'h38);

@@ -115,9 +115,9 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_threshold_via_bool = cpuif_req_masked & (cpuif_addr == 4'h0);
-        decoded_reg_strb_threshold_via_const = cpuif_req_masked & (cpuif_addr == 4'h4);
-        decoded_reg_strb_threshold_via_ref = cpuif_req_masked & (cpuif_addr == 4'h8);
+        decoded_reg_strb_threshold_via_bool = cpuif_req_masked & (cpuif_addr == 4'h0) & !cpuif_req_is_wr;
+        decoded_reg_strb_threshold_via_const = cpuif_req_masked & (cpuif_addr == 4'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb_threshold_via_ref = cpuif_req_masked & (cpuif_addr == 4'h8) & !cpuif_req_is_wr;
         decoded_reg_strb_threshold_control = cpuif_req_masked & (cpuif_addr == 4'hc);
     end
 

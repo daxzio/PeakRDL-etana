@@ -24,16 +24,25 @@ class SimpleExtRegEmulator:
         self.clk = clk
         self.prefix = prefix
 
-        # Protocol signals (flattened) - field name is 'f'
+        # Protocol signals (flattened)
+        # Auto-detect field suffix: regblock uses '_f', etana doesn't
         self.req = getattr(dut, f"{prefix}_req")
         self.req_is_wr = getattr(dut, f"{prefix}_req_is_wr")
-        self.wr_data = getattr(dut, f"{prefix}_wr_data_f")
-        self.wr_biten = getattr(dut, f"{prefix}_wr_biten_f")
+
+        # Try with field suffix first (regblock), fallback to no suffix (etana)
+        try:
+            self.wr_data = getattr(dut, f"{prefix}_wr_data_f")
+            self.wr_biten = getattr(dut, f"{prefix}_wr_biten_f")
+            field_suffix = "_f"
+        except AttributeError:
+            self.wr_data = getattr(dut, f"{prefix}_wr_data")
+            self.wr_biten = getattr(dut, f"{prefix}_wr_biten")
+            field_suffix = ""
 
         # Response signals
         in_prefix = prefix.replace("hwif_out", "hwif_in")
         self.rd_ack = getattr(dut, f"{in_prefix}_rd_ack")
-        self.rd_data = getattr(dut, f"{in_prefix}_rd_data_f")
+        self.rd_data = getattr(dut, f"{in_prefix}_rd_data{field_suffix}")
         self.wr_ack = getattr(dut, f"{in_prefix}_wr_ack")
 
         # Internal storage
@@ -90,13 +99,17 @@ class SimpleExtRegReadOnly:
         self.prefix = prefix
 
         # Protocol signals
+        # Auto-detect field suffix: regblock uses '_f', etana doesn't
         self.req = getattr(dut, f"{prefix}_req")
         self.req_is_wr = getattr(dut, f"{prefix}_req_is_wr")
 
-        # Response signals - field name is 'f'
+        # Response signals - try with field suffix first (regblock), fallback to no suffix (etana)
         in_prefix = prefix.replace("hwif_out", "hwif_in")
         self.rd_ack = getattr(dut, f"{in_prefix}_rd_ack")
-        self.rd_data = getattr(dut, f"{in_prefix}_rd_data_f")
+        try:
+            self.rd_data = getattr(dut, f"{in_prefix}_rd_data_f")
+        except AttributeError:
+            self.rd_data = getattr(dut, f"{in_prefix}_rd_data")
 
         # Internal storage (can be set by test)
         self.value = 0
@@ -133,11 +146,18 @@ class SimpleExtRegWriteOnly:
         self.clk = clk
         self.prefix = prefix
 
-        # Protocol signals - field name is 'f'
+        # Protocol signals
+        # Auto-detect field suffix: regblock uses '_f', etana doesn't
         self.req = getattr(dut, f"{prefix}_req")
         self.req_is_wr = getattr(dut, f"{prefix}_req_is_wr")
-        self.wr_data = getattr(dut, f"{prefix}_wr_data_f")
-        self.wr_biten = getattr(dut, f"{prefix}_wr_biten_f")
+
+        # Try with field suffix first (regblock), fallback to no suffix (etana)
+        try:
+            self.wr_data = getattr(dut, f"{prefix}_wr_data_f")
+            self.wr_biten = getattr(dut, f"{prefix}_wr_biten_f")
+        except AttributeError:
+            self.wr_data = getattr(dut, f"{prefix}_wr_data")
+            self.wr_biten = getattr(dut, f"{prefix}_wr_biten")
 
         # Response signals
         in_prefix = prefix.replace("hwif_out", "hwif_in")
@@ -261,11 +281,11 @@ class SimpleExtMemReadOnly:
         self.req_is_wr = getattr(dut, f"{prefix}_req_is_wr")
         self.addr = getattr(dut, f"{prefix}_addr")
 
-        # Response signals
+        # Response signals - read-only memories don't have wr_ack
         in_prefix = prefix.replace("hwif_out", "hwif_in")
         self.rd_ack = getattr(dut, f"{in_prefix}_rd_ack")
         self.rd_data = getattr(dut, f"{in_prefix}_rd_data")
-        self.wr_ack = getattr(dut, f"{in_prefix}_wr_ack")
+        self.wr_ack = None  # Read-only memories don't have wr_ack
 
         # Internal storage (can be set by test)
         self.mem = [0] * num_entries
@@ -273,7 +293,6 @@ class SimpleExtMemReadOnly:
         # Initialize response signals
         self.rd_ack.value = 0
         self.rd_data.value = 0
-        self.wr_ack.value = 0
 
     async def run(self):
         """Run the emulator"""
@@ -282,7 +301,6 @@ class SimpleExtMemReadOnly:
 
             # Default: no ack
             self.rd_ack.value = 0
-            self.wr_ack.value = 0
 
             try:
                 req_val = int(self.req.value)
@@ -291,17 +309,12 @@ class SimpleExtMemReadOnly:
             except ValueError:
                 continue
 
-            if req_val == 1:
+            if req_val == 1 and req_is_wr_val == 0:
+                # Read request only (ignore write attempts on read-only memory)
                 # Address is in bytes, divide by 4 for word index
                 idx = (addr_val >> 2) % len(self.mem)
-
-                if req_is_wr_val == 0:
-                    # Read request only
-                    self.rd_data.value = self.mem[idx]
-                    self.rd_ack.value = 1
-                else:
-                    # Write request - ack but don't modify
-                    self.wr_ack.value = 1
+                self.rd_data.value = self.mem[idx]
+                self.rd_ack.value = 1
 
 
 class SimpleExtMemWriteOnly:
@@ -319,18 +332,16 @@ class SimpleExtMemWriteOnly:
         self.wr_data = getattr(dut, f"{prefix}_wr_data")
         self.wr_biten = getattr(dut, f"{prefix}_wr_biten")
 
-        # Response signals
+        # Response signals - write-only memories don't have rd_ack/rd_data
         in_prefix = prefix.replace("hwif_out", "hwif_in")
-        self.rd_ack = getattr(dut, f"{in_prefix}_rd_ack")
-        self.rd_data = getattr(dut, f"{in_prefix}_rd_data")
+        self.rd_ack = None  # Write-only memories don't have rd_ack
+        self.rd_data = None  # Write-only memories don't have rd_data
         self.wr_ack = getattr(dut, f"{in_prefix}_wr_ack")
 
         # Internal storage (can be read by test)
         self.mem = [0] * num_entries
 
         # Initialize response signals
-        self.rd_ack.value = 0
-        self.rd_data.value = 0
         self.wr_ack.value = 0
 
     async def run(self):
@@ -339,7 +350,6 @@ class SimpleExtMemWriteOnly:
             await RisingEdge(self.clk)
 
             # Default: no ack
-            self.rd_ack.value = 0
             self.wr_ack.value = 0
 
             try:
@@ -349,25 +359,19 @@ class SimpleExtMemWriteOnly:
             except ValueError:
                 continue
 
-            if req_val == 1:
+            if req_val == 1 and req_is_wr_val == 1:
+                # Write request only (ignore read attempts on write-only memory)
                 # Address is in bytes, divide by 4 for word index
                 idx = (addr_val >> 2) % len(self.mem)
+                wr_val = int(self.wr_data.value)
+                wr_biten_val = int(self.wr_biten.value)
 
-                if req_is_wr_val == 1:
-                    # Write request only
-                    wr_val = int(self.wr_data.value)
-                    wr_biten_val = int(self.wr_biten.value)
+                # Apply bit-enable mask
+                for bit in range(32):
+                    if (wr_biten_val >> bit) & 1:
+                        if (wr_val >> bit) & 1:
+                            self.mem[idx] |= 1 << bit
+                        else:
+                            self.mem[idx] &= ~(1 << bit)
 
-                    # Apply bit-enable mask
-                    for bit in range(32):
-                        if (wr_biten_val >> bit) & 1:
-                            if (wr_val >> bit) & 1:
-                                self.mem[idx] |= 1 << bit
-                            else:
-                                self.mem[idx] &= ~(1 << bit)
-
-                    self.wr_ack.value = 1
-                else:
-                    # Read request - ack but return 0
-                    self.rd_data.value = 0
-                    self.rd_ack.value = 1
+                self.wr_ack.value = 1

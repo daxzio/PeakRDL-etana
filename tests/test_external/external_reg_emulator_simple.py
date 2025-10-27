@@ -10,7 +10,17 @@ from cocotb.triggers import RisingEdge
 
 
 class ExtRegEmulator:
-    """Emulates ext_reg (my_reg_alt type) with correct bit positions"""
+    """Emulates ext_reg (my_reg_alt type) with correct bit positions
+
+    Works with both:
+    - Register-level signals (etana): hwif_out_ext_reg_wr_data
+    - Field-level signals (regblock wrapper): hwif_out_ext_reg_wr_data_whatever_b/c
+
+    Fields:
+    - whatever_a[3:2]: sw=r, hw=w (read-only from SW)
+    - whatever_b[4:4]: sw=w, hw=r (write-only from SW)
+    - whatever_c[15:8]: sw=rw, hw=r (read-write)
+    """
 
     def __init__(self, dut, clk):
         self.dut = dut
@@ -20,13 +30,18 @@ class ExtRegEmulator:
         self.req = dut.hwif_out_ext_reg_req
         self.req_is_wr = dut.hwif_out_ext_reg_req_is_wr
 
-        # Write data signals (from SW)
-        self.wr_data_b = dut.hwif_out_ext_reg_wr_data_whatever_b  # bit [4]
-        self.wr_data_c = dut.hwif_out_ext_reg_wr_data_whatever_c  # bits [15:8]
+        # Try register-level signals first (etana), then field-level (regblock wrapper)
+        self.wr_data_reg = getattr(dut, "hwif_out_ext_reg_wr_data", None)
+        self.wr_biten_reg = getattr(dut, "hwif_out_ext_reg_wr_biten", None)
+        self.rd_data_reg = getattr(dut, "hwif_in_ext_reg_rd_data", None)
 
-        # Read data signals (to SW)
-        self.rd_data_a = dut.hwif_in_ext_reg_rd_data_whatever_a  # bits [3:2]
-        self.rd_data_c = dut.hwif_in_ext_reg_rd_data_whatever_c  # bits [15:8]
+        # Field-level signals (for regblock wrapper)
+        self.wr_data_b = getattr(dut, "hwif_out_ext_reg_wr_data_whatever_b", None)
+        self.wr_data_c = getattr(dut, "hwif_out_ext_reg_wr_data_whatever_c", None)
+        self.wr_biten_b = getattr(dut, "hwif_out_ext_reg_wr_biten_whatever_b", None)
+        self.wr_biten_c = getattr(dut, "hwif_out_ext_reg_wr_biten_whatever_c", None)
+        self.rd_data_a = getattr(dut, "hwif_in_ext_reg_rd_data_whatever_a", None)
+        self.rd_data_c_field = getattr(dut, "hwif_in_ext_reg_rd_data_whatever_c", None)
 
         # Acks
         self.rd_ack = dut.hwif_in_ext_reg_rd_ack
@@ -38,8 +53,12 @@ class ExtRegEmulator:
         # Initialize acks and read data to prevent X propagation
         self.rd_ack.value = 0
         self.wr_ack.value = 0
-        self.rd_data_a.value = 0
-        self.rd_data_c.value = 0
+        if self.rd_data_reg is not None:
+            self.rd_data_reg.value = 0
+        if self.rd_data_a is not None:
+            self.rd_data_a.value = 0
+        if self.rd_data_c_field is not None:
+            self.rd_data_c_field.value = 0
 
     async def run(self):
         """Run the emulator"""
@@ -59,25 +78,55 @@ class ExtRegEmulator:
 
             if req_val == 1:
                 if req_is_wr_val == 1:
-                    # Write request - update storage from SW writable fields
-                    # whatever_b: bit [4]
-                    b_val = int(self.wr_data_b.value)
-                    self.storage = (self.storage & ~(1 << 4)) | ((b_val & 1) << 4)
+                    # Write request
+                    if self.wr_data_reg is not None:
+                        # Register-level signals (etana)
+                        wr_val = int(self.wr_data_reg.value)
+                        wr_biten_val = int(self.wr_biten_reg.value)
 
-                    # whatever_c: bits [15:8]
-                    c_val = int(self.wr_data_c.value)
-                    self.storage = (self.storage & ~(0xFF << 8)) | ((c_val & 0xFF) << 8)
+                        # Apply bit-enable mask to update storage
+                        for bit in range(32):
+                            if (wr_biten_val >> bit) & 1:
+                                if (wr_val >> bit) & 1:
+                                    self.storage |= 1 << bit
+                                else:
+                                    self.storage &= ~(1 << bit)
+                    else:
+                        # Field-level signals (regblock wrapper)
+                        # whatever_b: bit [4]
+                        if self.wr_biten_b is not None and int(self.wr_biten_b.value):
+                            b_val = int(self.wr_data_b.value)
+                            self.storage = (self.storage & ~(1 << 4)) | (
+                                (b_val & 1) << 4
+                            )
+
+                        # whatever_c: bits [15:8]
+                        if self.wr_biten_c is not None:
+                            c_biten = int(self.wr_biten_c.value)
+                            c_val = int(self.wr_data_c.value)
+                            for bit in range(8):
+                                if (c_biten >> bit) & 1:
+                                    storage_bit = 8 + bit
+                                    if (c_val >> bit) & 1:
+                                        self.storage |= 1 << storage_bit
+                                    else:
+                                        self.storage &= ~(1 << storage_bit)
 
                     self.wr_ack.value = 1
                 else:
-                    # Read request - return SW readable fields from storage
-                    # whatever_a: bits [3:2] (HW can modify these)
-                    a_val = (self.storage >> 2) & 0x3
-                    self.rd_data_a.value = a_val
+                    # Read request
+                    if self.rd_data_reg is not None:
+                        # Register-level signal (etana)
+                        self.rd_data_reg.value = self.storage
+                    else:
+                        # Field-level signals (regblock wrapper)
+                        # whatever_a: bits [3:2]
+                        a_val = (self.storage >> 2) & 0x3
+                        self.rd_data_a.value = a_val
 
-                    # whatever_c: bits [15:8]
-                    c_val = (self.storage >> 8) & 0xFF
-                    self.rd_data_c.value = c_val
+                        # whatever_c: bits [15:8]
+                        c_val = (self.storage >> 8) & 0xFF
+                        self.rd_data_c_field.value = c_val
 
                     self.rd_ack.value = 1
 
@@ -85,6 +134,7 @@ class ExtRegEmulator:
 class WideExtRegEmulator:
     """Emulates wide_ext_reg (my_wide_reg type) - 64-bit with 32-bit access
 
+    Uses register-level rd_data/wr_data (64-bit) with subword access via req bits.
     Field: whatever (full 32-bit per subword)
     2 subwords total (64-bit regwidth, 32-bit accesswidth)
     """
@@ -98,19 +148,17 @@ class WideExtRegEmulator:
         self.req = dut.hwif_out_wide_ext_reg_req
         self.req_is_wr = dut.hwif_out_wide_ext_reg_req_is_wr
 
-        # Data signals (full 32-bit)
+        # Register-level data signals (64-bit wide)
         self.wr_data = dut.hwif_out_wide_ext_reg_wr_data
+        self.wr_biten = dut.hwif_out_wide_ext_reg_wr_biten
         self.rd_data = dut.hwif_in_wide_ext_reg_rd_data
 
         # Acks
         self.rd_ack = dut.hwif_in_wide_ext_reg_rd_ack
         self.wr_ack = dut.hwif_in_wide_ext_reg_wr_ack
 
-        # Storage for 2 subwords
+        # Storage for 2 subwords (test expects storage[0] and storage[1])
         self.storage = [0, 0]
-
-        # Current subword being accessed
-        self.current_subword = 0
 
         # Initialize acks and read data to prevent X propagation
         self.rd_ack.value = 0
@@ -138,12 +186,21 @@ class WideExtRegEmulator:
             for subword in range(2):
                 if (req_val >> subword) & 1:
                     if req_is_wr_val == 1:
-                        # Write request
+                        # Write request - write data to specific subword
                         wr_val = int(self.wr_data.value)
-                        self.storage[subword] = wr_val
+                        wr_biten_val = int(self.wr_biten.value)
+
+                        # Apply bit-enable mask
+                        for bit in range(32):
+                            if (wr_biten_val >> bit) & 1:
+                                if (wr_val >> bit) & 1:
+                                    self.storage[subword] |= 1 << bit
+                                else:
+                                    self.storage[subword] &= ~(1 << bit)
+
                         self.wr_ack.value = 1
                     else:
-                        # Read request
+                        # Read request - return only the accessed subword (32-bit)
                         self.rd_data.value = self.storage[subword]
                         self.rd_ack.value = 1
                     break  # Only one subword accessed at a time
@@ -152,7 +209,7 @@ class WideExtRegEmulator:
 class ExtRegArrayEmulator:
     """Emulates ext_reg_array[32] - array of 32 my_reg registers
 
-    Uses packed array signals from wrapper (manually fixed)
+    Uses register-level signals (not field-level).
     Field: whatever (full 32-bit)
     """
 
@@ -163,8 +220,17 @@ class ExtRegArrayEmulator:
         # Protocol signals (packed arrays)
         self.req = dut.hwif_out_ext_reg_array_req  # [31:0]
         self.req_is_wr = dut.hwif_out_ext_reg_array_req_is_wr  # scalar
-        self.wr_data = dut.hwif_out_ext_reg_array_wr_data_whatever  # [31:0][31:0]
-        self.rd_data = dut.hwif_in_ext_reg_array_rd_data_whatever  # [31:0][31:0]
+
+        # Try register-level signals first (etana), then field-level (regblock wrapper)
+        self.wr_data = getattr(dut, "hwif_out_ext_reg_array_wr_data", None)
+        self.wr_biten = getattr(dut, "hwif_out_ext_reg_array_wr_biten", None)
+        self.rd_data = getattr(dut, "hwif_in_ext_reg_array_rd_data", None)
+
+        # Field-level signals (regblock wrapper - single field 'whatever')
+        if self.wr_data is None:
+            self.wr_data = dut.hwif_out_ext_reg_array_wr_data_whatever
+            self.wr_biten = dut.hwif_out_ext_reg_array_wr_biten_whatever
+            self.rd_data = dut.hwif_in_ext_reg_array_rd_data_whatever
 
         # Acks (packed)
         self.rd_ack = dut.hwif_in_ext_reg_array_rd_ack  # [31:0]
@@ -201,11 +267,20 @@ class ExtRegArrayEmulator:
                     is_wr_packed = int(self.req_is_wr.value)
                     is_wr_bit = (is_wr_packed >> i) & 1
                     if is_wr_bit == 1:
-                        # Write request - extract data for element i
+                        # Write request - extract data and biten for element i
                         # wr_data is [31:0][31:0], extract [i]
                         packed_data = int(self.wr_data.value)
+                        packed_biten = int(self.wr_biten.value)
                         element_data = (packed_data >> (i * 32)) & 0xFFFFFFFF
-                        self.storage[i] = element_data
+                        element_biten = (packed_biten >> (i * 32)) & 0xFFFFFFFF
+
+                        # Apply bit-enable mask
+                        for bit in range(32):
+                            if (element_biten >> bit) & 1:
+                                if (element_data >> bit) & 1:
+                                    self.storage[i] |= 1 << bit
+                                else:
+                                    self.storage[i] &= ~(1 << bit)
 
                         # Ack for element i
                         ack_val = 1 << i
@@ -317,7 +392,10 @@ class ExternalBlockEmulator:
 
 
 class RoRegEmulator:
-    """Emulates ro_reg - read-only external register (sw=r, hw=w)"""
+    """Emulates ro_reg - read-only external register (sw=r, hw=w)
+
+    Works with both register-level and field-level signals.
+    """
 
     def __init__(self, dut, clk):
         self.dut = dut
@@ -327,8 +405,11 @@ class RoRegEmulator:
         self.req = dut.hwif_out_ro_reg_req
         self.req_is_wr = dut.hwif_out_ro_reg_req_is_wr
 
-        # Data (only read data exists for RO)
-        self.rd_data = dut.hwif_in_ro_reg_rd_data_whatever
+        # Try register-level signals first (etana), then field-level (regblock wrapper)
+        self.rd_data = getattr(dut, "hwif_in_ro_reg_rd_data", None)
+        if self.rd_data is None:
+            self.rd_data = dut.hwif_in_ro_reg_rd_data_whatever
+
         self.rd_ack = dut.hwif_in_ro_reg_rd_ack
 
         # Storage (can be set by HW)
@@ -357,7 +438,10 @@ class RoRegEmulator:
 
 
 class WoRegEmulator:
-    """Emulates wo_reg - write-only external register (sw=w, hw=r)"""
+    """Emulates wo_reg - write-only external register (sw=w, hw=r)
+
+    Works with both register-level and field-level signals.
+    """
 
     def __init__(self, dut, clk):
         self.dut = dut
@@ -367,8 +451,15 @@ class WoRegEmulator:
         self.req = dut.hwif_out_wo_reg_req
         self.req_is_wr = dut.hwif_out_wo_reg_req_is_wr
 
-        # Data (only write data exists for WO)
-        self.wr_data = dut.hwif_out_wo_reg_wr_data_whatever
+        # Try register-level signals first (etana), then field-level (regblock wrapper)
+        self.wr_data = getattr(dut, "hwif_out_wo_reg_wr_data", None)
+        self.wr_biten = getattr(dut, "hwif_out_wo_reg_wr_biten", None)
+
+        # Field-level signals (regblock wrapper)
+        if self.wr_data is None:
+            self.wr_data = dut.hwif_out_wo_reg_wr_data_whatever
+            self.wr_biten = dut.hwif_out_wo_reg_wr_biten_whatever
+
         self.wr_ack = dut.hwif_in_wo_reg_wr_ack
 
         # Storage (HW can read)
@@ -390,7 +481,17 @@ class WoRegEmulator:
 
             if req_val == 1 and req_is_wr_val == 1:
                 # Write request only (WO register)
-                self.storage = int(self.wr_data.value)
+                wr_val = int(self.wr_data.value)
+                wr_biten_val = int(self.wr_biten.value)
+
+                # Apply bit-enable mask
+                for bit in range(32):
+                    if (wr_biten_val >> bit) & 1:
+                        if (wr_val >> bit) & 1:
+                            self.storage |= 1 << bit
+                        else:
+                            self.storage &= ~(1 << bit)
+
                 self.wr_ack.value = 1
 
 

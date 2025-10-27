@@ -57,16 +57,16 @@ class InputLogicGenerator(RDLListener):
             prefix_in = f"{self.hwif.hwif_in_str}_{p.path}"
             addr_width = clog2(node.size)
 
-            # Output ports
+            # Output ports - always generate req, addr, and req_is_wr
             self.hwif_port.append(f"output logic {prefix_out}_req")
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
+            self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
 
             # Check if addrmap has sw-writable/readable registers
             has_sw_wr = has_sw_writable_descendants(node)
             has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
-                self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
                 # Get the data width - use cpuif data width as default
                 data_width = self.hwif.exp.cpuif.data_width
                 self.hwif_port.append(
@@ -100,6 +100,9 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
             self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
             self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+        # Match regblock: Always generate req_is_wr (even for read-only memories)
+        if node.is_sw_readable and not node.is_sw_writable:
+            self.hwif_port.append(f"output logic [0:0] {ext_out}_req_is_wr")
 
     def enter_Regfile(self, node: "RegfileNode") -> None:
         from ..utils import IndexedPath, clog2
@@ -115,16 +118,16 @@ class InputLogicGenerator(RDLListener):
             prefix_in = f"{self.hwif.hwif_in_str}_{p.path}"
             addr_width = clog2(node.size)
 
-            # Output ports
+            # Output ports - always generate req, addr, and req_is_wr
             self.hwif_port.append(f"output logic {prefix_out}_req")
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {prefix_out}_addr")
+            self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
 
             # Check if regfile has sw-writable registers
             has_sw_wr = has_sw_writable_descendants(node)
             has_sw_rd = has_sw_readable_descendants(node)
 
             if has_sw_wr:
-                self.hwif_port.append(f"output logic {prefix_out}_req_is_wr")
                 # Get the data width from first register in regfile
                 data_width = 32  # Default, will be overridden
                 for reg in node.registers():
@@ -285,8 +288,11 @@ class InputLogicGenerator(RDLListener):
                 if node.get_property("decrwidth"):
                     implied_props.append("decrvalue")
 
+        # Skip if no ports needed, unless it's an external field which needs rd_data/wr_data ports
+        is_external_field = self.policy.is_external(node)
         if (
-            not self.hwif.has_value_input(node)
+            not is_external_field
+            and not self.hwif.has_value_input(node)
             and not self.hwif.has_value_output(node)
             and not implied_props
         ):
@@ -295,8 +301,13 @@ class InputLogicGenerator(RDLListener):
         width = node.width
         field_text = self.vector_text + f"[{width-1}:0]"
         if self.policy.is_external(node):
-            # For wide external registers with only ONE field,
+            # For external registers with only ONE field,
             # regblock generates per-register signals without field name suffix
+            # Check if this is a single-field register
+            n_fields = sum(
+                1 for f in node.parent.fields() if f.is_sw_readable or f.is_sw_writable
+            )
+            is_single_field = n_fields == 1
             is_wide_single_field = is_wide_single_field_register(node.parent)
 
             if is_wide_single_field:
@@ -311,9 +322,9 @@ class InputLogicGenerator(RDLListener):
                 )
             if node.is_sw_writable:
                 x = self.hwif.get_output_identifier(node.parent)  # type: ignore[arg-type]
-                # Match regblock naming: {reg}_wr_data_{field} for normal fields
-                # For wide registers with single field: {reg}_wr_data (no field suffix)
-                if is_wide_single_field:
+                # Match regblock naming: {reg}_wr_data_{field} for multi-field registers
+                # For single-field registers: {reg}_wr_data (no field suffix)
+                if is_single_field:
                     self.hwif_port.append(f"output logic {field_text} {x}_wr_data")
                     self.hwif_port.append(f"output logic {field_text} {x}_wr_biten")
                 else:

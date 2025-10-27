@@ -115,8 +115,8 @@ module regblock (
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
         decoded_reg_strb_hw_ctrl = cpuif_req_masked & (cpuif_addr == 5'h0);
-        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 5'h4);
-        decoded_reg_strb_r2 = cpuif_req_masked & (cpuif_addr == 5'h8);
+        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 5'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb_r2 = cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
         decoded_reg_strb_r3 = cpuif_req_masked & (cpuif_addr == 5'hc);
         decoded_reg_strb_r4 = cpuif_req_masked & (cpuif_addr == 5'h10);
         decoded_reg_strb_r5 = cpuif_req_masked & (cpuif_addr == 5'h14);

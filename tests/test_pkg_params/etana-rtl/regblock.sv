@@ -3,7 +3,7 @@
 
 module regblock (
         input wire clk,
-        input wire rst,
+        input wire arst_n,
 
         input wire s_apb_psel,
         input wire s_apb_pwrite,
@@ -16,7 +16,7 @@ module regblock (
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] [31:0] hwif_out_regs_f
+        output logic [0:0] [31:0] o_regs_f
     );
 
     //--------------------------------------------------------------------------
@@ -40,8 +40,8 @@ module regblock (
 
     // Request
     logic is_active;
-    always_ff @(posedge clk) begin
-        if(rst) begin
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
             is_active <= '0;
             cpuif_req <= '0;
             cpuif_req_is_wr <= '0;
@@ -136,14 +136,14 @@ module regblock (
             field_combo_regs_f_next[i0] = next_c;
             field_combo_regs_f_load_next[i0] = load_next_c;
         end
-        always_ff @(posedge clk) begin
-            if(rst) begin
+        always_ff @(posedge clk or negedge arst_n) begin
+            if(~arst_n) begin
                 field_storage_regs_f_value[i0] <= 32'h1;
             end else if(field_combo_regs_f_load_next[i0]) begin
                 field_storage_regs_f_value[i0] <= field_combo_regs_f_next[i0];
             end
         end
-        assign hwif_out_regs_f[i0] = field_storage_regs_f_value[i0];
+        assign o_regs_f[i0] = field_storage_regs_f_value[i0];
     end
 
     //--------------------------------------------------------------------------

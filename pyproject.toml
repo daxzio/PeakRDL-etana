@@ -111,3 +111,27 @@ module = [
     "src.peakrdl_etana.entry_points",
 ]
 ignore_errors = true
+
+[tool.coverage.run]
+source = ["src/peakrdl_etana"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv*/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"

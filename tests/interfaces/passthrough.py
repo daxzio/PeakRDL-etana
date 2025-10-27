@@ -54,11 +54,14 @@ class PTBus(Bus):
 
 
 class PTMaster:
-    def __init__(self, bus, clock, name="master", **kwargs) -> None:
+    def __init__(
+        self, bus, clock, name="master", timeout_cycles=1000, **kwargs
+    ) -> None:
         #         super().__init__(bus, clock, name="master", **kwargs)
         self.name = name
         self.bus = bus
         self.clock = clock
+        self.timeout_cycles = timeout_cycles  # -1 disables timeout
         if bus._name:
             self.log = logging.getLogger(f"cocotb.pt_{name}.{bus._name}")
         else:
@@ -78,6 +81,10 @@ class PTMaster:
 
         self.log.info(f"Passthrough {self.name} configuration:")
         self.log.info(f"  Address width: {self.address_width} bits")
+        if self.timeout_cycles >= 0:
+            self.log.info(f"  Timeout: {self.timeout_cycles} clock cycles")
+        else:
+            self.log.info(f"  Timeout: disabled")
         #         self.log.info(f"  Byte size: {self.byte_size} bits")
         #         self.log.info(f"  Data width: {self.wwidth} bits ({self.byte_lanes} bytes)")
 
@@ -239,8 +246,17 @@ class PTMaster:
                 else:
                     self.bus.wr_biten.value = strb
                 await RisingEdge(self.clock)
+
+                # Wait for write ack with timeout
+                cycle_count = 0
                 while not self.bus.wr_ack.value or self.bus.req_stall_wr.value:
                     await RisingEdge(self.clock)
+                    cycle_count += 1
+                    if self.timeout_cycles >= 0 and cycle_count >= self.timeout_cycles:
+                        msg = f"Write timeout: No wr_ack after {cycle_count} cycles (addr=0x{addr:08x})"
+                        self.log.critical(msg)
+                        raise Exception(msg)
+
                 if not self.bus.wr_err.value == error_expected:
                     msg = f"WR_ERR: incorrect error received {self.bus.wr_err.value}"
                     self.log.critical(msg)
@@ -250,8 +266,17 @@ class PTMaster:
             else:
                 self.log.info(f"Read addr: 0x{addr:08x}")
                 await RisingEdge(self.clock)
+
+                # Wait for read ack with timeout
+                cycle_count = 0
                 while not self.bus.rd_ack.value or self.bus.req_stall_rd.value:
                     await RisingEdge(self.clock)
+                    cycle_count += 1
+                    if self.timeout_cycles >= 0 and cycle_count >= self.timeout_cycles:
+                        msg = f"Read timeout: No rd_ack after {cycle_count} cycles (addr=0x{addr:08x})"
+                        self.log.critical(msg)
+                        raise Exception(msg)
+
                 if not self.bus.rd_err.value == error_expected:
                     msg = f"RD_ERR: incorrect error received {self.bus.rd_err.value}"
                     self.log.critical(msg)

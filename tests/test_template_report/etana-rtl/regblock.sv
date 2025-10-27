@@ -3,20 +3,26 @@
 
 module regblock (
         input wire clk,
-        input wire arst_n,
+        input wire rst,
 
         input wire s_apb_psel,
         input wire s_apb_pwrite,
         input wire s_apb_penable,
         input wire [2:0] s_apb_pprot,
-        input wire [2:0] s_apb_paddr,
+        input wire [3:0] s_apb_paddr,
         input wire [31:0] s_apb_pwdata,
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
         output logic [31:0] s_apb_prdata,
         output logic s_apb_pslverr,
 
-        output logic [0:0] o_r1_f
+        input wire [0:0] hwif_in_status_ready,
+        input wire [0:0] hwif_in_status_error,
+        input wire [7:0] hwif_in_status,
+        output logic [0:0] hwif_out_control_enable,
+        output logic [2:0] hwif_out_control_mode,
+        input wire [7:0] hwif_in_data_value,
+        output logic [7:0] hwif_out_data_value
     );
 
     //--------------------------------------------------------------------------
@@ -24,7 +30,7 @@ module regblock (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [2:0] cpuif_addr;
+    logic [3:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -40,8 +46,8 @@ module regblock (
 
     // Request
     logic is_active;
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
+    always_ff @(posedge clk) begin
+        if(rst) begin
             is_active <= '0;
             cpuif_req <= '0;
             cpuif_req_is_wr <= '0;
@@ -54,7 +60,7 @@ module regblock (
                     is_active <= '1;
                     cpuif_req <= '1;
                     cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[2:2], 2'b0};
+                    cpuif_addr <= {s_apb_paddr[3:2], 2'b0};
                     cpuif_wr_data <= s_apb_pwdata;
                     for(int i=0; i<4; i++) begin
                         cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
@@ -86,7 +92,9 @@ module regblock (
     //--------------------------------------------------------------------------
     // Address Decode
     //--------------------------------------------------------------------------
-    logic [0:0] decoded_reg_strb_r1;
+    logic [0:0] decoded_reg_strb_status;
+    logic [0:0] decoded_reg_strb_control;
+    logic [0:0] decoded_reg_strb_data;
     logic decoded_req;
     logic decoded_req_is_wr;
     /* verilator lint_off UNUSEDSIGNAL */
@@ -98,7 +106,9 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 3'h0);
+        decoded_reg_strb_status = cpuif_req_masked & (cpuif_addr == 4'h0);
+        decoded_reg_strb_control = cpuif_req_masked & (cpuif_addr == 4'h4);
+        decoded_reg_strb_data = cpuif_req_masked & (cpuif_addr == 4'h8);
     end
 
     // Pass down signals to next stage
@@ -112,10 +122,18 @@ module regblock (
     // Field storage declarations
     //--------------------------------------------------------------------------
 
-    // Field: regblock.r1.f
-    logic [0:0] field_storage_r1_f_value;
-    logic [0:0] field_combo_r1_f_next;
-    logic field_combo_r1_f_load_next;
+    // Field: regblock.CONTROL.enable
+    logic [0:0] field_storage_control_enable_value;
+    logic [0:0] field_combo_control_enable_next;
+    logic field_combo_control_enable_load_next;
+    // Field: regblock.CONTROL.mode
+    logic [2:0] field_storage_control_mode_value;
+    logic [2:0] field_combo_control_mode_next;
+    logic field_combo_control_mode_load_next;
+    // Field: regblock.DATA.value
+    logic [7:0] field_storage_data_value_value;
+    logic [7:0] field_combo_data_value_next;
+    logic field_combo_data_value_load_next;
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
@@ -123,23 +141,65 @@ module regblock (
     always @(*) begin
         logic [0:0] next_c;
         logic load_next_c;
-        next_c = field_storage_r1_f_value;
+        next_c = field_storage_control_enable_value;
         load_next_c = '0;
-        if(decoded_reg_strb_r1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage_r1_f_value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+        if(decoded_reg_strb_control && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_control_enable_value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
-        field_combo_r1_f_next = next_c;
-        field_combo_r1_f_load_next = load_next_c;
+        field_combo_control_enable_next = next_c;
+        field_combo_control_enable_load_next = load_next_c;
     end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage_r1_f_value <= 1'h0;
-        end else if(field_combo_r1_f_load_next) begin
-            field_storage_r1_f_value <= field_combo_r1_f_next;
+
+    always_ff @(posedge clk) begin
+        if(field_combo_control_enable_load_next) begin
+            field_storage_control_enable_value <= field_combo_control_enable_next;
         end
     end
-    assign o_r1_f = field_storage_r1_f_value;
+    assign hwif_out_control_enable = field_storage_control_enable_value;
+    // always_comb begin
+    always @(*) begin
+        logic [2:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_control_mode_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_control && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_control_mode_value & ~decoded_wr_biten[3:1]) | (decoded_wr_data[3:1] & decoded_wr_biten[3:1]);
+            load_next_c = '1;
+        end
+        field_combo_control_mode_next = next_c;
+        field_combo_control_mode_load_next = load_next_c;
+    end
+
+    always_ff @(posedge clk) begin
+        if(field_combo_control_mode_load_next) begin
+            field_storage_control_mode_value <= field_combo_control_mode_next;
+        end
+    end
+    assign hwif_out_control_mode = field_storage_control_mode_value;
+    // always_comb begin
+    always @(*) begin
+        logic [7:0] next_c;
+        logic load_next_c;
+        next_c = field_storage_data_value_value;
+        load_next_c = '0;
+        if(decoded_reg_strb_data && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage_data_value_value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in_data_value;
+            load_next_c = '1;
+        end
+        field_combo_data_value_next = next_c;
+        field_combo_data_value_load_next = load_next_c;
+    end
+
+    always_ff @(posedge clk) begin
+        if(field_combo_data_value_load_next) begin
+            field_storage_data_value_value <= field_combo_data_value_next;
+        end
+    end
+    assign hwif_out_data_value = field_storage_data_value_value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -159,9 +219,17 @@ module regblock (
     logic [31:0] readback_data;
 
     // Assign readback values to a flattened array
-    logic [31:0] readback_array[1];
-    assign readback_array[0][0:0] = (decoded_reg_strb_r1 && !decoded_req_is_wr) ? field_storage_r1_f_value : '0;
-    assign readback_array[0][31:1] = '0;
+    logic [31:0] readback_array[3];
+    assign readback_array[0][0:0] = (decoded_reg_strb_status && !decoded_req_is_wr) ? hwif_in_status_ready : '0;
+    assign readback_array[0][1:1] = (decoded_reg_strb_status && !decoded_req_is_wr) ? hwif_in_status_error : '0;
+    assign readback_array[0][7:2] = '0;
+    assign readback_array[0][15:8] = (decoded_reg_strb_status && !decoded_req_is_wr) ? hwif_in_status : '0;
+    assign readback_array[0][31:16] = '0;
+    assign readback_array[1][0:0] = (decoded_reg_strb_control && !decoded_req_is_wr) ? field_storage_control_enable_value : '0;
+    assign readback_array[1][3:1] = (decoded_reg_strb_control && !decoded_req_is_wr) ? field_storage_control_mode_value : '0;
+    assign readback_array[1][31:4] = '0;
+    assign readback_array[2][7:0] = (decoded_reg_strb_data && !decoded_req_is_wr) ? field_storage_data_value_value : '0;
+    assign readback_array[2][31:8] = '0;
 
     // Reduce the array
     // always_comb begin
@@ -170,7 +238,7 @@ module regblock (
         readback_done = decoded_req & ~decoded_req_is_wr;
         readback_err = '0;
         readback_data_var = '0;
-        for(int i=0; i<1; i++) readback_data_var |= readback_array[i];
+        for(int i=0; i<3; i++) readback_data_var |= readback_array[i];
         readback_data = readback_data_var;
     end
 

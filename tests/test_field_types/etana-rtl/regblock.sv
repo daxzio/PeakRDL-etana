@@ -125,12 +125,12 @@ module regblock (
         decoded_reg_strb_r2 = cpuif_req_masked & (cpuif_addr == 4'h1);
         decoded_reg_strb_r3 = cpuif_req_masked & (cpuif_addr == 4'h2);
         decoded_reg_strb_r4 = cpuif_req_masked & (cpuif_addr == 4'h3);
-        decoded_reg_strb_r5 = cpuif_req_masked & (cpuif_addr == 4'h4);
-        decoded_reg_strb_r6 = cpuif_req_masked & (cpuif_addr == 4'h5);
-        decoded_reg_strb_r7 = cpuif_req_masked & (cpuif_addr == 4'h6);
-        decoded_reg_strb_r8 = cpuif_req_masked & (cpuif_addr == 4'h7);
-        decoded_reg_strb_r9 = cpuif_req_masked & (cpuif_addr == 4'h8);
-        decoded_reg_strb_r10 = cpuif_req_masked & (cpuif_addr == 4'h9);
+        decoded_reg_strb_r5 = cpuif_req_masked & (cpuif_addr == 4'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb_r6 = cpuif_req_masked & (cpuif_addr == 4'h5) & !cpuif_req_is_wr;
+        decoded_reg_strb_r7 = cpuif_req_masked & (cpuif_addr == 4'h6) & !cpuif_req_is_wr;
+        decoded_reg_strb_r8 = cpuif_req_masked & (cpuif_addr == 4'h7) & !cpuif_req_is_wr;
+        decoded_reg_strb_r9 = cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr;
+        decoded_reg_strb_r10 = cpuif_req_masked & (cpuif_addr == 4'h9) & cpuif_req_is_wr;
     end
 
     // Pass down signals to next stage

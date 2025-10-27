@@ -289,6 +289,8 @@ class DesignState:
             "flatten_nested_blocks", False
         )  # type: bool
         self.generate_template = kwargs.pop("generate_template", False)  # type: bool
+        self.err_if_bad_addr = kwargs.pop("err_if_bad_addr", False)  # type: bool
+        self.err_if_bad_rw = kwargs.pop("err_if_bad_rw", False)  # type: bool
 
         # ------------------------
         # Info about the design

@@ -207,6 +207,20 @@ class Exporter(ExporterSubcommandPlugin):
             internally with w_ prefix. Output file: {module_name}_example.sv""",
         )
 
+        arg_group.add_argument(
+            "--err-if-bad-addr",
+            action="store_true",
+            default=False,
+            help="""Generate error responses for accesses to unmapped addresses""",
+        )
+
+        arg_group.add_argument(
+            "--err-if-bad-rw",
+            action="store_true",
+            default=False,
+            help="""Generate error responses for reads to write-only registers or writes to read-only registers""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -276,4 +290,6 @@ class Exporter(ExporterSubcommandPlugin):
             allow_wide_field_subwords=options.allow_wide_field_subwords,
             flatten_nested_blocks=options.flatten_nested_blocks,
             generate_template=options.generate_template,
+            err_if_bad_addr=options.err_if_bad_addr,
+            err_if_bad_rw=options.err_if_bad_rw,
         )

@@ -178,7 +178,7 @@ module regblock (
         decoded_reg_strb_bothedge_irqs = cpuif_req_masked & (cpuif_addr == 9'h40);
         decoded_reg_strb_bothedge_we_irqs = cpuif_req_masked & (cpuif_addr == 9'h44);
         decoded_reg_strb_bothedge_wel_irqs = cpuif_req_masked & (cpuif_addr == 9'h48);
-        decoded_reg_strb_top_irq = cpuif_req_masked & (cpuif_addr == 9'h50);
+        decoded_reg_strb_top_irq = cpuif_req_masked & (cpuif_addr == 9'h50) & !cpuif_req_is_wr;
         decoded_reg_strb_stickyreg = cpuif_req_masked & (cpuif_addr == 9'h60);
         decoded_reg_strb_ctrl_enable = cpuif_req_masked & (cpuif_addr == 9'h100);
         decoded_reg_strb_ctrl_mask = cpuif_req_masked & (cpuif_addr == 9'h104);

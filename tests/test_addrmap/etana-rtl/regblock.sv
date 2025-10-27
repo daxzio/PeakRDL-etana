@@ -123,7 +123,7 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_page = cpuif_req_masked & (cpuif_addr == 16'h0);
+        decoded_reg_strb_page = cpuif_req_masked & (cpuif_addr == 16'h0) & !cpuif_req_is_wr;
         decoded_reg_strb_operaton = cpuif_req_masked & (cpuif_addr == 16'h4);
         decoded_reg_strb_config = cpuif_req_masked & (cpuif_addr == 16'h8);
         for(int i0=0; i0<8; i0++) begin : gen_loop_17

@@ -88,7 +88,7 @@ check-gen:
 
 etana:
 	rm -rf etana-rtl/*
-	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} --rename regblock
+	peakrdl etana ${UDPS} regblock.rdl -o etana-rtl/ --cpuif ${CPUIF} ${PEAKRDL_ARGS} --rename regblock
 	@if [ "$(GIT_CHECK)" -eq 1 ]; then \
 		$(MAKE) check-etana; \
 	fi

@@ -115,11 +115,11 @@ module regblock (
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 3'h0);
+        decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 3'h0) & !cpuif_req_is_wr;
         decoded_reg_strb_r2 = cpuif_req_masked & (cpuif_addr == 3'h1);
         decoded_reg_strb_r3 = cpuif_req_masked & (cpuif_addr == 3'h2);
         decoded_reg_strb_r4 = cpuif_req_masked & (cpuif_addr == 3'h3);
-        decoded_reg_strb_r5 = cpuif_req_masked & (cpuif_addr == 3'h4);
+        decoded_reg_strb_r5 = cpuif_req_masked & (cpuif_addr == 3'h4) & !cpuif_req_is_wr;
     end
 
     // Pass down signals to next stage

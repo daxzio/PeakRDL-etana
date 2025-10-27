@@ -169,16 +169,21 @@ class Hwif:
         if isinstance(node, FieldNode):
             if not node.is_sw_readable:
                 raise
-            # Check if this is a wide register with only ONE field
-            is_wide_single_field = is_wide_single_field_register(node.parent)
+            # Check if this is a register with only ONE field
+            # For single-field external registers, regblock uses register-level signals (no field suffix)
+            n_fields = sum(
+                1 for f in node.parent.fields() if f.is_sw_readable or f.is_sw_writable
+            )
+            is_single_field = n_fields == 1
 
-            # Match regblock naming: {reg}_rd_data_{field} for normal fields
-            # For wide registers with single field: {reg}_rd_data (no field suffix)
+            # Match regblock naming: {reg}_rd_data_{field} for multi-field registers
+            # For single-field registers: {reg}_rd_data (no field suffix)
             p_reg = IndexedPath(self.top_node, node.parent)
-            if is_wide_single_field:
+            if is_single_field:
                 s = f"{self.hwif_in_str}_{p_reg.path}_rd_data"
             else:
-                s = f"{self.hwif_in_str}_{p_reg.path}_rd_data_{node.inst_name}"
+                field_suffix = f"_{node.inst_name}"
+                s = f"{self.hwif_in_str}_{p_reg.path}_rd_data{field_suffix}"
             p = p_reg  # For index handling below
         elif isinstance(node, RegfileNode):
             p = IndexedPath(self.top_node, node)

@@ -103,7 +103,7 @@ module regblock (
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
         decoded_reg_strb_r1 = cpuif_req_masked & (cpuif_addr == 3'h0);
-        decoded_reg_strb_r1_events = cpuif_req_masked & (cpuif_addr == 3'h4);
+        decoded_reg_strb_r1_events = cpuif_req_masked & (cpuif_addr == 3'h4) & !cpuif_req_is_wr;
     end
 
     // Pass down signals to next stage

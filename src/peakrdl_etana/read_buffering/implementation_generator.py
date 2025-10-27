@@ -4,7 +4,7 @@ from systemrdl.component import Reg
 from systemrdl.node import RegNode
 
 from ..forloop_generator import RDLForLoopGenerator
-from ..utils import do_bitswap
+from ..utils import do_bitswap, is_inside_external_block
 
 if TYPE_CHECKING:
     from . import ReadBuffering
@@ -22,6 +22,15 @@ class RBufLogicGenerator(RDLForLoopGenerator):
     def enter_Reg(self, node: RegNode) -> None:
         super().enter_Reg(node)
         assert isinstance(node.inst, Reg)
+
+        # Skip external registers - they don't have read buffer logic
+        # External modules handle their own buffering
+        if node.external:
+            return
+
+        # Skip registers inside external blocks - they don't have read buffer logic
+        if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
+            return
 
         if not node.get_property("buffer_reads", default=False):
             return

@@ -129,6 +129,9 @@ module {{ds.module_name}}
 {%- if ds.has_external_addressable %}
     logic decoded_strb_is_external;
 {% endif %}
+{%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
+    logic decoded_err;
+{% endif %}
 {%- if ds.has_external_block %}
     logic [{{cpuif.addr_width-1}}:0] decoded_addr;
 {% endif %}
@@ -143,14 +146,33 @@ module {{ds.module_name}}
         /* verilator lint_off UNUSEDSIGNAL */
         integer next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
-    {%- if ds.has_external_addressable %}
+    {%- if ds.has_external_addressable or ds.err_if_bad_addr or ds.err_if_bad_rw %}
+        {%- if ds.has_external_addressable %}
         logic is_external;
+        {%- endif %}
+        {%- if ds.err_if_bad_addr %}
+        logic is_valid_addr;
+        {%- endif %}
+        {%- if ds.err_if_bad_rw %}
+        logic is_invalid_rw;
+        {%- endif %}
+        {%- if ds.has_external_addressable %}
         is_external = '0;
+        {%- endif %}
+        {%- if ds.err_if_bad_addr %}
+        is_valid_addr = '0;
+        {%- endif %}
+        {%- if ds.err_if_bad_rw %}
+        is_invalid_rw = '0;
+        {%- endif %}
     {%- endif %}
         {{address_decode.get_implementation()|indent(8)}}
     {%- if ds.has_external_addressable %}
         decoded_strb_is_external = is_external;
         external_req = is_external;
+    {%- endif %}
+    {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
+        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
     {%- endif %}
     end
 
@@ -237,7 +259,11 @@ module {{ds.module_name}}
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
     // Writes are always granted with no error response
+{%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
+    assign cpuif_wr_err = decoded_err;
+{%- else %}
     assign cpuif_wr_err = '0;
+{%- endif %}
 
 //--------------------------------------------------------------------------
 // Readback

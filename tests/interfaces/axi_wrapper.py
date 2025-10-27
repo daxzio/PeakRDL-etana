@@ -90,11 +90,6 @@ class AxiWrapper:
         seed(self.base_seed)
         self.log.debug(f"Seed is set to {self.base_seed}")
 
-    #         self.read_op = None
-    #         self._process_write_cr = None
-    #         if self._process_write_cr is None:
-    #             self._process_write_cr = start_soon(self._process_read())
-
     @property
     def length(self):
         if self.len is None:
@@ -148,12 +143,6 @@ class AxiWrapper:
         self.enable_read_backpressure(seednum)
 
     def disable_backpressure(self):
-        #         self.axi_master.write_if.aw_channel.clear_pause_generator()
-        #         self.axi_master.write_if.w_channel.clear_pause_generator()
-        #         self.axi_master.write_if.b_channel.clear_pause_generator()
-        #
-        #         self.axi_master.read_if.r_channel.clear_pause_generator()
-        #         self.axi_master.read_if.ar_channel.clear_pause_generator()
         self.axi_master.write_if.aw_channel.set_pause_generator(
             itertools.cycle(
                 [
@@ -294,21 +283,6 @@ class AxiWrapper:
             )
         await self.write(addr, newdata, length=None, debug=False)
 
-    async def _process_read(self):
-        print(dir(self.axi_master.read_if))
-        print(dir(self.axi_master))
-        print(dir(self))
-        print(self.axi_master.read_if.read_command_queue)
-        print(self.axi_master.read_if.current_read_command)
-        # print(self.read_op)
-        await RisingEdge(self.clk)  # type: ignore[attr-defined]
-        i = 0
-        while True:
-            await self.axi_master.read_if.wait()
-            # if self.read_op is not None:
-            print(i, True)
-            i += 1
-
     def init_read(self, *args, **kwargs):
         self.read_op = self.axi_master.init_read(*args, **kwargs)
 
@@ -375,7 +349,6 @@ class AxiStreamDriver:
         self.axis_source.set_pause_generator(cycle_pause(base_seed))
 
     def disable_backpressure(self):
-        # self.axis_source.clear_pause_generator()
         self.axis_source.set_pause_generator(
             itertools.cycle(
                 [

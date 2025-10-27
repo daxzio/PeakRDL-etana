@@ -4,7 +4,13 @@ from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import WalkerAction
 from systemrdl.walker import RDLWalker
 
-from .utils import IndexedPath, is_inside_external_block, external_policy
+from .utils import (
+    IndexedPath,
+    is_inside_external_block,
+    external_policy,
+    has_sw_readable_descendants,
+    has_sw_writable_descendants,
+)
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 
@@ -232,6 +238,22 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
             self.add_content(f"{strb.path} = {rhs};")
+
+            # Error checking for valid address
+            if self.addr_decode.exp.ds.err_if_bad_addr:
+                self.add_content(f"is_valid_addr |= {rhs};")
+
+            # Error checking for invalid read/write
+            if self.addr_decode.exp.ds.err_if_bad_rw:
+                readable = has_sw_readable_descendants(node)
+                writable = has_sw_writable_descendants(node)
+                if readable and not writable:
+                    self.add_content(f"is_invalid_rw |= {rhs} & cpuif_req_is_wr;")
+                elif writable and not readable:
+                    self.add_content(f"is_invalid_rw |= {rhs} & !cpuif_req_is_wr;")
+                else:
+                    self.add_content(f"is_invalid_rw |= '0;")
+
             self.add_content(f"is_external |= {rhs};")
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -246,17 +268,61 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
             self.add_content(f"{strb.path} = {rhs};")
+
+            # Error checking for valid address
+            if self.addr_decode.exp.ds.err_if_bad_addr:
+                self.add_content(f"is_valid_addr |= {rhs};")
+
+            # Error checking for invalid read/write
+            if self.addr_decode.exp.ds.err_if_bad_rw:
+                readable = has_sw_readable_descendants(node)
+                writable = has_sw_writable_descendants(node)
+                if readable and not writable:
+                    self.add_content(f"is_invalid_rw |= {rhs} & cpuif_req_is_wr;")
+                elif writable and not readable:
+                    self.add_content(f"is_invalid_rw |= {rhs} & !cpuif_req_is_wr;")
+                else:
+                    self.add_content(f"is_invalid_rw |= '0;")
+
             self.add_content(f"is_external |= {rhs};")
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
     def enter_Mem(self, node: MemNode) -> None:
+        if not node.external:
+            raise
         if node.external:
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            addr_match = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+
+            # Determine strobe condition based on read/write access
+            readable = node.is_sw_readable
+            writable = node.is_sw_writable
+            if readable and writable:
+                rhs = addr_match
+                rhs_invalid_rw = "'0"
+            elif readable and not writable:
+                # Read-only: strobe only for reads
+                rhs = f"{addr_match} & !cpuif_req_is_wr"
+                rhs_invalid_rw = f"{addr_match} & cpuif_req_is_wr"
+            elif writable and not readable:
+                # Write-only: strobe only for writes
+                rhs = f"{addr_match} & cpuif_req_is_wr"
+                rhs_invalid_rw = f"{addr_match} & !cpuif_req_is_wr"
+            else:
+                raise RuntimeError("External memory must be readable and/or writable")
+
             self.add_content(f"{strb.path} = {rhs};")
             self.add_content(f"is_external |= {rhs};")
+
+            # Error checking for valid address
+            if self.addr_decode.exp.ds.err_if_bad_addr:
+                self.add_content(f"is_valid_addr |= {addr_match};")
+
+            # Error checking for invalid read/write
+            if self.addr_decode.exp.ds.err_if_bad_rw:
+                self.add_content(f"is_invalid_rw |= {rhs_invalid_rw};")
         # return WalkerAction.SkipDescendants
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
@@ -273,25 +339,46 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             p = self.addr_decode.get_access_strobe(node)
             if len(self._array_stride_stack):
                 self.add_content(f"next_cpuif_addr = {self._get_address_str(node)};")
-                rhs = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
-                s = f"{p.path}{p.index_str} = {rhs};"
+                addr_match = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
             else:
-                rhs = (
+                addr_match = (
                     f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node)})"
                 )
+
+            # Determine strobe condition based on read/write access
+            readable = node.has_sw_readable
+            writable = node.has_sw_writable
+            if readable and writable:
+                rhs = addr_match
+                rhs_invalid_rw = "'0"
+            elif readable and not writable:
+                # Read-only: strobe only for reads
+                rhs = f"{addr_match} & !cpuif_req_is_wr"
+                rhs_invalid_rw = f"{addr_match} & cpuif_req_is_wr"
+            elif writable and not readable:
+                # Write-only: strobe only for writes
+                rhs = f"{addr_match} & cpuif_req_is_wr"
+                rhs_invalid_rw = f"{addr_match} & !cpuif_req_is_wr"
+            else:
+                raise RuntimeError("Register must be readable and/or writable")
+
+            if len(self._array_stride_stack):
+                s = f"{p.path}{p.index_str} = {rhs};"
+            else:
                 s = f"{p.path} = {rhs};"
             self.add_content(s)
+
+            # Error checking for valid address
+            if self.addr_decode.exp.ds.err_if_bad_addr:
+                self.add_content(f"is_valid_addr |= {addr_match};")
+
+            # Error checking for invalid read/write
+            if self.addr_decode.exp.ds.err_if_bad_rw:
+                self.add_content(f"is_invalid_rw |= {rhs_invalid_rw};")
+
+            # For external registers, mark as external
             if self.policy.is_external(node):
-                readable = node.has_sw_readable
-                writable = node.has_sw_writable
-                if readable and writable:
-                    self.add_content(f"is_external |= {rhs};")
-                elif readable and not writable:
-                    self.add_content(f"is_external |= {rhs} & !cpuif_req_is_wr;")
-                elif not readable and writable:
-                    self.add_content(f"is_external |= {rhs} & cpuif_req_is_wr;")
-                else:
-                    raise RuntimeError
+                self.add_content(f"is_external |= {rhs};")
         else:
             # Register is wide. Create a substrobe for each subword
             n_subwords = regwidth // accesswidth
@@ -310,6 +397,40 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 else:
                     s = f"{p.path}{p.index_str}[{i}] = {rhs};"
                 self.add_content(s)
+
+                # Error checking for valid address (only on first subword)
+                if i == 0 and self.addr_decode.exp.ds.err_if_bad_addr:
+                    # Use address range for all subwords
+                    addr_low = self._get_address_str(node, subword_offset=0)
+                    addr_high = self._get_address_str(
+                        node, subword_offset=(n_subwords - 1) * subword_stride
+                    )
+                    rhs_range = f"cpuif_req_masked & (cpuif_addr >= {addr_low}) & (cpuif_addr <= {addr_high})"
+                    self.add_content(f"is_valid_addr |= {rhs_range};")
+
+                # Error checking for invalid read/write (only on first subword)
+                if i == 0 and self.addr_decode.exp.ds.err_if_bad_rw:
+                    readable = node.has_sw_readable
+                    writable = node.has_sw_writable
+                    addr_low = self._get_address_str(node, subword_offset=0)
+                    addr_high = self._get_address_str(
+                        node, subword_offset=(n_subwords - 1) * subword_stride
+                    )
+                    rhs_range = f"cpuif_req_masked & (cpuif_addr >= {addr_low}) & (cpuif_addr <= {addr_high})"
+                    if readable and not writable:
+                        # Read-only: error on write
+                        self.add_content(
+                            f"is_invalid_rw |= {rhs_range} & cpuif_req_is_wr;"
+                        )
+                    elif writable and not readable:
+                        # Write-only: error on read
+                        self.add_content(
+                            f"is_invalid_rw |= {rhs_range} & !cpuif_req_is_wr;"
+                        )
+                    else:
+                        # Read-write: no error
+                        self.add_content(f"is_invalid_rw |= '0;")
+
                 if self.policy.is_external(node):
                     readable = node.has_sw_readable
                     writable = node.has_sw_writable
