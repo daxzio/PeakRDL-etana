@@ -5,18 +5,14 @@ Implements the register block using an
 `Intel Avalon MM <https://www.intel.com/content/www/us/en/docs/programmable/683091/22-3/memory-mapped-interfaces.html>`_
 CPU interface.
 
-The Avalon interface comes in two i/o port flavors:
+The Avalon interface uses **flattened signal interface** (individual input/output ports):
 
-SystemVerilog Interface
-    * Command line: ``--cpuif avalon-mm``
-    * Interface Definition: :download:`avalon_mm_intf.sv <../../hdl-src/avalon_mm_intf.sv>`
-    * Class: :class:`peakrdl_etana.cpuif.avalon.Avalon_Cpuif`
+* Command line: ``--cpuif avalon-mm-flat``
+* Class: :class:`peakrdl_etana.cpuif.avalon.Avalon_Cpuif_flattened`
 
-Flattened inputs/outputs
-    Flattens the interface into discrete input and output ports.
-
-    * Command line: ``--cpuif avalon-mm-flat``
-    * Class: :class:`peakrdl_etana.cpuif.avalon.Avalon_Cpuif_flattened`
+.. note::
+    PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
+    struct-based interface options.
 
 
 Implementation Details

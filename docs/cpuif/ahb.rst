@@ -9,14 +9,14 @@ Implements the register block using an
     The AHB interface implementation provides a simplified subset of the full AHB protocol,
     optimized for register access. It supports single transfers with configurable data widths.
 
-The AHB CPU interface is currently available in flattened inputs/outputs format:
+The AHB CPU interface provides **flattened signal interface** (individual input/output ports):
 
-Flattened inputs/outputs
-    Flattens the interface into discrete input and output ports.
+* Command line: ``--cpuif ahb-flat``
+* Class: :class:`peakrdl_etana.cpuif.ahb.AHB_Cpuif_flattened`
 
-    * Command line: ``--cpuif ahb-flat``
-    * Interface Definition: :download:`ahb_intf.sv <../../hdl-src/ahb_intf.sv>`
-    * Class: :class:`peakrdl_etana.cpuif.ahb.AHB_Cpuif_flattened`
+.. note::
+    PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
+    struct-based interface options.
 
 .. warning::
     Like other CPU interfaces in this exporter, the AHB ``HADDR`` input is interpreted
@@ -40,3 +40,32 @@ Response signals (outputs):
     * ``HRDATA`` - Read data bus
     * ``HREADY`` - Transfer complete indicator
     * ``HRESP`` - Transfer response (error status)
+
+Error Response Support
+----------------------
+
+AHB supports error signaling via the ``HRESP`` response signal. When error response
+options are enabled:
+
+**--err-if-bad-addr**
+    Asserts ``HRESP`` (ERROR = 1) when software accesses an unmapped address
+
+**--err-if-bad-rw**
+    Asserts ``HRESP`` (ERROR = 1) when:
+
+    * Software attempts to read a write-only register
+    * Software attempts to write a read-only register
+
+**Example:**
+
+.. code-block:: bash
+
+    peakrdl etana design.rdl --cpuif ahb-flat --err-if-bad-addr --err-if-bad-rw -o output/
+
+**Response Values:**
+
+* ``HRESP = 0`` (OKAY) - Normal successful completion
+* ``HRESP = 1`` (ERROR) - Error response (when error options enabled)
+
+**Testing:** The ``test_cpuif_err_rsp`` test validates AHB error responses
+across various error scenarios.

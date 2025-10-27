@@ -22,20 +22,14 @@ APB3
 
 Implements the register block using an
 `AMBA 3 APB <https://developer.arm.com/documentation/ihi0024/b/Introduction/About-the-AMBA-3-APB>`_
-CPU interface.
+CPU interface with **flattened signal interface** (individual input/output ports).
 
-The APB3 CPU interface comes in two i/o port flavors:
+* Command line: ``--cpuif apb3-flat``
+* Class: :class:`peakrdl_etana.cpuif.apb3.APB3_Cpuif_flattened`
 
-SystemVerilog Interface
-    * Command line: ``--cpuif apb3``
-    * Interface Definition: :download:`apb3_intf.sv <../../hdl-src/apb3_intf.sv>`
-    * Class: :class:`peakrdl_etana.cpuif.apb3.APB3_Cpuif`
-
-Flattened inputs/outputs
-    Flattens the interface into discrete input and output ports.
-
-    * Command line: ``--cpuif apb3-flat``
-    * Class: :class:`peakrdl_etana.cpuif.apb3.APB3_Cpuif_flattened`
+.. note::
+    PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
+    struct-based interface options.
 
 
 APB4
@@ -43,17 +37,35 @@ APB4
 
 Implements the register block using an
 `AMBA 4 APB <https://developer.arm.com/documentation/ihi0024/d/?lang=en>`_
-CPU interface.
+CPU interface with **flattened signal interface** (individual input/output ports).
 
-The APB4 CPU interface comes in two i/o port flavors:
+* Command line: ``--cpuif apb4-flat``
+* Class: :class:`peakrdl_etana.cpuif.apb4.APB4_Cpuif_flattened`
 
-SystemVerilog Interface
-    * Command line: ``--cpuif apb4``
-    * Interface Definition: :download:`apb4_intf.sv <../../hdl-src/apb4_intf.sv>`
-    * Class: :class:`peakrdl_etana.cpuif.apb4.APB4_Cpuif`
+.. note::
+    PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
+    struct-based interface options.
 
-Flattened inputs/outputs
-    Flattens the interface into discrete input and output ports.
+Error Response Support
+----------------------
 
-    * Command line: ``--cpuif apb4-flat``
-    * Class: :class:`peakrdl_etana.cpuif.apb4.APB4_Cpuif_flattened`
+APB4 supports error signaling via the ``PSLVERR`` signal. When error response
+options are enabled:
+
+**--err-if-bad-addr**
+    Asserts ``PSLVERR`` when software accesses an unmapped address
+
+**--err-if-bad-rw**
+    Asserts ``PSLVERR`` when:
+
+    * Software attempts to read a write-only register
+    * Software attempts to write a read-only register
+
+**Example:**
+
+.. code-block:: bash
+
+    peakrdl etana design.rdl --cpuif apb4-flat --err-if-bad-addr --err-if-bad-rw -o output/
+
+**Note:** APB3 does not include the ``PSLVERR`` signal and therefore does not support
+error response generation.

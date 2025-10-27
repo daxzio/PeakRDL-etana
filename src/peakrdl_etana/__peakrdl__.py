@@ -51,7 +51,7 @@ class Exporter(ExporterSubcommandPlugin):
     @functools.lru_cache()
     def get_cpuifs(self) -> Dict[str, Type[CpuifBase]]:
 
-        # All built-in CPUIFs
+        # All built-in CPUIFs - FLATTENED SIGNALS ONLY (no SystemVerilog structs)
         cpuifs = {
             "passthrough": passthrough.PassthroughCpuif,
             "apb3-flat": apb3.APB3_Cpuif_flattened,
@@ -95,8 +95,8 @@ class Exporter(ExporterSubcommandPlugin):
         arg_group.add_argument(
             "--cpuif",
             choices=cpuifs.keys(),
-            default="apb3",
-            help="Select the CPU interface protocol to use [apb3]",
+            default="apb4-flat",
+            help="Select the CPU interface protocol to use (flattened signals only) [apb4-flat]",
         )
 
         arg_group.add_argument(

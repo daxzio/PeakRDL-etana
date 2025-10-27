@@ -40,6 +40,9 @@ Things you should know
   always enforce that only one outstanding transaction to an external component
   at a time. This is enforced even if the CPUIF is capable of pipelined accesses
   such as AXI4-Lite.
+* **External component support is thoroughly validated** - See ``test_cpuif_err_rsp``
+  and ``test_external`` in the test suite for comprehensive examples and validation
+  across multiple CPU interfaces.
 
 
 External Registers

@@ -6,6 +6,13 @@ application-specific bus protocol and the internal register file logic.
 When exporting a design, you can select from a variety of popular CPU interface
 protocols. These are described in more detail in the pages that follow.
 
+All CPU interfaces support optional **error response generation** for:
+
+* Unmapped address accesses (``--err-if-bad-addr``)
+* Forbidden read/write operations (``--err-if-bad-rw``)
+
+See :ref:`peakrdl_cfg` for configuration details.
+
 
 Bus Width
 ^^^^^^^^^

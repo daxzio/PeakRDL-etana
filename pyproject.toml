@@ -14,7 +14,7 @@ dependencies = [
 authors = [
     {name="Dave Keeshan"},
 ]
-description = "Compile SystemRDL into a SystemVerilog control/status register (CSR) block"
+description = "Compile SystemRDL into a Verilog control/status register (CSR) block"
 readme = "README.md"
 license = {text = "LGPLv3"}
 keywords = [
