@@ -56,9 +56,8 @@ format:
 black: format
 
 dist:
-	rm -rf MANIFEST
-	rm -rf CHANGELOG.txt
-	python setup.py sdist
+	rm -rf dist/ build/ *.egg-info
+	python -m build
 
 GIT_TAG?=0.0.1
 VERSION_FILE?=`find src -name __about__.py`
