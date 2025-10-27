@@ -61,7 +61,7 @@ dist:
 	python setup.py sdist
 
 GIT_TAG?=0.0.1
-VERSION_FILE?=`find . -name version.py`
+VERSION_FILE?=`find src -name __about__.py`
 release:
 	echo "Release v${GIT_TAG}"
 # 	@grep -Po '\d\.\d\.\d' cocotbext/jtag/version.py
