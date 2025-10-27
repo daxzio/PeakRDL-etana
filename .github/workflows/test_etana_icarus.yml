@@ -62,3 +62,16 @@ jobs:
         run: |
           unset PYTHONHOME
           cd tests ; ./test_all.sh GIT_CHECK=1 COCOTB_REV=1.9.2
+
+  pypi_release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    needs: [build_code_linux]
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - uses: actions/checkout@v5
+      - name: Make PyPi dist release
+        run: make dist
+      - name: Publish Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
