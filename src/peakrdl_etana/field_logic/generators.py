@@ -14,7 +14,6 @@ from ..utils import (
     is_external_for_codegen,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
-    is_wide_single_field_register,
 )
 from .bases import NextStateUnconditional
 from .wide_field import WideFieldSubwordWrite

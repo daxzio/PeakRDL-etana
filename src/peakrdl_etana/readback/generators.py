@@ -11,7 +11,6 @@ from ..utils import (
     is_inside_external_block,
     external_policy,
     has_sw_readable_descendants,
-    is_wide_single_field_register,
 )
 
 if TYPE_CHECKING:

@@ -50,8 +50,8 @@ coverage-clean:
 	rm -rf htmlcov/ .coverage .coverage.* tests/.coverage tests/.coverage.*
 
 format:
-# 	black src
-	black cocotb
+	black src
+# 	black cocotb
 
 black: format
 

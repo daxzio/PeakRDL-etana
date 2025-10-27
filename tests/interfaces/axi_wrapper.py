@@ -2,7 +2,6 @@ import math
 import logging
 import itertools
 from random import randint, seed
-from cocotb.triggers import RisingEdge
 from cocotbext.axi import (
     AxiBus,
     AxiMaster,

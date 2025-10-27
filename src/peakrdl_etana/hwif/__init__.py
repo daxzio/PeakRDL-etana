@@ -11,7 +11,7 @@ from systemrdl.node import (
 )
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import IndexedPath, is_wide_single_field_register
+from ..utils import IndexedPath
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 

@@ -84,7 +84,7 @@ class PTMaster:
         if self.timeout_cycles >= 0:
             self.log.info(f"  Timeout: {self.timeout_cycles} clock cycles")
         else:
-            self.log.info(f"  Timeout: disabled")
+            self.log.info("  Timeout: disabled")
         #         self.log.info(f"  Byte size: {self.byte_size} bits")
         #         self.log.info(f"  Data width: {self.wwidth} bits ({self.byte_lanes} bytes)")
 
@@ -248,8 +248,10 @@ class PTMaster:
                 await RisingEdge(self.clock)
 
                 # Wait for write ack with timeout
+                # Note: req_stall_wr is NOT checked here - it only prevents NEW requests
+                # Once wr_ack is asserted, the transaction is complete
                 cycle_count = 0
-                while not self.bus.wr_ack.value or self.bus.req_stall_wr.value:
+                while not self.bus.wr_ack.value:
                     await RisingEdge(self.clock)
                     cycle_count += 1
                     if self.timeout_cycles >= 0 and cycle_count >= self.timeout_cycles:
@@ -268,8 +270,10 @@ class PTMaster:
                 await RisingEdge(self.clock)
 
                 # Wait for read ack with timeout
+                # Note: req_stall_rd is NOT checked here - it only prevents NEW requests
+                # Once rd_ack is asserted, the transaction is complete
                 cycle_count = 0
-                while not self.bus.rd_ack.value or self.bus.req_stall_rd.value:
+                while not self.bus.rd_ack.value:
                     await RisingEdge(self.clock)
                     cycle_count += 1
                     if self.timeout_cycles >= 0 and cycle_count >= self.timeout_cycles:

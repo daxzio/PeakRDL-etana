@@ -252,7 +252,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 elif writable and not readable:
                     self.add_content(f"is_invalid_rw |= {rhs} & !cpuif_req_is_wr;")
                 else:
-                    self.add_content(f"is_invalid_rw |= '0;")
+                    self.add_content("is_invalid_rw |= '0;")
 
             self.add_content(f"is_external |= {rhs};")
             return WalkerAction.SkipDescendants
@@ -282,7 +282,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 elif writable and not readable:
                     self.add_content(f"is_invalid_rw |= {rhs} & !cpuif_req_is_wr;")
                 else:
-                    self.add_content(f"is_invalid_rw |= '0;")
+                    self.add_content("is_invalid_rw |= '0;")
 
             self.add_content(f"is_external |= {rhs};")
             return WalkerAction.SkipDescendants
@@ -429,7 +429,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                         )
                     else:
                         # Read-write: no error
-                        self.add_content(f"is_invalid_rw |= '0;")
+                        self.add_content("is_invalid_rw |= '0;")
 
                 if self.policy.is_external(node):
                     readable = node.has_sw_readable
