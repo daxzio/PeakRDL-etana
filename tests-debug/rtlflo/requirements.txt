@@ -1,4 +1,0 @@
-pyyaml
-git+https://github.com/PyFPGA/pyfpga.git
-pyupgrade
-black

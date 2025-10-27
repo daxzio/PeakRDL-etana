@@ -1,8 +1,0 @@
-addrmap simple {
-    reg my_reg {
-        field {sw=r; hw=w;} whatever[30] = 0;
-    };
-
-    external my_reg ext_reg @ 0x00;
-
-};
