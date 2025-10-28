@@ -182,7 +182,18 @@ class WrapperBuilder:
 
         if self.has_params:
             lines.append(f"    {self.module_name} #(")
-            lines.append("        " + ",\n        ".join(self.params))
+            # Convert parameter declarations to instantiation syntax
+            param_insts = []
+            for param_decl in self.params:
+                # Extract parameter name from declaration like "parameter ID_WIDTH = 1"
+                param_match = re.search(r"parameter\s+(\w+)\s*=", param_decl)
+                if param_match:
+                    param_name = param_match.group(1)
+                    param_insts.append(f".{param_name}({param_name})")
+                else:
+                    # Fallback: use the parameter declaration as-is (shouldn't happen)
+                    param_insts.append(param_decl)
+            lines.append("        " + ",\n        ".join(param_insts))
             lines.append(f"    ) i_{self.module_name} (")
         else:
             lines.append(f"    {self.module_name} i_{self.module_name} (")

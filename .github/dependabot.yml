@@ -42,6 +42,27 @@ updates:
           - "*"
     rebase-strategy: "auto"
 
+  # Monitor Python dependencies in pyproject.toml (PEP 621)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    # Allow Dependabot to update dependencies in pyproject.toml
+    allow:
+      - dependency-type: "all"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+    rebase-strategy: "auto"
+
   # Monitor Python dependencies in docs/requirements.txt
   - package-ecosystem: "pip"
     directory: "/docs"

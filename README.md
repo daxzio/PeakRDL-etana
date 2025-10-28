@@ -35,7 +35,7 @@ This approach eliminates the need for complex struct hierarchies and provides:
 
 - **Flattened signal interface** - Individual ports for clean integration
 - **Full SystemRDL 2.0 support** - Complete standard compliance
-- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, Passthrough, and more
+- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, OBI, Passthrough, and more
 - **Integration templates** - Auto-generated example modules for easy integration
 - **Signal documentation** - Comprehensive reports mapping RDL to signals
 - **Comprehensive testing** - Cocotb-based test suite with CPU interface error validation
