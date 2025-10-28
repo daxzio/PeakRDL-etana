@@ -130,12 +130,31 @@ class AvalonMaster:
         error_expected: bool = False,
     ) -> None:
         """ """
-        self.tx_id += 1
+        # Calculate how many bus-width transactions needed (like APB does)
         if isinstance(data, int):
-            datab = data.to_bytes(self.wbytes, "little")
+            import math
+
+            num_transactions = (
+                math.ceil(data.bit_length() / self.wwidth)
+                if data.bit_length() > 0
+                else 1
+            )
         else:
-            datab = data
-        self.queue_tx.append((True, addr, datab, strb, error_expected, self.tx_id))
+            import math
+
+            num_transactions = math.ceil(len(data) / self.wbytes)
+
+        # Split into multiple bus-width transactions if needed
+        for i in range(num_transactions):
+            addrb = addr + i * self.wbytes
+            if isinstance(data, int):
+                subdata = (data >> self.wwidth * i) & self.wdata_mask
+                datab = subdata.to_bytes(self.wbytes, "little")
+            else:
+                datab = data[i * self.wbytes : (i + 1) * self.wbytes]
+            self.tx_id += 1
+            self.queue_tx.append((True, addrb, datab, strb, error_expected, self.tx_id))
+
         self.sync.set()
         self._idle.clear()
 
@@ -163,16 +182,29 @@ class AvalonMaster:
         data: Union[int, bytes] = bytes(),
         error_expected: bool = False,
     ) -> int:
+        # Calculate how many bus-width transactions needed (like APB does)
         if isinstance(data, int):
-            if data > self.rdata_mask:
-                self.log.warning(
-                    f"Read data 0x{data:08x} exceeds width expected 0x{self.rdata_mask:08x}"
-                )
-            datab = data.to_bytes(self.rbytes, "little")
+            import math
+
+            num_transactions = (
+                math.ceil(data.bit_length() / self.rwidth)
+                if data.bit_length() > 0
+                else 1
+            )
         else:
-            datab = data
-        self.tx_id += 1
-        self.queue_tx.append((False, addr, datab, -1, error_expected, self.tx_id))
+            num_transactions = 1
+
+        # Split into multiple bus-width transactions if needed
+        for i in range(num_transactions):
+            addrb = addr + i * self.rbytes
+            if isinstance(data, int):
+                subdata = (data >> self.rwidth * i) & self.rdata_mask
+                datab = subdata.to_bytes(self.rbytes, "little")
+            else:
+                datab = data
+            self.tx_id += 1
+            self.queue_tx.append((False, addrb, datab, -1, error_expected, self.tx_id))
+
         self.sync.set()
         self._idle.clear()
         return self.tx_id
