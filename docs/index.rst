@@ -16,10 +16,13 @@ description into synthesizable SystemVerilog RTL with individual signal ports in
 
 * Generates fully synthesizable SystemVerilog RTL (IEEE 1800-2012)
 * Options for many popular CPU interface protocols (AMBA APB, AHB, AXI4-Lite, and more)
+* **CPU interface error responses** - Configurable error signaling for unmapped addresses and forbidden R/W
+* **External component support** - Validated integration with external registers and memories
 * Configurable pipelining options for designs with fast clock rates
 * Broad support for SystemRDL 2.0 features
 * Fully synthesizable SystemVerilog. Tested on Xilinx/AMD's Vivado & Intel Quartus
 * Enhanced safety checks: width validation, assertion guards, optimized field logic
+* **Comprehensive test suite** - Cocotb-based validation across multiple CPU interfaces
 
 .. warning::
 
@@ -58,6 +61,9 @@ Use PeakRDL-etana via the PeakRDL command line tool:
     # Flatten nested address map components
     peakrdl etana my_design.rdl -o output/ --flatten-nested-blocks
 
+    # Enable CPU interface error responses
+    peakrdl etana my_design.rdl -o output/ --cpuif apb4-flat --err-if-bad-addr --err-if-bad-rw
+
 Links
 -----
 
@@ -71,13 +77,14 @@ Links
     :hidden:
 
     self
-   architecture
-   hwif
-   template_generation
-   hwif_report
-   configuring
-   limitations
-   licensing
+    architecture
+    hwif
+    template_generation
+    hwif_report
+    configuring
+    testing
+    limitations
+    licensing
     api
 
 .. toctree::

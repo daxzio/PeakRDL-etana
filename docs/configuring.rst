@@ -55,16 +55,23 @@ CPU Interface Selection
 
 .. option:: --cpuif <interface>
 
-    Select the CPU interface protocol. Available options include:
+    Select the CPU interface protocol. All interfaces use **flattened signals** (individual ports)
+    rather than SystemVerilog structs.
 
-    * ``apb3`` / ``apb3-flat`` - AMBA APB3 interface
-    * ``apb4`` / ``apb4-flat`` - AMBA APB4 interface
-    * ``ahb-flat`` - AMBA AHB interface
-    * ``axi4-lite`` / ``axi4-lite-flat`` - AMBA AXI4-Lite interface
-    * ``avalon-mm`` / ``avalon-mm-flat`` - Avalon Memory-Mapped interface
+    Available options:
+
+    * ``apb3-flat`` - AMBA APB3 interface (flattened signals)
+    * ``apb4-flat`` - AMBA APB4 interface (flattened signals) **[default]**
+    * ``ahb-flat`` - AMBA AHB interface (flattened signals)
+    * ``axi4-lite-flat`` - AMBA AXI4-Lite interface (flattened signals)
+    * ``avalon-mm-flat`` - Avalon Memory-Mapped interface (flattened signals)
     * ``passthrough`` - Direct internal protocol passthrough
 
-    The ``-flat`` suffix indicates flattened input/output ports instead of SystemVerilog interfaces.
+    .. note::
+        PeakRDL-etana **only supports flattened signal interfaces**. This is the key
+        architectural difference from PeakRDL-regblock. All ``-flat`` variants use
+        individual signal ports (e.g., ``s_apb_psel``, ``s_apb_pready``) instead of
+        SystemVerilog interface types.
 
 Hardware Interface Customization
 ---------------------------------
@@ -156,6 +163,86 @@ Address Map Configuration
 
     **Note:** Memory blocks (``mem``) are always treated as external regardless of this option,
     as they require specialized memory interfaces per SystemRDL specification.
+
+Error Response Configuration
+----------------------------
+
+.. option:: --err-if-bad-addr
+
+    Generate error responses for accesses to unmapped addresses.
+
+    When enabled, the CPU interface will signal an error (e.g., SLVERR, PSLVERR, HRESP)
+    when software attempts to access an address that is not mapped to any register or memory.
+
+    **Default:** Disabled (unmapped addresses return 0 for reads, ignore writes)
+
+    **Supported CPU Interfaces:**
+
+    * APB4: Asserts ``pslverr``
+    * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
+    * AHB: Asserts ``hresp`` (ERROR response)
+    * Passthrough: Asserts ``rd_err``/``wr_err``
+
+    **Example:**
+
+    .. code-block:: bash
+
+        peakrdl etana design.rdl --cpuif apb4-flat --err-if-bad-addr -o output/
+
+    **Use Cases:**
+
+    * Debug invalid software access patterns
+    * Enforce strict address map compliance
+    * Detect software bugs at runtime
+    * Meet safety-critical requirements
+
+.. option:: --err-if-bad-rw
+
+    Generate error responses for forbidden read/write operations.
+
+    When enabled, the CPU interface will signal an error when:
+
+    * Software attempts to **read** a write-only register
+    * Software attempts to **write** a read-only register
+
+    **Default:** Disabled (forbidden reads return 0, forbidden writes are ignored)
+
+    **Supported CPU Interfaces:**
+
+    * APB4: Asserts ``pslverr``
+    * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
+    * AHB: Asserts ``hresp`` (ERROR response)
+    * Passthrough: Asserts ``rd_err``/``wr_err``
+
+    **Example:**
+
+    .. code-block:: bash
+
+        peakrdl etana design.rdl --cpuif apb4-flat --err-if-bad-rw -o output/
+
+    **Use Cases:**
+
+    * Catch software register access violations
+    * Enforce register access policies
+    * Validate software against hardware constraints
+    * Improve system robustness
+
+.. option:: --err-if-bad-addr --err-if-bad-rw
+
+    Both options can be combined for comprehensive error checking:
+
+    .. code-block:: bash
+
+        peakrdl etana design.rdl --cpuif apb4-flat --err-if-bad-addr --err-if-bad-rw -o output/
+
+    This configuration provides maximum error detection, signaling:
+
+    * Unmapped address accesses
+    * Forbidden read operations (write-only registers)
+    * Forbidden write operations (read-only registers)
+
+    **Testing:** Use the ``test_cpuif_err_rsp`` test to validate error response behavior
+    across different CPU interfaces.
 
 Advanced Options
 ----------------

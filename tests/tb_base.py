@@ -36,6 +36,16 @@ class testbench:
             from interfaces.axi_wrapper import AxiWrapper
 
             self.intf = AxiWrapper(dut, "s_axil", "clk")
+        elif hasattr(dut, "s_obi_req"):
+            from interfaces.obi import OBIBus, OBIMaster
+
+            obi_bus = OBIBus.from_prefix(dut, "s_obi")
+            self.intf = OBIMaster(obi_bus, getattr(dut, "clk"))
+        elif hasattr(dut, "avalon_read"):
+            from interfaces.avalon import AvalonBus, AvalonMaster
+
+            avalon_bus = AvalonBus.from_prefix(dut, "avalon")
+            self.intf = AvalonMaster(avalon_bus, getattr(dut, "clk"))
         else:
             raise Exception("Unsupported interface")
 

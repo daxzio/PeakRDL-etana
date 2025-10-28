@@ -35,9 +35,12 @@ This approach eliminates the need for complex struct hierarchies and provides:
 
 - **Flattened signal interface** - Individual ports for clean integration
 - **Full SystemRDL 2.0 support** - Complete standard compliance
-- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, and more
+- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, OBI, Passthrough, and more
 - **Integration templates** - Auto-generated example modules for easy integration
 - **Signal documentation** - Comprehensive reports mapping RDL to signals
+- **Comprehensive testing** - Cocotb-based test suite with CPU interface error validation
+- **Error response handling** - Full support for bus error signaling (SLVERR, PSLVERR, HRESP)
+- **External components** - Validated support for external registers and memories
 - **Configurable pipelining** - Optimization options for high-speed designs
 - **Enhanced safety checks** - Width validation and assertion guards
 - **Optimized field logic** - Improved reset handling and interrupt management
@@ -69,13 +72,16 @@ pip install peakrdl-etana
 peakrdl etana my_registers.rdl -o output_dir/
 
 # Specify CPU interface type
-peakrdl etana my_registers.rdl --cpuif axi4-lite -o output_dir/
+peakrdl etana my_registers.rdl --cpuif axi4-lite-flat -o output_dir/
 
 # Flatten nested address map components
 peakrdl etana my_registers.rdl --flatten-nested-blocks -o output_dir/
 
 # Generate integration template and signal reports
 peakrdl etana my_registers.rdl --generate-template --hwif-report -o output_dir/
+
+# Enable CPU interface error responses
+peakrdl etana my_registers.rdl --cpuif apb4-flat --err-if-bad-addr --err-if-bad-rw -o output_dir/
 
 # Complete workflow with all features
 peakrdl etana my_registers.rdl \
@@ -85,6 +91,8 @@ peakrdl etana my_registers.rdl \
     --flatten-nested-blocks \
     --generate-template \
     --hwif-report \
+    --err-if-bad-addr \
+    --err-if-bad-rw \
     -o output_dir/
 ```
 
@@ -182,7 +190,11 @@ PeakRDL-etana includes comprehensive test frameworks:
 
 ### Test Framework
 
-- **tests/** - Modern Python-based testing framework using cocotb
+- **tests/** - Modern Python-based testing framework using Cocotb
+  - ✅ CPU interface error response validation (NEW)
+  - ✅ External register and memory support
+  - ✅ Multiple CPU interfaces (APB4, AXI4-Lite, AHB, Passthrough)
+  - ✅ All SystemRDL field types and properties
 
 
 ### Quick Start (cocotb)

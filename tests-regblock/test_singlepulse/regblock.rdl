@@ -1,8 +1,0 @@
-addrmap top {
-    reg {
-        field {
-            sw=rw; hw=r;
-            singlepulse;
-        } f[0:0] = 0;
-    } r1;
-};

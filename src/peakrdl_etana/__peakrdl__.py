@@ -8,7 +8,7 @@ from peakrdl.plugins.exporter import (
 from peakrdl.config import schema  # pylint: disable=import-error
 
 from .exporter import RegblockExporter
-from .cpuif import CpuifBase, apb3, apb4, axi4lite, passthrough, avalon, ahb
+from .cpuif import CpuifBase, apb3, apb4, axi4lite, passthrough, avalon, ahb, obi
 from .udps import ALL_UDPS
 from . import entry_points
 
@@ -51,7 +51,7 @@ class Exporter(ExporterSubcommandPlugin):
     @functools.lru_cache()
     def get_cpuifs(self) -> Dict[str, Type[CpuifBase]]:
 
-        # All built-in CPUIFs
+        # All built-in CPUIFs - FLATTENED SIGNALS ONLY (no SystemVerilog structs)
         cpuifs = {
             "passthrough": passthrough.PassthroughCpuif,
             "apb3-flat": apb3.APB3_Cpuif_flattened,
@@ -59,6 +59,7 @@ class Exporter(ExporterSubcommandPlugin):
             "ahb-flat": ahb.AHB_Cpuif_flattened,
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
+            "obi-flat": obi.OBI_Cpuif_flattened,
         }
 
         # Load any cpuifs specified via entry points
@@ -95,8 +96,8 @@ class Exporter(ExporterSubcommandPlugin):
         arg_group.add_argument(
             "--cpuif",
             choices=cpuifs.keys(),
-            default="apb3",
-            help="Select the CPU interface protocol to use [apb3]",
+            default="apb4-flat",
+            help="Select the CPU interface protocol to use (flattened signals only) [apb4-flat]",
         )
 
         arg_group.add_argument(
