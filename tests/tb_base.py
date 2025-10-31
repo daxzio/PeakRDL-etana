@@ -37,12 +37,12 @@ class testbench:
 
             self.intf = AxiWrapper(dut, "s_axil", "clk")
         elif hasattr(dut, "s_obi_req"):
-            from interfaces.obi import OBIBus, OBIMaster
+            from cocotbext.obi import ObiBus, ObiMaster
 
-            obi_bus = OBIBus.from_prefix(dut, "s_obi")
-            self.intf = OBIMaster(obi_bus, getattr(dut, "clk"))
+            obi_bus = ObiBus.from_prefix(dut, "s_obi")
+            self.intf = ObiMaster(obi_bus, getattr(dut, "clk"))
         elif hasattr(dut, "avalon_read"):
-            from interfaces.avalon import AvalonBus, AvalonMaster
+            from cocotbext.avalon import AvalonBus, AvalonMaster
 
             avalon_bus = AvalonBus.from_prefix(dut, "avalon")
             self.intf = AvalonMaster(avalon_bus, getattr(dut, "clk"))
