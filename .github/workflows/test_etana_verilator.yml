@@ -35,9 +35,10 @@ jobs:
       - name: Run Tests
         run: |
           unset PYTHONHOME
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=ahb-flat       COCOTB_REV=1.9.2
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
-          cd tests ; ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
+          cd tests
+          ./test_all.sh SIM=verilator GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=ahb-flat       COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
