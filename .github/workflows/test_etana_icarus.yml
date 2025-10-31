@@ -61,7 +61,12 @@ jobs:
       - name: Run Tests
         run: |
           unset PYTHONHOME
-          cd tests ; ./test_all.sh GIT_CHECK=1 COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=1 CPUIF=ap4-flat       COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=0 CPUIF=ap3-flat       COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=0 CPUIF=ahb-flat       COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
+          cd tests ; ./test_all.sh GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
 
   pypi_release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
