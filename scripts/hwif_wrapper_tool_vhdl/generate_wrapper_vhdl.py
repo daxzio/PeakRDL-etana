@@ -134,15 +134,14 @@ def main():
 
             # Check if there are any hwif signals
             if not in_record_type and not out_record_type:
-                print("ℹ️  No hwif signals found in design - wrapper not needed")
+                print("ℹ️  No hwif signals found in design - generating empty wrapper")
                 print("   Design has no hardware interface records")
-                sys.exit(0)
-
-            print(f"Found hwif records:")
-            if in_record_type:
-                print(f"  Input:  {in_record_type}")
-            if out_record_type:
-                print(f"  Output: {out_record_type}")
+            else:
+                print(f"Found hwif records:")
+                if in_record_type:
+                    print(f"  Input:  {in_record_type}")
+                if out_record_type:
+                    print(f"  Output: {out_record_type}")
 
             # Read entity file
             entity_path = os.path.join(temp_dir, f"{actual_module_name}.vhd")

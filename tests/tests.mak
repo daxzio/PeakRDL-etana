@@ -44,7 +44,7 @@ ifeq ($(GHDL),1)
 	undefine VERILOG_SOURCES
     VHDL_SOURCES=\
         ./regblock-vhdl-rtl/*.vhd \
-		/mnt/sda/projects/PeakRDL-regblock-vhdl/hdl-src/reg_utils.vhd
+		../interfaces/reg_utils.vhd
 	EXTRA_ARGS += --std=08
 endif
 ifeq ($(YOSYS),1)

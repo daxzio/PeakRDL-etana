@@ -44,8 +44,9 @@ class VhdlPackageParser:
     def _parse_records(self):
         """Extract all record type definitions from package"""
         # Pattern to match: type <name> is record ... end record;
+        # Support escaped names like \top.simple_in_t\ with dots and underscores
         record_pattern = re.compile(
-            r"type\s+(\\?[^\\s]+\\?)\s+is\s+record\s+(.*?)\s+end\s+record\s*;",
+            r"type\s+(.+?)\s+is\s+record\s+(.*?)\s+end\s+record\s*;",
             re.DOTALL | re.IGNORECASE,
         )
 
@@ -192,6 +193,14 @@ class VhdlPackageParser:
                     )
             else:
                 # Simple type - add to flattened list
+                # Check if record path ends with .value or .next and remove suffix from field_path
+                if record_path.endswith(".value"):
+                    if field_path.endswith("_value"):
+                        field_path = field_path[:-6]
+                elif record_path.endswith(".next"):
+                    if field_path.endswith("_next"):
+                        field_path = field_path[:-5]
+
                 flattened.append((field_path, field.vhdl_type, direction, record_path))
 
         return flattened

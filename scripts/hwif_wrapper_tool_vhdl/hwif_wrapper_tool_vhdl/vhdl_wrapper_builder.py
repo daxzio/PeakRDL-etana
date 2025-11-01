@@ -192,7 +192,6 @@ class VhdlWrapperBuilder:
         """Generate the entity declaration with flattened ports"""
         lines = []
         lines.append(f"entity {self.module_name}_wrapper is")
-        lines.append("    port (")
 
         # Build port list
         ports = []
@@ -210,12 +209,14 @@ class VhdlWrapperBuilder:
             port_decl = f"        {signal_name} : out {vhdl_type};"
             ports.append(port_decl)
 
-        # Remove semicolon from last port
+        # If we have ports, add port declaration
         if ports:
+            # Remove semicolon from last port
             ports[-1] = ports[-1].rstrip(";")
+            lines.append("    port (")
+            lines.extend(ports)
+            lines.append("    );")
 
-        lines.extend(ports)
-        lines.append("    );")
         lines.append(f"end entity {self.module_name}_wrapper;")
 
         return "\n".join(lines)
