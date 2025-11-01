@@ -77,20 +77,7 @@ class AxiWrapper:
             self.arid = 4
             self.awid = 4
 
-        # self.is_axi_lite = is_axi_lite
-
-        # print(dir(self.bus.write.w.wstrb))
         self.data_width_bytes = len(self.bus.write.w.wstrb)
-        # # Detect data width for AXI4-Lite
-        # if is_axi_lite:
-        #     try:
-        #         wdata_sig = getattr(dut, f"{axi_prefix}_wdata")
-        #         self.data_width_bytes = len(wdata_sig) // 8
-        #     except AttributeError:
-        #         # Fallback to default 4 bytes if signal not found
-        #         self.data_width_bytes = 4
-        # else:
-        #     self.data_width_bytes = 4  # Full AXI4 default
 
         self.axi_master.write_if.log.setLevel(logging.WARNING)
         self.axi_master.read_if.log.setLevel(logging.WARNING)
@@ -104,8 +91,14 @@ class AxiWrapper:
     @property
     def length(self):
         if self.len is None:
-            # For AXI4-Lite, use detected data width
+            # For AXI4-Lite, use detected data width, but if data is larger, use that
             if self.is_axi_lite:
+                # First check if data gives us a hint about required width
+                if not 0 == self.data and self.data is not None:
+                    data_width_bytes = max(
+                        math.ceil(math.log2(self.data + 1) / 8), self.data_width_bytes
+                    )
+                    return data_width_bytes
                 return self.data_width_bytes
             # For full AXI4, calculate from data or default to 4
             if not 0 == self.data and self.data is not None:
@@ -210,8 +203,10 @@ class AxiWrapper:
                 f"Read  0x{self.addr:08x}: 0x{self.returned_val:0{self.length*2}x}"
             )
         if not self.returned_val == self.data and self.data is not None:
+            # Calculate proper width for hex display based on data width
+            hex_width = max(8, (self.length * 2))
             raise Exception(
-                f"Expected 0x{self.data:08x} doesn't match returned 0x{self.returned_val:08x}"
+                f"Expected 0x{self.data:0{hex_width}x} doesn't match returned 0x{self.returned_val:0{hex_width}x}"
             )
 
     async def read(
