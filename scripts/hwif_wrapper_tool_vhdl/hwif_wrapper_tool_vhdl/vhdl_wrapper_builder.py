@@ -42,6 +42,29 @@ class VhdlWrapperBuilder:
         # Extract non-hwif ports
         self.non_hwif_ports = self._extract_non_hwif_ports()
 
+        # Detect required additional packages
+        self.required_packages = self._detect_required_packages()
+
+    def _detect_required_packages(self) -> List[str]:
+        """Detect which additional IEEE packages are needed based on signal types"""
+        required = []
+
+        # Collect all VHDL types from signals
+        all_types = []
+        for signal_name, vhdl_type, direction, record_path in self.in_signals:
+            all_types.append(vhdl_type)
+        for signal_name, vhdl_type, direction, record_path in self.out_signals:
+            all_types.append(vhdl_type)
+
+        # Check for ufixed or sfixed (require fixed_pkg)
+        for vhdl_type in all_types:
+            if "ufixed" in vhdl_type or "sfixed" in vhdl_type:
+                if "ieee.fixed_pkg.all" not in required:
+                    required.append("ieee.fixed_pkg.all")
+                break
+
+        return required
+
     def _extract_non_hwif_ports(self) -> List[str]:
         """Extract all ports except hwif_in and hwif_out"""
         ports = []
@@ -125,6 +148,9 @@ class VhdlWrapperBuilder:
         lines.append("library ieee;")
         lines.append("use ieee.std_logic_1164.all;")
         lines.append("use ieee.numeric_std.all;")
+        # Add any additional required packages (e.g., fixed_pkg)
+        for pkg in self.required_packages:
+            lines.append(f"use {pkg};")
         lines.append("")
         lines.append(f"use work.{self.package_name}.all;")
         lines.append("")
