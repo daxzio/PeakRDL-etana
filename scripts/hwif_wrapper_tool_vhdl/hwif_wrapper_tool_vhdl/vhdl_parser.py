@@ -193,10 +193,13 @@ class VhdlPackageParser:
                     )
             else:
                 # Simple type - add to flattened list
-                # Check if record path ends with .value or .next and remove suffix from field_path
+                # Check if record path ends with .value, .next, or .next_q and remove suffix from field_path
                 if record_path.endswith(".value"):
                     if field_path.endswith("_value"):
                         field_path = field_path[:-6]
+                elif record_path.endswith(".next_q"):
+                    if field_path.endswith("_next_q"):
+                        field_path = field_path[:-7]
                 elif record_path.endswith(".next"):
                     if field_path.endswith("_next"):
                         field_path = field_path[:-5]

@@ -20,7 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Setup GHDL
-        uses: ghdl/setup-ghdl-ci@v1
+        uses: ghdl/setup-ghdl@v1
+        with:
+          version: nightly
+          backend: llvm
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
