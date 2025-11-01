@@ -50,36 +50,48 @@ class AxiWrapper:
         self.enable_logging()
 
         # Detect if this is AXI4-Lite (prefix contains "axil") or full AXI4
-        is_axi_lite = "axil" in axi_prefix.lower()
+        self.is_axi_lite = "axil" in axi_prefix.lower()
 
-        if is_axi_lite:
+        if self.is_axi_lite:
             # Use AXI4-Lite bus and master
+            self.bus = AxiLiteBus.from_prefix(dut, axi_prefix)
             if reset_name is None:
-                self.axi_master = AxiLiteMaster(
-                    AxiLiteBus.from_prefix(dut, axi_prefix), getattr(dut, clk_name)
-                )
+                self.axi_master = AxiLiteMaster(self.bus, getattr(dut, clk_name))
             else:
                 self.axi_master = AxiLiteMaster(
-                    AxiLiteBus.from_prefix(dut, axi_prefix),
+                    self.bus,
                     getattr(dut, clk_name),
                     getattr(dut, reset_name),
                 )
         else:
             # Use full AXI4 bus and master
+            self.bus = AxiBus.from_prefix(dut, axi_prefix)
             if reset_name is None:
-                self.axi_master = AxiMaster(
-                    AxiBus.from_prefix(dut, axi_prefix), getattr(dut, clk_name)
-                )
+                self.axi_master = AxiMaster(self.bus, getattr(dut, clk_name))
             else:
                 self.axi_master = AxiMaster(
-                    AxiBus.from_prefix(dut, axi_prefix),
+                    self.bus,
                     getattr(dut, clk_name),
                     getattr(dut, reset_name),
                 )
-        self.is_axi_lite = is_axi_lite
-        if not is_axi_lite:
             self.arid = 4
             self.awid = 4
+
+        # self.is_axi_lite = is_axi_lite
+
+        # print(dir(self.bus.write.w.wstrb))
+        self.data_width_bytes = len(self.bus.write.w.wstrb)
+        # # Detect data width for AXI4-Lite
+        # if is_axi_lite:
+        #     try:
+        #         wdata_sig = getattr(dut, f"{axi_prefix}_wdata")
+        #         self.data_width_bytes = len(wdata_sig) // 8
+        #     except AttributeError:
+        #         # Fallback to default 4 bytes if signal not found
+        #         self.data_width_bytes = 4
+        # else:
+        #     self.data_width_bytes = 4  # Full AXI4 default
+
         self.axi_master.write_if.log.setLevel(logging.WARNING)
         self.axi_master.read_if.log.setLevel(logging.WARNING)
         if seednum is not None:
@@ -92,6 +104,10 @@ class AxiWrapper:
     @property
     def length(self):
         if self.len is None:
+            # For AXI4-Lite, use detected data width
+            if self.is_axi_lite:
+                return self.data_width_bytes
+            # For full AXI4, calculate from data or default to 4
             if not 0 == self.data and self.data is not None:
                 return max(math.ceil(math.log2(self.data) / 8), 4)
             else:
@@ -232,7 +248,9 @@ class AxiWrapper:
 
         if not error_expected:
             self.check_read(debug)
-        return self.read_op
+
+        # Return the integer value, not the response object
+        return self.returned_val
 
     async def write(
         self, addr, data=None, length=None, debug=True, error_expected=False

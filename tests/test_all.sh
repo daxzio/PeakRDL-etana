@@ -80,6 +80,10 @@ PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
 
+# Arrays to track test names and their status
+declare -a TEST_NAMES
+declare -a TEST_STATUSES
+
 for dir in test_*/; do
     if [ -f "$dir/Makefile" ] && [ -f "$dir/test_dut.py" ]; then
         test_name=$(basename "$dir")
@@ -88,6 +92,8 @@ for dir in test_*/; do
         if [[ " ${SKIP_TESTS[@]} " =~ " ${test_name} " ]]; then
             echo "⏭️  Skipping $test_name (not applicable for $TARGET_NAME$SYNTH_INDICATOR)"
             SKIP_COUNT=$((SKIP_COUNT + 1))
+            TEST_NAMES+=("$test_name")
+            TEST_STATUSES+=("SKIP")
             echo ""
             continue
         fi
@@ -132,9 +138,13 @@ for dir in test_*/; do
         if grep -q "PASS=1.*FAIL=0" "/tmp/${test_name}.log" 2>/dev/null; then
             echo "  ✅ PASS"
             PASS_COUNT=$((PASS_COUNT + 1))
+            TEST_NAMES+=("$test_name")
+            TEST_STATUSES+=("PASS")
         else
             echo "  ❌ FAIL"
             FAIL_COUNT=$((FAIL_COUNT + 1))
+            TEST_NAMES+=("$test_name")
+            TEST_STATUSES+=("FAIL")
             echo ""
             echo "========== Log for $test_name =========="
             cat "/tmp/${test_name}.log"
@@ -151,6 +161,26 @@ echo "SKIP: $SKIP_COUNT"
 TOTAL_RUN=$((PASS_COUNT + FAIL_COUNT))
 TOTAL_ALL=$((PASS_COUNT + FAIL_COUNT + SKIP_COUNT))
 echo "Total: $TOTAL_RUN (of $TOTAL_ALL tests)"
+echo ""
+echo "=== Test Results Report ==="
+for i in "${!TEST_NAMES[@]}"; do
+    status="${TEST_STATUSES[$i]}"
+    test_name="${TEST_NAMES[$i]}"
+    case "$status" in
+        PASS)
+            echo "✅ PASS: $test_name"
+            ;;
+        FAIL)
+            echo "❌ FAIL: $test_name"
+            ;;
+        SKIP)
+            # Skip reporting skipped tests
+            ;;
+        *)
+            echo "$status: $test_name"
+            ;;
+    esac
+done
 
 if [ "$FAIL_COUNT" -ne 0 ]; then
     exit 1
