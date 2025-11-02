@@ -45,8 +45,9 @@ class VhdlPackageParser:
         """Extract all record type definitions from package"""
         # Pattern to match: type <name> is record ... end record;
         # Support escaped names like \top.simple_in_t\ with dots and underscores
+        # The type name must be on the same logical line (before "is record")
         record_pattern = re.compile(
-            r"type\s+(.+?)\s+is\s+record\s+(.*?)\s+end\s+record\s*;",
+            r"type\s+([^\n;]+?)\s+is\s+record\s+(.*?)\s+end\s+record\s*;",
             re.DOTALL | re.IGNORECASE,
         )
 
@@ -145,15 +146,49 @@ class VhdlPackageParser:
             is_record_type = False
             nested_type = field_type
 
-            # Check if it's a record type (either with backslashes or without)
-            if field_type.startswith("\\"):
-                is_record_type = True
-                # Field type already has backslashes - look it up directly
-                if field_type not in self.records:
-                    # Try without backslashes
-                    nested_type = field_type.strip("\\")
+            # If field has array_range, check if the field_type is an array type
+            # Array types typically end with _array (with or without backslashes)
+            if field.array_range:
+                # Check if field_type ends with _array (handling both escaped and unescaped)
+                if field_type.endswith("_array\\"):
+                    # Extract base type by removing _array\ suffix
+                    base_type = field_type[:-7] + "\\"
+                elif field_type.endswith("_array"):
+                    # Extract base type by removing _array suffix
+                    base_type = field_type[:-6]
                 else:
+                    # Not an array type pattern, treat as regular type
+                    base_type = None
+
+                if base_type:
+                    # Check if base type is a record
+                    if base_type in self.records:
+                        is_record_type = True
+                        nested_type = base_type
+                    elif base_type.startswith("\\"):
+                        # Try without backslashes
+                        unescaped_base = base_type.strip("\\")
+                        if unescaped_base in self.records:
+                            is_record_type = True
+                            nested_type = unescaped_base
+                    else:
+                        # Try with backslashes
+                        escaped_base = f"\\{base_type}\\"
+                        if escaped_base in self.records:
+                            is_record_type = True
+                            nested_type = escaped_base
+            # Check if it's a record type (either with backslashes or without)
+            elif field_type.startswith("\\"):
+                # Field type already has backslashes - look it up directly
+                if field_type in self.records:
+                    is_record_type = True
                     nested_type = field_type
+                else:
+                    # Try without backslashes
+                    unescaped_type = field_type.strip("\\")
+                    if unescaped_type in self.records:
+                        is_record_type = True
+                        nested_type = unescaped_type
             else:
                 # Check if it's a known record type (without backslashes)
                 if field_type in self.records or f"\\{field_type}\\" in self.records:

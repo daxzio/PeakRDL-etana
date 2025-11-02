@@ -39,6 +39,10 @@ class VhdlWrapperBuilder:
                 out_record_type, "hwif_out", "hwif_out"
             )
 
+        # Post-process signals to concatenate arrays of simple types
+        self.in_signals = self._concatenate_array_signals(self.in_signals)
+        self.out_signals = self._concatenate_array_signals(self.out_signals)
+
         # Extract non-hwif ports
         self.non_hwif_ports = self._extract_non_hwif_ports()
 
@@ -251,9 +255,35 @@ class VhdlWrapperBuilder:
         """Generate assignments from flattened inputs to record"""
         lines = []
 
+        if not hasattr(self, "_array_signal_mappings"):
+            self._array_signal_mappings = {}
+
         for signal_name, vhdl_type, direction, record_path in self.in_signals:
-            # Generate assignment: hwif_in.path.to.field <= signal_name;
-            lines.append(f"    {record_path} <= {signal_name};")
+            if signal_name in self._array_signal_mappings:
+                # This is a concatenated array signal - need to slice and assign to individual elements
+                mapping = self._array_signal_mappings[signal_name]
+                items = mapping["items"]
+                elem_width = mapping["elem_width"]
+
+                # Generate assignments for each array element
+                # Need to slice the concatenated signal in reverse order (highest index first)
+                for idx, orig_sig_name, _, _, orig_record_path in items:
+                    # Reverse the index for slicing (highest index is MSB)
+                    rev_idx = len(items) - 1 - idx
+                    if elem_width == 1:
+                        # Single bit - use direct indexing, not slice
+                        lines.append(
+                            f"    {orig_record_path} <= {signal_name}({rev_idx});"
+                        )
+                    else:
+                        slice_high = (rev_idx + 1) * elem_width - 1
+                        slice_low = rev_idx * elem_width
+                        lines.append(
+                            f"    {orig_record_path} <= {signal_name}({slice_high} downto {slice_low});"
+                        )
+            else:
+                # Regular assignment: hwif_in.path.to.field <= signal_name;
+                lines.append(f"    {record_path} <= {signal_name};")
 
         return lines
 
@@ -261,11 +291,140 @@ class VhdlWrapperBuilder:
         """Generate assignments from record to flattened outputs"""
         lines = []
 
+        if not hasattr(self, "_array_signal_mappings"):
+            self._array_signal_mappings = {}
+
         for signal_name, vhdl_type, direction, record_path in self.out_signals:
-            # Generate assignment: signal_name <= hwif_out.path.to.field;
-            lines.append(f"    {signal_name} <= {record_path};")
+            if signal_name in self._array_signal_mappings:
+                # This is a concatenated array signal - need to build concatenation
+                mapping = self._array_signal_mappings[signal_name]
+                items = mapping["items"]
+                elem_width = mapping["elem_width"]
+
+                # Build concatenation: highest index first (MSB)
+                # e.g., x(63).x.value & x(62).x.value & ... & x(1).x.value & x(0).x.value
+                concat_parts = []
+                for idx, orig_sig_name, _, _, orig_record_path in reversed(items):
+                    # Just concatenate the record paths directly (each is already the right width)
+                    concat_parts.append(orig_record_path)
+
+                # Concatenate all parts
+                assignment = f"    {signal_name} <= " + " & ".join(concat_parts) + ";"
+                lines.append(assignment)
+            else:
+                # Regular assignment: signal_name <= hwif_out.path.to.field;
+                lines.append(f"    {signal_name} <= {record_path};")
 
         return lines
+
+    def _concatenate_array_signals(
+        self, signals: List[Tuple[str, str, str, str]]
+    ) -> List[Tuple[str, str, str, str]]:
+        """
+        Concatenate array signals into single vectors for cocotb compatibility.
+        Detects signals with numeric indices (e.g., hwif_out_x_0_x, hwif_out_x_1_x)
+        and concatenates them into a single vector (e.g., hwif_out_x).
+        """
+        import re
+        from collections import defaultdict
+
+        # Pattern to match signals with numeric indices: name_<idx>_field
+        array_pattern = re.compile(r"^(.+)_(\d+)_(.+)$")
+
+        # Group signals by base name (without index)
+        array_groups = defaultdict(list)
+        simple_signals = []
+        # Track base_name usage to detect when suffix can be dropped
+        base_name_groups = defaultdict(list)
+
+        for signal_name, vhdl_type, direction, record_path in signals:
+            match = array_pattern.match(signal_name)
+            if match:
+                base_name = match.group(1)
+                idx = int(match.group(2))
+                suffix = match.group(3)
+                key = (base_name, suffix, vhdl_type)
+                array_groups[key].append(
+                    (idx, signal_name, vhdl_type, direction, record_path)
+                )
+                base_name_groups[base_name].append(key)
+            else:
+                simple_signals.append((signal_name, vhdl_type, direction, record_path))
+
+        result = list(simple_signals)
+
+        # Process each array group
+        for (base_name, suffix, vhdl_type), items in array_groups.items():
+            # Sort by index
+            items.sort(key=lambda x: x[0])
+            indices = [x[0] for x in items]
+
+            # Check if indices are consecutive starting from 0
+            if indices == list(range(len(indices))):
+                # Extract width from vhdl_type
+                # For std_logic_vector: "std_logic_vector(31 downto 0)" -> 32
+                # For std_logic: "std_logic" -> 1
+                width_match = re.search(r"\((\d+)\s+downto\s+(\d+)\)", vhdl_type)
+                if width_match:
+                    high = int(width_match.group(1))
+                    low = int(width_match.group(2))
+                    elem_width = high - low + 1
+                    total_width = elem_width * len(indices)
+                elif "std_logic" in vhdl_type and "vector" not in vhdl_type:
+                    # Single std_logic - width is 1
+                    elem_width = 1
+                    total_width = len(indices)
+                else:
+                    # Can't determine width, keep individual signals
+                    result.extend([(x[1], x[2], x[3], x[4]) for x in items])
+                    continue
+
+                # Create concatenated signal name
+                # If there are multiple groups with same base_name but different suffixes, use base_name_suffix
+                # If there's only one group for this base_name, we can drop the suffix (like test_pipelined_cpuif)
+                # This matches SystemVerilog wrapper behavior which removes redundant names (e.g., x_x -> x)
+                groups_for_base = base_name_groups[base_name]
+                # Count unique suffixes for this base_name
+                unique_suffixes = set(key[1] for key in groups_for_base)
+                if len(unique_suffixes) > 1:
+                    # Multiple fields in the array - include suffix to avoid collisions
+                    concat_name = f"{base_name}_{suffix}"
+                else:
+                    # Single field - check if suffix is redundant (matches last part of base_name)
+                    # e.g., hwif_out_x with suffix x -> hwif_out_x (not hwif_out_x_x)
+                    if base_name.endswith(f"_{suffix}"):
+                        # Redundant suffix - drop it (matches SystemVerilog wrapper behavior)
+                        concat_name = base_name
+                    else:
+                        # Suffix is different - keep it
+                        concat_name = f"{base_name}_{suffix}"
+                concat_type = f"std_logic_vector({total_width - 1} downto 0)"
+
+                # Store original signals for assignment generation
+                concat_record_path = (
+                    items[0][4].rsplit(f"({items[0][0]})", 1)[0]
+                    if f"({items[0][0]})" in items[0][4]
+                    else items[0][4]
+                )
+
+                # Add concatenated signal
+                result.append(
+                    (concat_name, concat_type, items[0][3], concat_record_path)
+                )
+
+                # Store mapping for assignment generation (we'll handle this in assignment methods)
+                if not hasattr(self, "_array_signal_mappings"):
+                    self._array_signal_mappings = {}
+                self._array_signal_mappings[concat_name] = {
+                    "items": items,
+                    "elem_width": elem_width,
+                    "count": len(indices),
+                }
+            else:
+                # Not consecutive, keep individual signals
+                result.extend([(x[1], x[2], x[3], x[4]) for x in items])
+
+        return result
 
     def _generate_instance(self) -> str:
         """Generate entity instantiation"""
