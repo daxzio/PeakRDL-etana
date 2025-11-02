@@ -38,14 +38,7 @@ def main():
     parser.add_argument(
         "--cpuif",
         default="apb3",
-        choices=[
-            "passthrough",
-            "apb3",
-            "apb3-flat",
-            "apb4",
-            "apb4-flat",
-        ],
-        help="CPU interface type (default: apb3)",
+        help="CPU interface type (default: apb3). Supported: passthrough, apb3, apb3-flat, apb4, apb4-flat, axi4-lite, axi4-lite-flat, avalon-mm, avalon-mm-flat",
     )
 
     parser.add_argument("--module-name", help="Override module name")
@@ -62,18 +55,46 @@ def main():
         # Import here to avoid issues if not installed
         from systemrdl import RDLCompiler
         from peakrdl_regblock_vhdl import RegblockExporter
-        from peakrdl_regblock_vhdl.cpuif import apb3, apb4, passthrough
         from peakrdl_regblock_vhdl.udps import ALL_UDPS
         from peakrdl_regblock_vhdl.identifier_filter import kw_filter as kwf
 
-        # Map CPU interface names to classes
-        cpuif_map = {
-            "passthrough": passthrough.PassthroughCpuif,
-            "apb3": apb3.APB3_Cpuif,
-            "apb3-flat": apb3.APB3_Cpuif_flattened,
-            "apb4": apb4.APB4_Cpuif,
-            "apb4-flat": apb4.APB4_Cpuif_flattened,
-        }
+        # Dynamically build CPU interface map based on what's available
+        # This ensures compatibility with different peakrdl-regblock-vhdl versions
+        cpuif_map = {}
+
+        # Helper function to safely import and register interface
+        def register_interface(module_name, class_name, key):
+            try:
+                module = __import__(
+                    f"peakrdl_regblock_vhdl.cpuif.{module_name}", fromlist=[class_name]
+                )
+                if hasattr(module, class_name):
+                    cpuif_map[key] = getattr(module, class_name)
+                    return True
+            except (ImportError, AttributeError):
+                pass
+            return False
+
+        # Register all known interfaces (gracefully skip if not available)
+        register_interface("passthrough", "PassthroughCpuif", "passthrough")
+        register_interface("apb3", "APB3_Cpuif", "apb3")
+        register_interface("apb3", "APB3_Cpuif_flattened", "apb3-flat")
+        register_interface("apb4", "APB4_Cpuif", "apb4")
+        register_interface("apb4", "APB4_Cpuif_flattened", "apb4-flat")
+        register_interface("axi4lite", "AXI4Lite_Cpuif", "axi4-lite")
+        register_interface("axi4lite", "AXI4Lite_Cpuif_flattened", "axi4-lite-flat")
+        register_interface("avalon", "Avalon_Cpuif", "avalon-mm")
+        register_interface("avalon", "Avalon_Cpuif_flattened", "avalon-mm-flat")
+
+        # Note: ahb may not be available in all versions
+        # register_interface("ahb", "AHB_Cpuif", "ahb")
+        # register_interface("ahb", "AHB_Cpuif_flattened", "ahb-flat")
+
+        # Ensure at least APB3 is available (should always be present)
+        if "apb3" not in cpuif_map:
+            raise RuntimeError(
+                "peakrdl-regblock-vhdl does not have any compatible CPUIF classes available"
+            )
 
         # Compile RDL
         rdlc = RDLCompiler()
@@ -92,7 +113,10 @@ def main():
             root = rdlc.elaborate()
 
         # Get CPU interface class
-        cpuif_cls = cpuif_map.get(args.cpuif, apb3.APB3_Cpuif)
+        cpuif_cls = cpuif_map.get(args.cpuif)
+        if cpuif_cls is None:
+            available = ", ".join(sorted(cpuif_map.keys()))
+            raise ValueError(f"Unknown CPUIF '{args.cpuif}'. Available: {available}")
 
         # Create temporary directory for VHDL generation
         with tempfile.TemporaryDirectory() as temp_dir:
