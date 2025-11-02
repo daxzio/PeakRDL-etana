@@ -935,7 +935,7 @@ cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl tests/test_<name>/
 
 # 3. Test with regblock (reference implementation)
 cd tests/test_<name>
-source ../../venv.2.0.0/bin/activate
+source ../../venv-3.12.3/bin/activate
 make clean regblock sim SIM=verilator REGBLOCK=1
 
 # 4. If passes with REGBLOCK=1, test with etana

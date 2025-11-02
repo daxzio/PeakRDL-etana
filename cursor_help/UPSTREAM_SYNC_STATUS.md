@@ -132,6 +132,12 @@ Add the fix to "Fixes Applied" section below with:
     - Cleaned documentation (13 files updated)
     - Verified: 100% struct-free architecture
 
+19. **Cocotb 1.9.2 Compatibility Fix** - Oct 27, 2025 (Etana-specific)
+    - Fixed `AxiWrapper.read()` returning response object instead of integer
+    - File: `tests/interfaces/axi_wrapper.py` (line 237)
+    - Restored 5 tests to passing status
+    - Compatible with both Cocotb 1.9.2 and 2.0.0
+
 ### Not Applicable (Struct-Specific)
 
 - Simulation-time Width Assertions (#128) - References `is_interface` attribute
@@ -249,7 +255,7 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 ## Sync Statistics
 
 - **Total Fixes Analyzed:** 23 (across v0.22.0 → current main Oct 2025)
-- **Fixes Applied:** 18 (includes etana-specific fixes)
+- **Fixes Applied:** 19 (includes etana-specific fixes)
 - **Fixes Not Applicable:** 3 (struct-specific)
 - **Documented for Future:** 3 (optional enhancements)
 - **Success Rate:** 100% of applicable fixes implemented

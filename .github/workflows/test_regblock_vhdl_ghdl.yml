@@ -12,8 +12,7 @@ jobs:
       fail-fast: false # So that one fail doesn't stop remaining tests
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-#         cpuif: ["apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
-        cpuif: ["apb4-flat"]
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
         target: [ghdl]
     runs-on: ubuntu-latest
 
