@@ -26,8 +26,9 @@ sim_build/
 synth_yosys.v
 cocotbext
 top_edit.sv
-# etana-rtl/
-# regblock-rtl/
+etana-rtl/
+regblock-rtl/
+regblock-vhdl-rtl/
 cursor_work/
 venv*/
 repos/
