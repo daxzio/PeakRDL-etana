@@ -135,7 +135,9 @@ class PTMaster:
         """ """
         self.tx_id += 1
         if isinstance(data, int):
-            datab = data.to_bytes(self.wbytes, "little")
+            # Mask data to bus width to handle wider values (e.g., 64-bit values on 32-bit bus)
+            data_masked = data & self.wdata_mask
+            datab = data_masked.to_bytes(self.wbytes, "little")
         else:
             datab = data
         self.queue_tx.append((True, addr, datab, strb, error_expected, self.tx_id))
@@ -171,7 +173,9 @@ class PTMaster:
                 self.log.warning(
                     f"Read data 0x{data:08x} exceeds width expected 0x{self.rdata_mask:08x}"
                 )
-            datab = data.to_bytes(self.rbytes, "little")
+            # Mask data to bus width to handle wider expected values (e.g., 64-bit values on 32-bit bus)
+            data_masked = data & self.rdata_mask
+            datab = data_masked.to_bytes(self.rbytes, "little")
         else:
             datab = data
         self.tx_id += 1
