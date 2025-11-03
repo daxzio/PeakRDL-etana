@@ -31,7 +31,7 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_1_intr.value == 0
 
     tb.hwif_in_level_irqs_1_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_1_irq0.value = 0x00
     await tb.intf.read(0x0, 0x00F)
     assert tb.hwif_out_level_irqs_1_intr.value == 1
@@ -45,33 +45,33 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_1_intr.value == 0
 
     tb.hwif_in_level_irqs_1_irq1.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_1_irq1.value = 0
     await tb.intf.read(0x0, 0x100)
     assert tb.hwif_out_level_irqs_1_intr.value == 1
 
     await tb.intf.write(0x0, 0x100)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_1_intr.value == 0
     await tb.intf.read(0x0, 0x0)
 
     tb.hwif_in_level_irqs_1_irq1.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x0, 0x100)
     assert tb.hwif_out_level_irqs_1_intr.value == 1
 
     await tb.intf.write(0x0, 0x100)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x0, 0x100)
     assert tb.hwif_out_level_irqs_1_intr.value == 1
 
     tb.hwif_in_level_irqs_1_irq1.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x0, 0x100)
     assert tb.hwif_out_level_irqs_1_intr.value == 1
 
     await tb.intf.write(0x0, 0x100)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x0, 0x000)
     assert tb.hwif_out_level_irqs_1_intr.value == 0
 
@@ -82,30 +82,30 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_2_halt.value == 0
 
     tb.hwif_in_level_irqs_2_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_2_irq0.value = 0x00
     await tb.intf.read(0x4, 0x00F)
     assert tb.hwif_out_level_irqs_2_intr.value == 1
     assert tb.hwif_out_level_irqs_2_halt.value == 1
 
     await tb.intf.write(0x100, 0x0)  # ctrl_enable
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_2_intr.value == 0
     assert tb.hwif_out_level_irqs_2_halt.value == 1
 
     await tb.intf.write(0x108, 0x0)  # ctrl_haltenable
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_2_intr.value == 0
     assert tb.hwif_out_level_irqs_2_halt.value == 0
 
     await tb.intf.write(0x100, 0x1FF)  # ctrl_enable
     await tb.intf.write(0x108, 0x1FF)  # ctrl_haltenable
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_2_intr.value == 1
     assert tb.hwif_out_level_irqs_2_halt.value == 1
 
     await tb.intf.write(0x4, 0x1FF)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_2_intr.value == 0
     assert tb.hwif_out_level_irqs_2_halt.value == 0
 
@@ -116,25 +116,25 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_3_halt.value == 0
 
     tb.hwif_in_level_irqs_3_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_3_irq0.value = 0x00
     await tb.intf.read(0x8, 0x00F)
     assert tb.hwif_out_level_irqs_3_intr.value == 1
     assert tb.hwif_out_level_irqs_3_halt.value == 1
 
     await tb.intf.write(0x104, 0x0F)  # ctrl_mask
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_3_intr.value == 0
     assert tb.hwif_out_level_irqs_3_halt.value == 1
 
     await tb.intf.write(0x10C, 0xF)  # ctrl_haltmask
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_3_intr.value == 0
     assert tb.hwif_out_level_irqs_3_halt.value == 0
 
     await tb.intf.write(0x104, 0x0)  # ctrl_mask
     await tb.intf.write(0x10C, 0x0)  # ctrl_haltmask
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_3_intr.value == 1
     assert tb.hwif_out_level_irqs_3_halt.value == 1
 
@@ -144,24 +144,24 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_we_intr.value == 0
 
     tb.hwif_in_level_irqs_we_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_we_irq0.value = 0x00
     assert tb.hwif_out_level_irqs_we_intr.value == 0
     await tb.intf.read(0x10, 0x000)
 
     await tb.intf.write(0x110, 0x1)  # enable ctrl_we
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x110, 0x1)
     assert tb.hwif_out_level_irqs_we_intr.value == 0
 
     tb.hwif_in_level_irqs_we_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x10, 0x00F)
     assert tb.hwif_out_level_irqs_we_intr.value == 1
 
     await tb.intf.write(0x110, 0x0)  # disable ctrl_we
     await tb.intf.write(0x10, 0x1FF)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_we_intr.value == 0
     await tb.intf.read(0x10, 0x000)
     tb.hwif_in_level_irqs_we_irq0.value = 0x00
@@ -172,24 +172,24 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_level_irqs_wel_intr.value == 0
 
     tb.hwif_in_level_irqs_wel_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_wel_irq0.value = 0x00
     await tb.intf.read(0x14, 0x000)
     assert tb.hwif_out_level_irqs_wel_intr.value == 0
 
     await tb.intf.write(0x114, 0x2)  # enable ctrl_wel
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x14, 0x000)
     assert tb.hwif_out_level_irqs_wel_intr.value == 0
 
     tb.hwif_in_level_irqs_wel_irq0.value = 0x0F
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x14, 0x00F)
     assert tb.hwif_out_level_irqs_wel_intr.value == 1
 
     await tb.intf.write(0x114, 0x3)  # disable ctrl_wel
     await tb.intf.write(0x14, 0x1FF)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     assert tb.hwif_out_level_irqs_wel_intr.value == 0
     await tb.intf.read(0x14, 0x000)
     tb.hwif_in_level_irqs_wel_irq0.value = 0x00
@@ -200,7 +200,7 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_posedge_irqs_intr.value == 0
 
     tb.hwif_in_posedge_irqs_irq1.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x20, 0x100)
     assert tb.hwif_out_posedge_irqs_intr.value == 1
 
@@ -219,17 +219,17 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_negedge_irqs_intr.value == 0
 
     tb.hwif_in_negedge_irqs_irq1.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x30, 0x000)
     assert tb.hwif_out_negedge_irqs_intr.value == 0
 
     tb.hwif_in_negedge_irqs_irq1.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x30, 0x100)
     assert tb.hwif_out_negedge_irqs_intr.value == 1
 
     await tb.intf.write(0x30, 0x100)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x30, 0x000)
     assert tb.hwif_out_negedge_irqs_intr.value == 0
     await tb.intf.read(0x30, 0x000)
@@ -240,7 +240,7 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_bothedge_irqs_intr.value == 0
 
     tb.hwif_in_bothedge_irqs_irq1.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x40, 0x100)
     assert tb.hwif_out_bothedge_irqs_intr.value == 1
 
@@ -250,7 +250,7 @@ async def test_dut_interrupts(dut):
     await tb.intf.read(0x40, 0x000)
 
     tb.hwif_in_bothedge_irqs_irq1.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x40, 0x100)
     assert tb.hwif_out_bothedge_irqs_intr.value == 1
 
@@ -265,69 +265,69 @@ async def test_dut_interrupts(dut):
     assert tb.hwif_out_top_irq_intr.value == 0
 
     tb.hwif_in_level_irqs_1_irq0.value = 0x01
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_1_irq0.value = 0x00
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0001)
     assert tb.hwif_out_top_irq_intr.value == 1
 
     await tb.intf.write(0x0, 0x01)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
     tb.hwif_in_posedge_irqs_irq0.value = 0x01
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_posedge_irqs_irq0.value = 0x00
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0010)
     assert tb.hwif_out_top_irq_intr.value == 1
 
     await tb.intf.write(0x20, 0x01)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
     tb.hwif_in_negedge_irqs_irq0.value = 0x01
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_negedge_irqs_irq0.value = 0x00
-    await RisingEdge(tb.clk.clk)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0100)
     assert tb.hwif_out_top_irq_intr.value == 1
 
     await tb.intf.write(0x30, 0x01)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
     tb.hwif_in_bothedge_irqs_irq0.value = 0x01
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_bothedge_irqs_irq0.value = 0x00
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b1000)
     assert tb.hwif_out_top_irq_intr.value == 1
 
     await tb.intf.write(0x40, 0x01)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b0000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
     await tb.intf.write(0x108, 0x000)  # ctrl_haltenable
     tb.hwif_in_level_irqs_2_irq0.value = 0x01
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_level_irqs_2_irq0.value = 0x00
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b00000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
     await tb.intf.write(0x108, 0x001)  # ctrl_haltenable
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b10000)
     assert tb.hwif_out_top_irq_intr.value == 1
 
     await tb.intf.write(0x4, 0x01)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x50, 0b00000)
     assert tb.hwif_out_top_irq_intr.value == 0
 
@@ -336,17 +336,17 @@ async def test_dut_interrupts(dut):
     await tb.intf.read(0x60, 0x00)
 
     tb.hwif_in_stickyreg_stickyfield.value = 0x12
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_stickyreg_stickyfield.value = 0x34
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_stickyreg_stickyfield.value = 0x56
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x60, 0x12)
 
     await tb.intf.write(0x60, 0x00)
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     tb.hwif_in_stickyreg_stickyfield.value = 0x78
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn()
     await tb.intf.read(0x60, 0x56)
 
     await tb.clk.end_test()
