@@ -234,6 +234,7 @@ class PTMaster:
             if addr < 0 or addr >= 2**self.address_width:
                 raise ValueError("Address out of range")
 
+            # Assert request; hold until ack
             self.bus.req.value = 1
             self.bus.req_is_wr.value = write
             self.bus.addr.value = addr
@@ -243,6 +244,7 @@ class PTMaster:
                 self.bus.wr_data.value = data_int & self.wdata_mask
                 if -1 == strb:
                     self.bus.wr_biten.value = self.wdata_mask
+                    # self.bus.wr_biten.value = self.bus.wr_data.value
                 else:
                     self.bus.wr_biten.value = strb
                 await RisingEdge(self.clock)
@@ -296,6 +298,7 @@ class PTMaster:
                         )
                 self.queue_rx.append((ret.to_bytes(self.rbytes, "little"), tx_id))
 
+            # Deassert request after transaction completes
             self.bus.req.value = 0
             self.bus.req_is_wr.value = 0
             self.bus.addr.value = 0

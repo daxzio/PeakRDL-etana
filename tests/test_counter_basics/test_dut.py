@@ -114,14 +114,14 @@ async def test_dut_counter_basics(dut):
     start_soon(monitor_underflow_event(tb))
     await tb.clk.wait_clkn(2)
     tb.hwif_in_simple_updown_decr.value = 1
-    await tb.clk.wait_clkn(1)
+    await tb.clk.wait_clkn()
     tb.hwif_in_simple_updown_decr.value = 0
     await tb.clk.wait_clkn(2)
 
     start_soon(monitor_overflow_event(tb))
     await tb.clk.wait_clkn(2)
     tb.hwif_in_simple_updown_incr.value = 1
-    await tb.clk.wait_clkn(1)
+    await tb.clk.wait_clkn()
     tb.hwif_in_simple_updown_incr.value = 0
     await tb.clk.wait_clkn(2)
 
@@ -131,21 +131,25 @@ async def test_dut_counter_basics(dut):
 
     for _ in range(3):
         await tb.intf.write(0x0, 0x40000000)  # do_count_up
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF0000) == 0x90000
 
     for _ in range(3):
         await tb.intf.write(0x0, 0x80000000)  # do_count_down
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF0000) == 0x00000
 
     for _ in range(3):
         await tb.intf.write(0x0, 0x80000000)  # do_count_down
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF0000) == 0x70000
 
     for _ in range(3):
         await tb.intf.write(0x0, 0x40000000)  # do_count_up
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF0000) == 0x00000
 
@@ -156,6 +160,7 @@ async def test_dut_counter_basics(dut):
     tb.hwif_in_simple_updown3_incrvalue.value = 0x2
     for _ in range(3):
         await tb.intf.write(0x0, 0x40000000)
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF00000) == 0x600000
 
@@ -166,6 +171,7 @@ async def test_dut_counter_basics(dut):
     tb.hwif_in_simple_updown3_decrvalue.value = 0x3
     for _ in range(3):
         await tb.intf.write(0x0, 0x80000000)
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF00000) == 0xD00000
 
@@ -175,6 +181,7 @@ async def test_dut_counter_basics(dut):
     tb.hwif_in_simple_updown3_incrvalue.value = 0x1
     for _ in range(2):
         await tb.intf.write(0x0, 0x40000000)
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF00000) == 0xF00000
 
@@ -183,6 +190,7 @@ async def test_dut_counter_basics(dut):
 
     for _ in range(1):
         await tb.intf.write(0x0, 0x40000000)
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF00000) == 0x000000
 
@@ -191,6 +199,7 @@ async def test_dut_counter_basics(dut):
 
     for _ in range(32):
         await tb.intf.write(0x0, 0x40000000)
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF00000) == 0x000000
 
@@ -203,16 +212,19 @@ async def test_dut_counter_basics(dut):
 
     for _ in range(4):
         await tb.intf.write(0x0, 0x40000000 + (0x3 << 28))  # step=3
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF000000) == 0xC000000
 
     for _ in range(4):
         await tb.intf.write(0x0, 0x80000000 + (0x1 << 28))  # step=1
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF000000) == 0x8000000
 
     for _ in range(2):
         await tb.intf.write(0x0, 0x80000000 + (0x3 << 28))  # step=3
+    await tb.clk.wait_clkn()
     data = to_int(await tb.intf.read(0x0))
     assert (data & 0xF000000) == 0x2000000
 

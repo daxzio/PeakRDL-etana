@@ -31,6 +31,7 @@ async def test_dut_precedence(dut):
     await tb.intf.write(0x0, 0b11)
     await tb.intf.write(0x0, 0b11)
     await tb.intf.write(0x0, 0b11)
+    await tb.clk.wait_clkn()
 
     # Both fields read as 0 (HW writes win)
     await tb.intf.read(0x0, 0x00)

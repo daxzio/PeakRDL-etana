@@ -36,53 +36,71 @@ async def test_dut_counter_saturate(dut):
 
     # Set to max (255)
     await tb.intf.write(0x0, SET)
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF
 
     # Decrement by 1
     await tb.intf.write(0x0, DECR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFE
 
     # Increment by 1 - should saturate at 255
     await tb.intf.write(0x0, INCR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF
     await tb.intf.write(0x0, INCR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF  # Still saturated
 
     # Clear to min (0)
     await tb.intf.write(0x0, CLR)
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00
 
     # Increment by 1
     await tb.intf.write(0x0, INCR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x01
 
     # Decrement by 1 - should saturate at 0
     await tb.intf.write(0x0, DECR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00
     await tb.intf.write(0x0, DECR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00  # Still saturated
 
     # Test with larger steps
     await tb.intf.write(0x0, SET)
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF
     await tb.intf.write(0x0, DECR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFE
     await tb.intf.write(0x0, INCR + STEP(2))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF  # Saturates
     await tb.intf.write(0x0, INCR + STEP(3))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF  # Still saturated
     await tb.intf.write(0x0, INCR + STEP(255))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0xFF  # Still saturated
 
     await tb.intf.write(0x0, CLR)
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00
     await tb.intf.write(0x0, INCR + STEP(1))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x01
     await tb.intf.write(0x0, DECR + STEP(2))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00  # Saturates
     await tb.intf.write(0x0, DECR + STEP(3))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00  # Still saturated
     await tb.intf.write(0x0, DECR + STEP(255))
+    await tb.clk.wait_clkn()
     assert await read_count(0x0) == 0x00  # Still saturated
 
     await tb.clk.end_test()
