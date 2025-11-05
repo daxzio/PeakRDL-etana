@@ -14,10 +14,11 @@ from tb_base import testbench  # noqa: E402
 @test()
 async def test_dut_reset_signals(dut):
     """Test different reset signal types and their behaviors"""
-    tb = testbench(dut)
+    tb = testbench(dut, reset_sense=None)
 
     # Initialize all reset signals to active state
     dut.root_cpuif_reset.value = 1
+    dut.rst.value = 1
     tb.hwif_in_r2_my_reset.value = 1
     tb.hwif_in_r3_my_areset.value = 1
     tb.hwif_in_r4_my_reset_n.value = 0
@@ -56,9 +57,9 @@ async def test_dut_reset_signals(dut):
 
     # Test standard rst (resets r1.f1 only, f2 is not affected)
     dut.rst.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
     dut.rst.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
 
     await tb.intf.read(0x00, 0x0000_1234)
     await tb.intf.read(0x04, 0x0000_0000)
@@ -72,9 +73,9 @@ async def test_dut_reset_signals(dut):
 
     # Test r2 custom sync reset (my_reset)
     tb.hwif_in_r2_my_reset.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
     tb.hwif_in_r2_my_reset.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
 
     await tb.intf.read(0x00, 0x0000_0000)
     await tb.intf.read(0x04, 0x0000_1234)
@@ -112,9 +113,9 @@ async def test_dut_reset_signals(dut):
 
     # Test r4 active-low sync reset (my_reset_n)
     tb.hwif_in_r4_my_reset_n.value = 0
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
     tb.hwif_in_r4_my_reset_n.value = 1
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
 
     await tb.intf.read(0x00, 0x0000_0000)
     await tb.intf.read(0x04, 0x0000_0000)
@@ -151,10 +152,10 @@ async def test_dut_reset_signals(dut):
         await tb.intf.write(i * 4, 0)
 
     # Test field-specific reset (f2_reset) with new reset value
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
     tb.hwif_in_f2_reset.value = 1
     dut.r5f2_resetvalue.value = 0x3210
-    await RisingEdge(tb.clk.clk)
+    await tb.clk.wait_clkn(1)
     tb.hwif_in_f2_reset.value = 0
 
     await tb.intf.read(0x00, 0x5678_0000)

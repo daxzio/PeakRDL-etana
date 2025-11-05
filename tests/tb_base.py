@@ -3,11 +3,12 @@ from interfaces.clkreset import Reset
 
 
 class testbench:
-    def __init__(self, dut, reset_sense=1):
+    def __init__(self, dut, reset_sense=1, reset_length=2):
 
         period = 10
         self.clk = Clk(dut, period, clkname="clk")
-        # self.reset = Reset(dut, self.clk, reset_sense=reset_sense, resetname="rst")
+        if not reset_sense is None:
+            self.reset = Reset(dut, self.clk, reset_sense=reset_sense, resetname="rst")
 
         if hasattr(dut, "s_cpuif_req"):
             from interfaces.passthrough import PTBus, PTMaster
