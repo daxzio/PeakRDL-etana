@@ -16,6 +16,15 @@ class AlwaysWrite(NextStateUnconditional):
     unconditional_explanation = "A hardware-writable field without a write-enable (we/wel) will always update the field value"
 
     def is_match(self, field: "FieldNode") -> bool:
+        # Check if field is actually hardware writable based on hw property
+        # This prevents generating HW write logic for hw=r fields
+        # For arrayed registers, SystemRDL may not properly inherit defaults,
+        # so we use the same logic as has_value_input
+        hw_prop = self.exp.hwif._get_effective_hw_property(field)
+
+        if not self.exp.hwif._hw_property_allows_write(hw_prop):
+            return False
+
         return (
             field.is_hw_writable
             and not field.get_property("we")
@@ -68,6 +77,10 @@ class WEWrite(_QualifiedWrite):
     comment = "HW Write - we"
 
     def is_match(self, field: "FieldNode") -> bool:
+        # Check if field is actually hardware writable based on hw property
+        hw_prop = self.exp.hwif._get_effective_hw_property(field)
+        if not self.exp.hwif._hw_property_allows_write(hw_prop):
+            return False
         return field.is_hw_writable and bool(field.get_property("we"))
 
     def get_predicate(self, field: "FieldNode") -> str:
@@ -85,6 +98,10 @@ class WELWrite(_QualifiedWrite):
     comment = "HW Write - wel"
 
     def is_match(self, field: "FieldNode") -> bool:
+        # Check if field is actually hardware writable based on hw property
+        hw_prop = self.exp.hwif._get_effective_hw_property(field)
+        if not self.exp.hwif._hw_property_allows_write(hw_prop):
+            return False
         return field.is_hw_writable and bool(field.get_property("wel"))
 
     def get_predicate(self, field: "FieldNode") -> str:

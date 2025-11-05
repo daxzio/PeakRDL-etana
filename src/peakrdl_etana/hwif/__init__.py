@@ -96,11 +96,83 @@ class Hwif:
     # ---------------------------------------------------------------------------
     # hwif utility functions
     # ---------------------------------------------------------------------------
+    def _get_effective_hw_property(self, field: FieldNode) -> Optional[object]:
+        """
+        Get the effective hw property value for a field, handling arrayed register inheritance issues.
+
+        For arrayed registers, SystemRDL may not properly inherit defaults from parent components.
+        This function checks explicit properties first, then handles arrayed registers conservatively.
+
+        Returns:
+            The hw property value, or None if it should be treated as read-only
+        """
+        # Check if hw is explicitly set on the field (not inherited)
+        field_has_explicit_hw = (
+            hasattr(field.inst, "properties") and "hw" in field.inst.properties
+        )
+
+        # Check if hw is explicitly set on the parent register
+        reg_has_explicit_hw = False
+        reg_hw = None
+        if field.parent is not None:
+            reg_has_explicit_hw = (
+                hasattr(field.parent.inst, "properties")
+                and "hw" in field.parent.inst.properties
+            )
+            if reg_has_explicit_hw:
+                reg_hw = field.parent.get_property("hw", default=None)
+
+        # Determine which hw value to use:
+        # 1. Field explicit > Register explicit > Conservative check for arrays
+        if field_has_explicit_hw:
+            return field.get_property("hw")
+        elif reg_has_explicit_hw and reg_hw is not None:
+            return reg_hw
+        else:
+            # Neither field nor register has explicit hw
+            # For arrayed registers, SystemRDL may incorrectly inherit hw=rw
+            # when the default is hw=r. Be conservative: if register is arrayed
+            # and no explicit hw is set, don't trust inherited value (treat as hw=r)
+            if field.parent is not None and field.parent.array_dimensions is not None:
+                return None  # Arrayed register without explicit hw - be conservative
+            else:
+                # Non-arrayed register - trust inherited value
+                return field.get_property("hw")
+
+    def _hw_property_allows_write(self, hw_prop: Optional[object]) -> bool:
+        """
+        Check if an hw property value allows hardware writes.
+
+        Args:
+            hw_prop: The hw property value (AccessType enum or None)
+
+        Returns:
+            True if hw property allows writes (rw or w), False otherwise
+        """
+        if hw_prop is None:
+            return False
+
+        # Convert to string for comparison (handles enum and string representations)
+        hw_str = str(hw_prop).replace("AccessType.", "").lower().strip()
+        return hw_str in ["rw", "w"]
+
     def has_value_input(self, obj: Union[FieldNode, SignalNode]) -> bool:
         """
         Returns True if the object infers an input wire in the hwif
+
+        For fields, we check both is_hw_writable AND the actual hw property
+        to ensure we don't generate input ports for hw=r fields.
         """
         if isinstance(obj, FieldNode):
+            # Only generate input port if field is explicitly hardware writable
+            # For arrayed registers, SystemRDL may not properly inherit defaults,
+            # so we use helper functions to get the correct hw property value
+            hw_prop = self._get_effective_hw_property(obj)
+
+            if not self._hw_property_allows_write(hw_prop):
+                return False
+
+            # hw property allows writes, check if field is actually writable
             return obj.is_hw_writable
         elif isinstance(obj, SignalNode):
             # Signals are implicitly always inputs
@@ -139,6 +211,9 @@ class Hwif:
             # Otherwise, use inferred
             p = IndexedPath(self.top_node, obj)
             s = f"{self.hwif_in_str}_{p.path}"
+            if not 0 == len(p.index) and index:
+                # For unpacked arrays, use array indices directly
+                s += p.index_str
             return s
         elif isinstance(obj, RegNode):
             next_value = obj.get_property("next")
@@ -148,12 +223,18 @@ class Hwif:
             # Otherwise, use inferred
             p = IndexedPath(self.top_node, obj)
             s = f"{self.hwif_in_str}_{p.path}"
+            if not 0 == len(p.index) and index:
+                # For unpacked arrays, use array indices directly
+                s += p.index_str
             return s
         elif isinstance(obj, SignalNode):
             if obj.get_path() in self.ds.out_of_hier_signals:
                 return kwf(obj.inst_name)
             p = IndexedPath(self.top_node, obj)
             s = f"{self.hwif_in_str}_{p.path}"
+            if not 0 == len(p.index) and index:
+                # For unpacked arrays, use array indices directly
+                s += p.index_str
             return s
         elif isinstance(obj, PropertyReference):
             return self.get_implied_prop_input_identifier(obj.node, obj.name)  # type: ignore[arg-type]

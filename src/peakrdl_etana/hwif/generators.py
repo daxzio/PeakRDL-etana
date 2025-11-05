@@ -338,7 +338,7 @@ class InputLogicGenerator(RDLListener):
             if self.hwif.has_value_input(node):
                 # Check if field has 'next' property - if so, the signal provides the input
                 if node.get_property("next") is None:
-                    input_identifier = self.hwif.get_input_identifier(node)
+                    input_identifier = self.hwif.get_input_identifier(node, index=False)
                     self.hwif_port.append(f"input wire {field_text} {input_identifier}")
             if self.hwif.has_value_output(node):
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
