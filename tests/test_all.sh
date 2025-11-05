@@ -9,6 +9,7 @@ YOSYS=0
 CPUIF="apb4-flat"
 GIT_CHECK=0
 GHDL=0
+NVC=0
 
 for arg in "$@"; do
     case $arg in
@@ -33,16 +34,19 @@ for arg in "$@"; do
         GHDL=*)
             GHDL="${arg#*=}"
             ;;
+        NVC=*)
+            NVC="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1] [NVC=0|1]"
             exit 1
             ;;
     esac
 done
 
 # Determine target name for display
-if [ "$GHDL" -eq 1 ]; then
+if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
     TARGET_NAME="regblock-vhdl"
 elif [ "$REGBLOCK" -eq 1 ]; then
     TARGET_NAME="regblock"
@@ -57,7 +61,7 @@ else
     SYNTH_INDICATOR=""
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF GIT_CHECK=$GIT_CHECK GHDL=$GHDL ==="
+echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF GIT_CHECK=$GIT_CHECK GHDL=$GHDL NVC=$NVC ==="
 echo ""
 
 # Define skip lists based on conditions
@@ -67,7 +71,7 @@ SKIP_TESTS+=("test_user_cpuif" "test_pkg_params")
 SKIP_TESTS+=("test_template_report")
 
 # Skip certain tests when REGBLOCK=1
-if [ "$GHDL" -eq 1 ]; then
+if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
     SKIP_TESTS+=("test_cpuif_err_rsp")
 fi
@@ -111,7 +115,7 @@ for dir in test_*/; do
         echo "Testing $test_name..."
 
         # Choose target based on GHDL or REGBLOCK values
-        if [ "$GHDL" -eq 1 ]; then
+        if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
             target="regblock-vhdl"
         elif [ "$REGBLOCK" -eq 1 ]; then
             target="regblock"
@@ -146,6 +150,9 @@ for dir in test_*/; do
         fi
         if [ "$GHDL" -eq 1 ]; then
             make_cmd="$make_cmd GHDL=$GHDL"
+        fi
+        if [ "$NVC" -eq 1 ]; then
+            make_cmd="$make_cmd NVC=$NVC"
         fi
 
         (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)

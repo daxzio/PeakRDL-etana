@@ -17,6 +17,7 @@ UDPS?=
 #REGBLOCK_HDL_SRC=$(shell python -c "import peakrdl_regblock, os; p1=os.path.join(os.path.dirname(os.path.dirname(peakrdl_regblock.__file__)), 'hdl-src'); p2=os.path.join(os.path.dirname(peakrdl_regblock.__file__), 'hdl-src'); print(p1 if os.path.exists(p1) else p2 if os.path.exists(p2) else '')")
 REGBLOCK=0
 GHDL=0
+NVC=0
 YOSYS=0
 GIT_CHECK=0
 
@@ -42,10 +43,21 @@ ifeq ($(GHDL),1)
     override TOPLEVEL_LANG=vhdl
     TOPLEVEL=regblock_wrapper
 	undefine VERILOG_SOURCES
-    VHDL_SOURCES=\
+    VHDL_SOURCES= \
         ./regblock-vhdl-rtl/*.vhd \
 		../interfaces/reg_utils.vhd
 	EXTRA_ARGS += --std=08
+endif
+ifeq ($(NVC),1)
+    override SIM=nvc
+    override TOPLEVEL_LANG=vhdl
+    TOPLEVEL=regblock_wrapper
+    undefine VERILOG_SOURCES
+    VHDL_SOURCES= \
+        ../interfaces/reg_utils.vhd \
+		./regblock-vhdl-rtl/regblock_pkg.vhd \
+        ./regblock-vhdl-rtl/regblock.vhd \
+		./regblock-vhdl-rtl/regblock_wrapper.vhd
 endif
 ifeq ($(YOSYS),1)
     VERILOG_SOURCES= \
@@ -64,6 +76,8 @@ ifeq ($(WAVES),1)
 		EXTRA_ARGS += --trace # vcd format
 		EXTRA_ARGS += --trace-fst
 		EXTRA_ARGS += --trace-structs
+	else ifeq ($(SIM),nvc)
+		PLUSARGS += --wave
 	endif
 endif
 
