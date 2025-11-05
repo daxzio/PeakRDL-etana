@@ -7,7 +7,7 @@ class testbench:
 
         period = 10
         self.clk = Clk(dut, period, clkname="clk")
-        self.reset = Reset(dut, self.clk, reset_sense=reset_sense, resetname="rst")
+        # self.reset = Reset(dut, self.clk, reset_sense=reset_sense, resetname="rst")
 
         if hasattr(dut, "s_cpuif_req"):
             from interfaces.passthrough import PTBus, PTMaster

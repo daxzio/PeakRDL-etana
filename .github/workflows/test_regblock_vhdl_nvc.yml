@@ -1,0 +1,51 @@
+name: Test PeakRDL Regblock VHDL NVC
+on:
+  push:
+    # tags-ignore:
+    #   - '**'  # Don't run on any tags
+  pull_request:
+  schedule:
+    - cron: '0 1 * * 0'
+jobs:
+  build_code_linux:
+    strategy:
+      fail-fast: false # So that one fail doesn't stop remaining tests
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        #cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat"]
+        cpuif: ["apb4-flat"]
+        target: [nvc]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup NVC
+        uses: nickg/setup-nvc@v1
+        with:
+          version: latest
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install system tools
+        run: |
+          sudo apt install ccache
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade -r requirements.txt
+          python -m pip install .
+          python -m pip uninstall -y peakrdl-regblock-vhdl
+          python -m pip install --upgrade git+https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git@main
+      - name: Run Tests
+        run: |
+          unset PYTHONHOME
+          cd tests
+          ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=${{ matrix.cpuif }} COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=ahb-flat       COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
+#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
