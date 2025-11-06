@@ -195,11 +195,11 @@ class FieldLogic:
         elif buffer_reads and not buffer_writes:
             p = self.exp.dereferencer.get_access_strobe(field)
             rstrb = self.exp.read_buffering.get_trigger(field.parent)
-            return f"{rstrb} || ({p.path} && decoded_req_is_wr)"
+            return f"{rstrb} || ({p.path}{p.index_str} && decoded_req_is_wr)"
         elif not buffer_reads and buffer_writes:
             p = self.exp.dereferencer.get_access_strobe(field)
             wstrb = self.exp.write_buffering.get_write_strobe(field)
-            return f"{wstrb} || ({p.path} && !decoded_req_is_wr)"
+            return f"{wstrb} || ({p.path}{p.index_str} && !decoded_req_is_wr)"
         else:
             p = self.exp.dereferencer.get_access_strobe(field)
             return f"{p.path}{p.index_str}"
@@ -214,7 +214,7 @@ class FieldLogic:
             return rstrb
         else:
             p = self.exp.dereferencer.get_access_strobe(field)
-            return f"{p.path} && !decoded_req_is_wr"
+            return f"{p.path}{p.index_str} && !decoded_req_is_wr"
 
     def get_wr_swacc_identifier(self, field: "FieldNode") -> str:
         """
@@ -226,7 +226,7 @@ class FieldLogic:
             return wstrb
         else:
             p = self.exp.dereferencer.get_access_strobe(field)
-            return f"{p.path} && decoded_req_is_wr"
+            return f"{p.path}{p.index_str} && decoded_req_is_wr"
 
     def get_swmod_identifier(self, field: "FieldNode") -> str:
         """

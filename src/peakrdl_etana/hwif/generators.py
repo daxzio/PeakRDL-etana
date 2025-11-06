@@ -338,7 +338,7 @@ class InputLogicGenerator(RDLListener):
             if self.hwif.has_value_input(node):
                 # Check if field has 'next' property - if so, the signal provides the input
                 if node.get_property("next") is None:
-                    input_identifier = self.hwif.get_input_identifier(node)
+                    input_identifier = self.hwif.get_input_identifier(node, index=False)
                     self.hwif_port.append(f"input wire {field_text} {input_identifier}")
             if self.hwif.has_value_output(node):
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
@@ -348,7 +348,7 @@ class InputLogicGenerator(RDLListener):
             for prop in ["anded", "ored", "xored", "swmod", "swacc"]:
                 if node.get_property(prop, default=False):
                     prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                        node, prop
+                        node, prop, index=False
                     )
                     # These outputs are single-bit
                     prop_output_text = self.vector_text + "[0:0]"
@@ -359,7 +359,7 @@ class InputLogicGenerator(RDLListener):
             # Access strobe outputs
             if node.get_property("rd_swacc", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "rd_swacc"
+                    node, "rd_swacc", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -367,7 +367,7 @@ class InputLogicGenerator(RDLListener):
                 )
             if node.get_property("wr_swacc", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "wr_swacc"
+                    node, "wr_swacc", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -377,7 +377,7 @@ class InputLogicGenerator(RDLListener):
             # Counter event outputs
             if node.get_property("overflow", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "overflow"
+                    node, "overflow", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -385,7 +385,7 @@ class InputLogicGenerator(RDLListener):
                 )
             if node.get_property("underflow", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "underflow"
+                    node, "underflow", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -395,7 +395,7 @@ class InputLogicGenerator(RDLListener):
             # Counter threshold outputs
             if node.get_property("incrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "incrthreshold"
+                    node, "incrthreshold", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -403,7 +403,7 @@ class InputLogicGenerator(RDLListener):
                 )
             if node.get_property("decrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
-                    node, "decrthreshold"
+                    node, "decrthreshold", index=False
                 )
                 prop_output_text = self.vector_text + "[0:0]"
                 self.hwif_port.append(
@@ -413,7 +413,7 @@ class InputLogicGenerator(RDLListener):
             # Add implied property input signals
             for prop in implied_props:
                 prop_identifier = self.hwif.get_implied_prop_input_identifier(
-                    node, prop
+                    node, prop, index=False
                 )
                 # Determine width based on property type
                 if prop in ["incrvalue", "decrvalue"]:
@@ -437,5 +437,5 @@ class InputLogicGenerator(RDLListener):
             if width > 1
             else self.vector_text + "[0:0]"
         )
-        input_identifier = self.hwif.get_input_identifier(node)
+        input_identifier = self.hwif.get_input_identifier(node, index=False)
         self.hwif_port.append(f"input wire {signal_text} {input_identifier}")

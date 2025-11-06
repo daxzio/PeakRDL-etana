@@ -139,6 +139,8 @@ class Hwif:
             # Otherwise, use inferred
             p = IndexedPath(self.top_node, obj)
             s = f"{self.hwif_in_str}_{p.path}"
+            if index:
+                s += p.index_str
             return s
         elif isinstance(obj, RegNode):
             next_value = obj.get_property("next")
@@ -225,7 +227,9 @@ class Hwif:
             s += f"{p.index_str}"
         return s
 
-    def get_implied_prop_input_identifier(self, field: FieldNode, prop: str) -> str:
+    def get_implied_prop_input_identifier(
+        self, field: FieldNode, prop: str, index: bool = True
+    ) -> str:
         assert prop in {
             "hwclr",
             "hwset",
@@ -239,7 +243,10 @@ class Hwif:
             "decrvalue",
         }
         p = IndexedPath(self.top_node, field)
-        return f"{self.hwif_in_str}_{p.path}_{prop}"
+        s = f"{self.hwif_in_str}_{p.path}_{prop}"
+        if index:
+            s += p.index_str
+        return s
 
     def get_output_identifier(
         self, obj: Union[FieldNode, PropertyReference], index: Optional[bool] = True
@@ -274,7 +281,7 @@ class Hwif:
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
     def get_implied_prop_output_identifier(
-        self, node: Union[FieldNode, RegNode], prop: str
+        self, node: Union[FieldNode, RegNode], prop: str, index: bool = True
     ) -> str:
         if isinstance(node, FieldNode):
             assert prop in {
@@ -296,4 +303,7 @@ class Hwif:
                 "halt",
             }
         p = IndexedPath(self.top_node, node)
-        return f"{self.hwif_out_str}_{p.path}_{prop}"
+        s = f"{self.hwif_out_str}_{p.path}_{prop}"
+        if index:
+            s += p.index_str
+        return s
