@@ -1,4 +1,4 @@
 from .base import CpuifBase
-from . import ahblite, obi
+from . import ahblite, ahbpipeline, obi
 
-__all__ = ["CpuifBase", "ahblite", "obi"]
+__all__ = ["CpuifBase", "ahblite", "ahbpipeline", "obi"]

@@ -1,0 +1,23 @@
+from ..base import CpuifBase
+
+
+class AHBPipeline_Cpuif_flattened(CpuifBase):
+    template_path = "ahbpipeline_tmpl.sv"
+
+    @property
+    def port_declaration(self) -> str:
+        lines = [
+            "input wire " + self.signal("hsel"),
+            "input wire " + self.signal("hwrite"),
+            "input wire [1:0] " + self.signal("htrans"),
+            "input wire [2:0] " + self.signal("hsize"),
+            f"input wire [{self.addr_width-1}:0] " + self.signal("haddr"),
+            f"input wire [{self.data_width-1}:0] " + self.signal("hwdata"),
+            "output logic " + self.signal("hready"),
+            f"output logic [{self.data_width-1}:0] " + self.signal("hrdata"),
+            "output logic " + self.signal("hresp"),
+        ]
+        return ",\n".join(lines)
+
+    def signal(self, name: str) -> str:
+        return "s_ahb_" + name

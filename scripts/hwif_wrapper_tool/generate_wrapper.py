@@ -95,6 +95,8 @@ def main():
         register_interface("avalon", "Avalon_Cpuif_flattened", "avalon-mm-flat")
         register_interface("ahb", "AHB_Cpuif", "ahblite")
         register_interface("ahb", "AHB_Cpuif_flattened", "ahblite-flat")
+        register_interface("ahb", "AHBPipeline_Cpuif", "ahb-pipeline")
+        register_interface("ahb", "AHBPipeline_Cpuif_flattened", "ahb-pipeline-flat")
         register_interface("obi", "OBI_Cpuif", "obi")
         register_interface("obi", "OBI_Cpuif_flattened", "obi-flat")
 
