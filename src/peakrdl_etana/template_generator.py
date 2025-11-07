@@ -248,7 +248,7 @@ class TemplateGenerator:
             lines.append("    // Hardware interface signal declarations")
             for sig in hwif_signals:
                 dim_str = f"{sig.packed_dim} " if sig.packed_dim else ""
-                lines.append(f"    logic {dim_str}w_{sig.base_name};")
+                lines.append(f"    wire {dim_str}w_{sig.base_name};")
             lines.append("")
 
         # Instantiation

@@ -1,0 +1,63 @@
+name: Setup Yosys
+
+on:
+  workflow_call:
+    inputs:
+      githash:
+        description: "Allow a githash/tag/branch to be passed as an input"
+        required: false
+        type: string
+    outputs:
+      cache_dir:
+        description: "The Cache Directory"
+        value: ${{ jobs.build.outputs.output0 }}
+      cache_key:
+        description: "The Cache Key"
+        value: ${{ jobs.build.outputs.output1 }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      output0 : ${{ steps.step0.outputs.cache_dir }}
+      output1 : ${{ steps.step1.outputs.cache_key }}
+    steps:
+      - name: Test for GITHASH input
+        if: ${{ inputs.githash != '' }}
+        run: |
+          echo "GITHEAD=${{ inputs.githash }}" >> $GITHUB_ENV
+      - name: Setup Yosys
+        run: |
+          export GITPATH=https://github.com/YosysHQ/yosys.git
+          if [ -z ${GITHEAD+x} ]; then
+            export GITHEAD=`git ls-remote $GITPATH HEAD | head -1 | awk '{print $1}'`
+            echo "GITHEAD=${GITHEAD}" >> $GITHUB_ENV
+          fi
+          echo "GITPATH=${GITPATH}" >> $GITHUB_ENV
+          echo "CACHE_DIR=${{ github.workspace }}/.cache/yosys" >> $GITHUB_ENV
+          echo "CACHE_KEY=yosys-${GITHEAD}" >> $GITHUB_ENV
+      - name: Cache Environment
+        id: git-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: ${{ env.CACHE_KEY }}
+      - if: ${{ steps.git-cache.outputs.cache-hit != 'true' }}
+        name: Compile Yosys
+        run: |
+          sudo apt-get install build-essential clang lld bison flex libfl-dev \
+          libreadline-dev gawk tcl-dev libffi-dev git \
+          graphviz xdot pkg-config python3 libboost-system-dev \
+          libboost-python-dev libboost-filesystem-dev zlib1g-dev
+          mkdir -p ${{ env.CACHE_DIR }}
+          git clone ${{ env.GITPATH }}
+          cd yosys
+          git checkout ${{ env.GITHEAD }}
+          git submodule update --init --recursive
+          make -j$(nproc)
+          sudo make install
+          cd ..
+      - id: step0
+        run: echo "cache_dir=${{ env.CACHE_DIR }}" >> $GITHUB_OUTPUT
+      - id: step1
+        run: echo "cache_key=${{ env.CACHE_KEY }}" >> $GITHUB_OUTPUT

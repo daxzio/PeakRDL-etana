@@ -93,8 +93,8 @@ def main():
         register_interface("axi4lite", "AXI4Lite_Cpuif_flattened", "axi4-lite-flat")
         register_interface("avalon", "Avalon_Cpuif", "avalon-mm")
         register_interface("avalon", "Avalon_Cpuif_flattened", "avalon-mm-flat")
-        register_interface("ahb", "AHB_Cpuif", "ahb")
-        register_interface("ahb", "AHB_Cpuif_flattened", "ahb-flat")
+        register_interface("ahb", "AHB_Cpuif", "ahblite")
+        register_interface("ahb", "AHB_Cpuif_flattened", "ahblite-flat")
         register_interface("obi", "OBI_Cpuif", "obi")
         register_interface("obi", "OBI_Cpuif_flattened", "obi-flat")
 

@@ -151,7 +151,7 @@ module my_block (
 ## Command Line Options
 
 ### CPU Interface
-- `--cpuif <interface>` - Select CPU interface (apb3, apb4, ahb-flat, axi4-lite, avalon-mm, etc.)
+- `--cpuif <interface>` - Select CPU interface (apb3, apb4, ahblite-flat, axi4-lite, avalon-mm, etc.)
 
 ### Hardware Interface Customization
 - `--in-str <prefix>` - Customize input signal prefix (default: `hwif_in`)

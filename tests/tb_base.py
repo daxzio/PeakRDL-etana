@@ -25,7 +25,7 @@ class testbench:
             from cocotbext.ahb import AHBBus
 
             # from cocotbext.ahb import AHBMaster
-            from interfaces.ahb_wrapper import AHBLiteMasterDX
+            from interfaces.ahblite_wrapper import AHBLiteMasterDX
 
             ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
             self.intf = AHBLiteMasterDX(

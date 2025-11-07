@@ -5,16 +5,15 @@ module regblock (
         input wire clk,
         input wire rst,
 
-        input wire s_apb_psel,
-        input wire s_apb_pwrite,
-        input wire s_apb_penable,
-        input wire [2:0] s_apb_pprot,
-        input wire [15:0] s_apb_paddr,
-        input wire [31:0] s_apb_pwdata,
-        input wire [3:0] s_apb_pstrb,
-        output logic s_apb_pready,
-        output logic [31:0] s_apb_prdata,
-        output logic s_apb_pslverr,
+        input wire s_ahb_hsel,
+        input wire s_ahb_hwrite,
+        input wire [1:0] s_ahb_htrans,
+        input wire [2:0] s_ahb_hsize,
+        input wire [15:0] s_ahb_haddr,
+        input wire [31:0] s_ahb_hwdata,
+        output logic s_ahb_hready,
+        output logic [31:0] s_ahb_hrdata,
+        output logic s_ahb_hresp,
 
         output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_max_upper,
         output logic [7:0] [15:0] hwif_out_page_config32_hwnr_tout_max_lower,
@@ -48,10 +47,24 @@ module regblock (
     logic cpuif_wr_ack;
     logic cpuif_wr_err;
 
+    // AHB Transfer Types
+    //localparam [1:0] HTRANS_IDLE   = 2'b00;
+    //localparam [1:0] HTRANS_BUSY   = 2'b01;
+    localparam [1:0] HTRANS_NONSEQ = 2'b10;
+    localparam [1:0] HTRANS_SEQ    = 2'b11;
+
+    // AHB Response Types
+    localparam HRESP_OKAY  = 1'b0;
+    localparam HRESP_ERROR = 1'b1;
 
     // Request
     logic is_active;
-    always_ff @(posedge clk) begin
+    logic [15:0] addr_captured;
+    logic [1:0] addr_offset_captured;
+    logic write_captured;
+    logic [2:0] size_captured;
+
+    always @(posedge clk) begin
         if(rst) begin
             is_active <= '0;
             cpuif_req <= '0;
@@ -59,31 +72,94 @@ module regblock (
             cpuif_addr <= '0;
             cpuif_wr_data <= '0;
             cpuif_wr_biten <= '0;
+            addr_captured <= '0;
+            addr_offset_captured <= '0;
+            write_captured <= '0;
+            size_captured <= '0;
         end else begin
             if(~is_active) begin
-                if(s_apb_psel) begin
+                // Address Phase: Detect new transfer and capture address/control
+                if(s_ahb_hsel && (s_ahb_htrans == HTRANS_NONSEQ || s_ahb_htrans == HTRANS_SEQ)) begin
                     is_active <= '1;
-                    cpuif_req <= '1;
-                    cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[15:2], 2'b0};
-                    cpuif_wr_data <= s_apb_pwdata;
-                    for(int i=0; i<4; i++) begin
-                        cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
-                    end
+                    // Capture word-aligned address for register selection
+                    addr_captured <= {s_ahb_haddr[15:2], 2'b0};
+                    // Capture original address offset for byte enable calculation
+                    addr_offset_captured <= s_ahb_haddr[0+:2];
+                    write_captured <= s_ahb_hwrite;
+                    size_captured <= s_ahb_hsize;
                 end
             end else begin
-                cpuif_req <= '0;
+                // Data Phase: Start request with captured data
+                cpuif_req <= '1;
+                cpuif_req_is_wr <= write_captured;
+                cpuif_addr <= addr_captured;
+
+                // Replicate data based on captured HSIZE for proper lane placement
+                case(size_captured)
+                    3'b000: begin // Byte access - replicate byte across all lanes
+                        cpuif_wr_data <= { 4{ s_ahb_hwdata[0+:8] } };
+                    end
+                    3'b001: begin // Halfword access - replicate halfword across all lanes
+                        cpuif_wr_data <= { 2{ s_ahb_hwdata[0+:16] } };
+                    end
+                    3'b010: begin // Word access - replicate word across all lanes
+                        cpuif_wr_data <= s_ahb_hwdata[0+:32];
+                    end
+                    default: begin // Larger than supported accesses (full width)
+                        cpuif_wr_data <= s_ahb_hwdata;
+                    end
+                    endcase
+
+                // Generate byte enable based on captured HSIZE and original address offset
+                cpuif_wr_biten <= '0;
+                case(size_captured)
+                    3'b000: begin // Byte access
+                        cpuif_wr_biten[addr_offset_captured*8 +: 8] <= '1;
+                    end
+                    3'b001: begin // Halfword access
+                        cpuif_wr_biten[addr_offset_captured[1:1]*16 +: 16] <= '1;
+                    end
+                    3'b010: begin // Word access
+                        cpuif_wr_biten <= '1;
+                    end
+                    default: begin // Default to full width access
+                        cpuif_wr_biten <= '1;
+                    end
+                endcase
+
+                // End transaction when acknowledged
                 if(cpuif_rd_ack || cpuif_wr_ack) begin
                     is_active <= '0;
+                    cpuif_req <= '0;
                 end
             end
         end
     end
 
     // Response
-    assign s_apb_pready = cpuif_rd_ack | cpuif_wr_ack;
-    assign s_apb_prdata = cpuif_rd_data;
-    assign s_apb_pslverr = cpuif_rd_err | cpuif_wr_err;
+    logic [31:0] read_data_extracted;
+
+    // Extract read data based on captured HSIZE and address offset
+    always @(*) begin
+        case(size_captured)
+            3'b000: begin // Byte access - extract specific byte
+                read_data_extracted = { 24'd0, cpuif_rd_data[(addr_offset_captured*8)+:8] };
+            end
+            3'b001: begin // Halfword access - extract specific halfword
+                read_data_extracted = { 16'd0, cpuif_rd_data[(addr_offset_captured[1:1]*16)+:16] };
+            end
+            3'b010: begin // Word access - extract specific word
+                read_data_extracted = cpuif_rd_data;
+            end
+            default: begin // Full width access for larger sizes
+                read_data_extracted = cpuif_rd_data;
+            end
+        endcase
+    end
+
+    assign s_ahb_hready = (cpuif_rd_ack | cpuif_wr_ack | ~is_active);
+    assign s_ahb_hrdata = read_data_extracted;
+    assign s_ahb_hresp = (cpuif_rd_err | cpuif_wr_err) ? HRESP_ERROR : HRESP_OKAY;
 
     logic cpuif_req_masked;
 

@@ -12,7 +12,7 @@ jobs:
       fail-fast: false # So that one fail doesn't stop remaining tests
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-#         cpuif: ["apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
+#         cpuif: ["apb4-flat", "apb3-flat", "ahblite-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
         cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
         target: [verilator]
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=${{ matrix.cpuif }} COCOTB_REV=1.9.2
 #           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
 #           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=ahb-flat       COCOTB_REV=1.9.2
+#           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=ahblite-flat       COCOTB_REV=1.9.2
 #           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
 #           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
 #           ./test_all.sh REGBLOCK=1 SIM=verilator GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2

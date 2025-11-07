@@ -100,7 +100,7 @@ CPU interface error response validation (NEW).
 
 * APB4 (validates ``pslverr`` signal)
 * AXI4-Lite (validates ``rresp``/``bresp`` signals)
-* AHB (validates ``hresp`` signal)
+* AHBLite (validates ``hresp`` signal)
 * Passthrough (validates ``rd_err``/``wr_err`` signals)
 
 **Usage:**
@@ -182,8 +182,8 @@ Test with different CPU interfaces:
     # AXI4-Lite
     make sim CPUIF=axi4-lite-flat
 
-    # AHB
-    make sim CPUIF=ahb-flat
+    # AHBLite
+    make sim CPUIF=ahblite-flat
 
     # Passthrough
     make sim CPUIF=passthrough
@@ -221,7 +221,7 @@ Located in ``tests/interfaces/``:
 
 * ``apb_wrapper.py`` - APB4 bus functional model
 * ``axi_wrapper.py`` - AXI4-Lite bus functional model
-* ``ahb_wrapper.py`` - AHB bus functional model
+* ``ahblite_wrapper.py`` - AHBLite bus functional model
 * ``passthrough.py`` - Passthrough protocol driver
 
 All wrappers support the ``error_expected`` parameter for error response validation.

@@ -87,8 +87,8 @@ def main():
         register_interface("avalon", "Avalon_Cpuif_flattened", "avalon-mm-flat")
 
         # Note: ahb may not be available in all versions
-        # register_interface("ahb", "AHB_Cpuif", "ahb")
-        # register_interface("ahb", "AHB_Cpuif_flattened", "ahb-flat")
+        # register_interface("ahb", "AHB_Cpuif", "ahblite")
+        # register_interface("ahb", "AHB_Cpuif_flattened", "ahblite-flat")
 
         # Ensure at least APB3 is available (should always be present)
         if "apb3" not in cpuif_map:

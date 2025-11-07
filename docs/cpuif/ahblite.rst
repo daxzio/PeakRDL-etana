@@ -1,32 +1,32 @@
-AMBA AHB
-========
+AMBA AHB-Lite
+=============
 
 Implements the register block using an
-`AMBA AHB <https://developer.arm.com/documentation/ihi0033/latest/>`_
+`AMBA AHB-Lite <https://developer.arm.com/documentation/ihi0033/latest/>`_
 (Advanced High-performance Bus) CPU interface.
 
 .. note::
-    The AHB interface implementation provides a simplified subset of the full AHB protocol,
+    The AHBLite interface implementation provides a simplified subset of the full AHB protocol,
     optimized for register access. It supports single transfers with configurable data widths.
 
-The AHB CPU interface provides **flattened signal interface** (individual input/output ports):
+The AHBLite CPU interface provides **flattened signal interface** (individual input/output ports):
 
-* Command line: ``--cpuif ahb-flat``
-* Class: :class:`peakrdl_etana.cpuif.ahb.AHB_Cpuif_flattened`
+* Command line: ``--cpuif ahblite-flat``
+* Class: :class:`peakrdl_etana.cpuif.ahblite.AHBLite_Cpuif_flattened`
 
 .. note::
     PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
     struct-based interface options.
 
 .. warning::
-    Like other CPU interfaces in this exporter, the AHB ``HADDR`` input is interpreted
+    Like other CPU interfaces in this exporter, the AHBLite ``HADDR`` input is interpreted
     as a byte-address. Address values should be byte-aligned according to the data width
     being used (e.g., for 32-bit transfers, addresses increment in steps of 4).
 
 Supported Signals
 -----------------
 
-The AHB interface implementation includes the following signals:
+The AHBLite interface implementation includes the following signals:
 
 Command signals (inputs):
     * ``HSEL`` - Slave select signal
@@ -44,7 +44,7 @@ Response signals (outputs):
 Error Response Support
 ----------------------
 
-AHB supports error signaling via the ``HRESP`` response signal. When error response
+AHBLite supports error signaling via the ``HRESP`` response signal. When error response
 options are enabled:
 
 **--err-if-bad-addr**
@@ -60,12 +60,12 @@ options are enabled:
 
 .. code-block:: bash
 
-    peakrdl etana design.rdl --cpuif ahb-flat --err-if-bad-addr --err-if-bad-rw -o output/
+    peakrdl etana design.rdl --cpuif ahblite-flat --err-if-bad-addr --err-if-bad-rw -o output/
 
 **Response Values:**
 
 * ``HRESP = 0`` (OKAY) - Normal successful completion
 * ``HRESP = 1`` (ERROR) - Error response (when error options enabled)
 
-**Testing:** The ``test_cpuif_err_rsp`` test validates AHB error responses
+**Testing:** The ``test_cpuif_err_rsp`` test validates AHBLite error responses
 across various error scenarios.
