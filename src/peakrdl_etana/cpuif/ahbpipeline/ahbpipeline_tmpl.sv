@@ -8,297 +8,416 @@ localparam [1:0] HTRANS_SEQ    = 2'b11;
 localparam HRESP_OKAY  = 1'b0;
 localparam HRESP_ERROR = 1'b1;
 
-// Request
-logic is_active;
-logic [{{cpuif.addr_width-1}}:0] addr_captured;
+// -----------------------------------------------------------------------------
+// Pipeline queue (depth 2) to support overlapped address/data phases
+// -----------------------------------------------------------------------------
+logic stage0_valid;
+logic stage0_inflight;
+logic stage0_write;
+logic [2:0] stage0_size;
+logic [{{cpuif.addr_width-1}}:0] stage0_addr;
+logic stage0_data_ready;
+logic [{{cpuif.data_width-1}}:0] stage0_wr_data;
+logic [{{cpuif.data_width-1}}:0] stage0_wr_biten;
 {%- if cpuif.data_width_bytes > 1 %}
-logic [{{clog2(cpuif.data_width_bytes)-1}}:0] addr_offset_captured;
+logic [{{clog2(cpuif.data_width_bytes)-1}}:0] stage0_offset;
 {%- endif %}
-logic write_captured;
-logic [2:0] size_captured;
+
+logic stage1_valid;
+logic stage1_write;
+logic [2:0] stage1_size;
+logic [{{cpuif.addr_width-1}}:0] stage1_addr;
+logic stage1_data_ready;
+{%- if cpuif.data_width_bytes > 1 %}
+logic [{{clog2(cpuif.data_width_bytes)-1}}:0] stage1_offset;
+{%- endif %}
 
 always {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
-        is_active <= '0;
-        cpuif_req <= '0;
-        cpuif_req_is_wr <= '0;
+        stage0_valid <= '0;
+        stage0_inflight <= '0;
+        stage0_write <= '0;
+        stage0_size <= '0;
+        stage0_addr <= '0;
+        stage0_data_ready <= '0;
+        stage0_wr_data <= '0;
+        stage0_wr_biten <= '0;
+        {%- if cpuif.data_width_bytes > 1 %}
+        stage0_offset <= '0;
+        {%- endif %}
+
+        stage1_valid <= '0;
+        stage1_write <= '0;
+        stage1_size <= '0;
+        stage1_addr <= '0;
+        stage1_data_ready <= '0;
+        {%- if cpuif.data_width_bytes > 1 %}
+        stage1_offset <= '0;
+        {%- endif %}
+
         cpuif_addr <= '0;
         cpuif_wr_data <= '0;
         cpuif_wr_biten <= '0;
-        addr_captured <= '0;
-        {%- if cpuif.data_width_bytes > 1 %}
-        addr_offset_captured <= '0;
-        {%- endif %}
-        write_captured <= '0;
-        size_captured <= '0;
     end else begin
-        if(~is_active) begin
-            // Address Phase: Detect new transfer and capture address/control
-            if({{cpuif.signal("hsel")}} && ({{cpuif.signal("htrans")}} == HTRANS_NONSEQ || {{cpuif.signal("htrans")}} == HTRANS_SEQ)) begin
-                is_active <= '1;
-                // Capture word-aligned address for register selection
+        logic issue_now;
+        logic accept_new;
+        logic complete_now;
+        logic pending_after_complete;
+        logic [{{cpuif.addr_width-1}}:0] late_addr;
+        logic [2:0] late_size;
+        logic late_write;
+        logic late_data_ready;
+        logic [{{cpuif.data_width-1}}:0] wr_data_next;
+        logic [{{cpuif.data_width-1}}:0] wr_biten_next;
+        logic [{{cpuif.addr_width-1}}:0] issue_addr;
+        logic [{{cpuif.data_width-1}}:0] issue_wr_data;
+        logic [{{cpuif.data_width-1}}:0] issue_wr_biten;
+        {%- if cpuif.data_width_bytes > 1 %}
+        logic [{{clog2(cpuif.data_width_bytes)-1}}:0] late_offset;
+        {%- endif %}
+
+        issue_now = 1'b0;
+        pending_after_complete = 1'b0;
+        late_addr = '0;
+        late_size = '0;
+        late_write = '0;
+        late_data_ready = '0;
+        wr_data_next = stage0_wr_data;
+        wr_biten_next = stage0_wr_biten;
+        issue_addr = stage0_addr;
+        issue_wr_data = stage0_wr_data;
+        issue_wr_biten = stage0_wr_biten;
+        {%- if cpuif.data_width_bytes > 1 %}
+        late_offset = '0;
+        {%- endif %}
+
+        // Default drive based on current active stage
+        cpuif_addr <= stage0_addr;
+        cpuif_wr_data <= stage0_wr_data;
+        cpuif_wr_biten <= stage0_wr_biten;
+
+        // Accept new transfer when queue is not full
+        accept_new = {{cpuif.signal("hsel")}} && ({{cpuif.signal("htrans")}} == HTRANS_NONSEQ || {{cpuif.signal("htrans")}} == HTRANS_SEQ) && ~stage1_valid;
+        complete_now = stage0_valid && stage0_inflight && (cpuif_rd_ack || cpuif_wr_ack);
+        if (accept_new) begin
+            if (!stage0_valid) begin
+                stage0_valid <= 1'b1;
+                stage0_write <= {{cpuif.signal("hwrite")}};
+                stage0_size <= {{cpuif.signal("hsize")}};
+                stage0_addr <=
                 {%- if cpuif.data_width_bytes == 1 %}
-                addr_captured <= {{cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:0];
+                    {{cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:0];
                 {%- else %}
-                addr_captured <= { {{-cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0};
-                // Capture original address offset for byte enable calculation
-                addr_offset_captured <= {{cpuif.signal("haddr")}}[0+:{{clog2(cpuif.data_width_bytes)}}];
+                    { {{-cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0 };
                 {%- endif %}
-                write_captured <= {{cpuif.signal("hwrite")}};
-                size_captured <= {{cpuif.signal("hsize")}};
+                {%- if cpuif.data_width_bytes > 1 %}
+                stage0_offset <= {{cpuif.signal("haddr")}}[0+:{{clog2(cpuif.data_width_bytes)}}];
+                {%- endif %}
+                stage0_data_ready <= ~{{cpuif.signal("hwrite")}};
+                stage0_wr_data <= '0;
+                stage0_wr_biten <= '0;
+                stage0_inflight <= ~{{cpuif.signal("hwrite")}};
+                if (!{{cpuif.signal("hwrite")}}) begin
+                    issue_now = 1'b1;
+                    issue_addr =
+                    {%- if cpuif.data_width_bytes == 1 %}
+                        {{cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:0];
+                    {%- else %}
+                        { {{-cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0 };
+                    {%- endif %}
+                    issue_wr_data = stage0_wr_data;
+                    issue_wr_biten = stage0_wr_biten;
+                end
+            end else if (complete_now) begin
+                pending_after_complete = 1'b1;
+                late_write = {{cpuif.signal("hwrite")}};
+                late_size = {{cpuif.signal("hsize")}};
+                late_addr =
+                {%- if cpuif.data_width_bytes == 1 %}
+                    {{cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:0];
+                {%- else %}
+                    { {{-cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0 };
+                {%- endif %}
+                late_data_ready = ~{{cpuif.signal("hwrite")}};
+                {%- if cpuif.data_width_bytes > 1 %}
+                late_offset = {{cpuif.signal("haddr")}}[0+:{{clog2(cpuif.data_width_bytes)}}];
+                {%- endif %}
+            end else begin
+                stage1_valid <= 1'b1;
+                stage1_write <= {{cpuif.signal("hwrite")}};
+                stage1_size <= {{cpuif.signal("hsize")}};
+                stage1_addr <=
+                {%- if cpuif.data_width_bytes == 1 %}
+                    {{cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:0];
+                {%- else %}
+                    { {{-cpuif.signal("haddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0 };
+                {%- endif %}
+                {%- if cpuif.data_width_bytes > 1 %}
+                stage1_offset <= {{cpuif.signal("haddr")}}[0+:{{clog2(cpuif.data_width_bytes)}}];
+                {%- endif %}
+                stage1_data_ready <= ~{{cpuif.signal("hwrite")}};
             end
-        end else begin
-            // Data Phase: Start request with captured data
-            cpuif_req <= '1;
-            cpuif_req_is_wr <= write_captured;
-            cpuif_addr <= addr_captured;
+        end
 
-            // Replicate data based on captured HSIZE for proper lane placement
-            case(size_captured)
-                3'b000: begin // Byte access - replicate byte across all lanes
+        // Capture write data when it becomes available
+        if (stage0_valid && stage0_write && !stage0_data_ready) begin
+            wr_data_next = '0;
+            wr_biten_next = '0;
+            case(stage0_size)
+                3'b000: begin
                     {%- if cpuif.data_width_bytes == 1 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:8];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:8];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//1}}{ {{cpuif.signal("hwdata")}}[0+:8] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//1}}{ {{cpuif.signal("hwdata")}}[0+:8] } };
+                    wr_biten_next[stage0_offset*8 +: 8] = '1;
                     {%- endif %}
                 end
                 {%- if cpuif.data_width_bytes >= 2 %}
-                3'b001: begin // Halfword access - replicate halfword across all lanes
+                3'b001: begin
                     {%- if cpuif.data_width_bytes == 2 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:16];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:16];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//2}}{ {{cpuif.signal("hwdata")}}[0+:16] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//2}}{ {{cpuif.signal("hwdata")}}[0+:16] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:1]*16 +: 16] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 4 %}
-                3'b010: begin // Word access - replicate word across all lanes
+                3'b010: begin
                     {%- if cpuif.data_width_bytes == 4 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:32];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:32];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//4}}{ {{cpuif.signal("hwdata")}}[0+:32] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//4}}{ {{cpuif.signal("hwdata")}}[0+:32] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:2]*32 +: 32] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 8 %}
-                3'b011: begin // Doubleword access - replicate doubleword across all lanes
+                3'b011: begin
                     {%- if cpuif.data_width_bytes == 8 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:64];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:64];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//8}}{ {{cpuif.signal("hwdata")}}[0+:64] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//8}}{ {{cpuif.signal("hwdata")}}[0+:64] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:3]*64 +: 64] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 16 %}
-                3'b100: begin // 128-bit access - replicate 128-bit data across all lanes
+                3'b100: begin
                     {%- if cpuif.data_width_bytes == 16 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:128];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:128];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//16}}{ {{cpuif.signal("hwdata")}}[0+:128] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//16}}{ {{cpuif.signal("hwdata")}}[0+:128] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:4]*128 +: 128] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 32 %}
-                3'b101: begin // 256-bit access - replicate 256-bit data across all lanes
+                3'b101: begin
                     {%- if cpuif.data_width_bytes == 32 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:256];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:256];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//32}}{ {{cpuif.signal("hwdata")}}[0+:256] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//32}}{ {{cpuif.signal("hwdata")}}[0+:256] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:5]*256 +: 256] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 64 %}
-                3'b110: begin // 512-bit access - replicate 512-bit data across all lanes
+                3'b110: begin
                     {%- if cpuif.data_width_bytes == 64 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:512];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:512];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//64}}{ {{cpuif.signal("hwdata")}}[0+:512] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//64}}{ {{cpuif.signal("hwdata")}}[0+:512] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:6]*512 +: 512] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
                 {%- if cpuif.data_width_bytes >= 128 %}
-                3'b111: begin // 1024-bit access - replicate 1024-bit data across all lanes
+                3'b111: begin
                     {%- if cpuif.data_width_bytes == 128 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:1024];
+                    wr_data_next = {{cpuif.signal("hwdata")}}[0+:1024];
+                    wr_biten_next = '1;
                     {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//128}}{ {{cpuif.signal("hwdata")}}[0+:1024] } };
+                    wr_data_next = { {{cpuif.data_width_bytes//128}}{ {{cpuif.signal("hwdata")}}[0+:1024] } };
+                    wr_biten_next[stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:7]*1024 +: 1024] = '1;
                     {%- endif %}
                 end
                 {%- endif %}
-                default: begin // Larger than supported accesses (full width)
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}};
-                end
-                endcase
-
-            // Generate byte enable based on captured HSIZE and original address offset
-            cpuif_wr_biten <= '0;
-            case(size_captured)
-                3'b000: begin // Byte access
-                    {%- if cpuif.data_width_bytes == 1 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured*8 +: 8] <= '1;
-                    {%- endif %}
-                end
-                {%- if cpuif.data_width_bytes >= 2 %}
-                3'b001: begin // Halfword access
-                    {%- if cpuif.data_width_bytes == 2 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:1]*16 +: 16] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 4 %}
-                3'b010: begin // Word access
-                    {%- if cpuif.data_width_bytes == 4 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:2]*32 +: 32] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 8 %}
-                3'b011: begin // Doubleword access
-                    {%- if cpuif.data_width_bytes == 8 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:3]*64 +: 64] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 16 %}
-                3'b100: begin // 128-bit access
-                    {%- if cpuif.data_width_bytes == 16 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:4]*128 +: 128] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 32 %}
-                3'b101: begin // 256-bit access
-                    {%- if cpuif.data_width_bytes == 32 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:5]*256 +: 256] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 64 %}
-                3'b110: begin // 512-bit access
-                    {%- if cpuif.data_width_bytes == 64 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:6]*512 +: 512] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 128 %}
-                3'b111: begin // 1024-bit access
-                    {%- if cpuif.data_width_bytes == 128 %}
-                    cpuif_wr_biten <= '1;
-                    {%- else %}
-                    cpuif_wr_biten[addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:7]*1024 +: 1024] <= '1;
-                    {%- endif %}
-                end
-                {%- endif %}
-                default: begin // Default to full width access
-                    cpuif_wr_biten <= '1;
+                default: begin
+                    wr_data_next = {{cpuif.signal("hwdata")}};
+                    wr_biten_next = '1;
                 end
             endcase
+            stage0_wr_data <= wr_data_next;
+            stage0_wr_biten <= wr_biten_next;
+            stage0_data_ready <= 1'b1;
+            stage0_inflight <= 1'b1;
+            issue_now = 1'b1;
+            issue_addr = stage0_addr;
+            issue_wr_data = wr_data_next;
+            issue_wr_biten = wr_biten_next;
+        end
 
-            // End transaction when acknowledged
-            if(cpuif_rd_ack || cpuif_wr_ack) begin
-                is_active <= '0;
-                cpuif_req <= '0;
+        // Completion handling and queue advancement
+        if (stage0_valid && stage0_inflight && (cpuif_rd_ack || cpuif_wr_ack)) begin
+            stage0_inflight <= 1'b0;
+            if (stage1_valid || pending_after_complete) begin
+                stage0_valid <= 1'b1;
+                if (pending_after_complete) begin
+                    stage0_write <= late_write;
+                    stage0_size <= late_size;
+                    stage0_addr <= late_addr;
+                    stage0_data_ready <= late_data_ready;
+                    stage0_wr_data <= '0;
+                    stage0_wr_biten <= '0;
+                    {%- if cpuif.data_width_bytes > 1 %}
+                    stage0_offset <= late_offset;
+                    {%- endif %}
+                    if (late_data_ready && !late_write) begin
+                        stage0_inflight <= 1'b1;
+                        issue_now = 1'b1;
+                        issue_addr = late_addr;
+                        issue_wr_data = stage0_wr_data;
+                        issue_wr_biten = stage0_wr_biten;
+                    end
+                end else begin
+                    stage0_write <= stage1_write;
+                    stage0_size <= stage1_size;
+                    stage0_addr <= stage1_addr;
+                    stage0_data_ready <= stage1_data_ready;
+                    stage0_wr_data <= '0;
+                    stage0_wr_biten <= '0;
+                    {%- if cpuif.data_width_bytes > 1 %}
+                    stage0_offset <= stage1_offset;
+                    {%- endif %}
+                    if (stage1_data_ready && !stage1_write) begin
+                        stage0_inflight <= 1'b1;
+                        issue_now = 1'b1;
+                    end
+                    stage1_valid <= 1'b0;
+                    stage1_write <= '0;
+                    stage1_size <= '0;
+                    stage1_addr <= '0;
+                    stage1_data_ready <= '0;
+                    {%- if cpuif.data_width_bytes > 1 %}
+                    stage1_offset <= '0;
+                    {%- endif %}
+                end
+                if (pending_after_complete) begin
+                    stage1_valid <= stage1_valid;
+                end
+            end else begin
+                stage0_valid <= 1'b0;
+                stage0_write <= '0;
+                stage0_size <= '0;
+                stage0_addr <= '0;
+                stage0_data_ready <= '0;
+                stage0_wr_data <= '0;
+                stage0_wr_biten <= '0;
+                {%- if cpuif.data_width_bytes > 1 %}
+                stage0_offset <= '0;
+                {%- endif %}
             end
+        end
+
+        if (issue_now) begin
+            cpuif_addr <= issue_addr;
+            cpuif_wr_data <= issue_wr_data;
+            cpuif_wr_biten <= issue_wr_biten;
         end
     end
 end
 
-// Response
+// Response extraction uses active stage information
 logic [{{cpuif.data_width-1}}:0] read_data_extracted;
 
-// Extract read data based on captured HSIZE and address offset
 always @(*) begin
-    case(size_captured)
-        3'b000: begin // Byte access - extract specific byte
+    case(stage0_size)
+        3'b000: begin
             {%- if cpuif.data_width_bytes == 1 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 8}}'d0, cpuif_rd_data[(addr_offset_captured*8)+:8] };
+            read_data_extracted = { {{cpuif.data_width - 8}}'d0, cpuif_rd_data[(stage0_offset*8)+:8] };
             {%- endif %}
         end
         {%- if cpuif.data_width_bytes >= 2 %}
-        3'b001: begin // Halfword access - extract specific halfword
+        3'b001: begin
             {%- if cpuif.data_width_bytes == 2 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 16}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:1]*16)+:16] };
+            read_data_extracted = { {{cpuif.data_width - 16}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:1]*16)+:16] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 4 %}
-        3'b010: begin // Word access - extract specific word
+        3'b010: begin
             {%- if cpuif.data_width_bytes == 4 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 32}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:2]*32)+:32] };
+            read_data_extracted = { {{cpuif.data_width - 32}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:2]*32)+:32] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 8 %}
-        3'b011: begin // Doubleword access - extract specific doubleword
+        3'b011: begin
             {%- if cpuif.data_width_bytes == 8 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 64}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:3]*64)+:64] };
+            read_data_extracted = { {{cpuif.data_width - 64}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:3]*64)+:64] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 16 %}
-        3'b100: begin // 128-bit access - extract specific 128-bit data
+        3'b100: begin
             {%- if cpuif.data_width_bytes == 16 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 128}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:4]*128)+:128] };
+            read_data_extracted = { {{cpuif.data_width - 128}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:4]*128)+:128] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 32 %}
-        3'b101: begin // 256-bit access - extract specific 256-bit data
+        3'b101: begin
             {%- if cpuif.data_width_bytes == 32 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 256}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:5]*256)+:256] };
+            read_data_extracted = { {{cpuif.data_width - 256}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:5]*256)+:256] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 64 %}
-        3'b110: begin // 512-bit access - extract specific 512-bit data
+        3'b110: begin
             {%- if cpuif.data_width_bytes == 64 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 512}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:6]*512)+:512] };
+            read_data_extracted = { {{cpuif.data_width - 512}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:6]*512)+:512] };
             {%- endif %}
         end
         {%- endif %}
         {%- if cpuif.data_width_bytes >= 128 %}
-        3'b111: begin // 1024-bit access - extract specific 1024-bit data
+        3'b111: begin
             {%- if cpuif.data_width_bytes == 128 %}
             read_data_extracted = cpuif_rd_data;
             {%- else %}
-            read_data_extracted = { {{cpuif.data_width - 1024}}'d0, cpuif_rd_data[(addr_offset_captured[{{clog2(cpuif.data_width_bytes)-1}}:7]*1024)+:1024] };
+            read_data_extracted = { {{cpuif.data_width - 1024}}'d0, cpuif_rd_data[(stage0_offset[{{clog2(cpuif.data_width_bytes)-1}}:7]*1024)+:1024] };
             {%- endif %}
         end
         {%- endif %}
-        default: begin // Full width access for larger sizes
+        default: begin
             read_data_extracted = cpuif_rd_data;
         end
     endcase
 end
 
-assign {{cpuif.signal("hready")}} = (cpuif_rd_ack | cpuif_wr_ack | ~is_active);
+assign cpuif_req = stage0_inflight;
+assign cpuif_req_is_wr = stage0_inflight && stage0_write;
+assign {{cpuif.signal("hready")}} = ~stage1_valid;
 assign {{cpuif.signal("hrdata")}} = read_data_extracted;
 assign {{cpuif.signal("hresp")}} = (cpuif_rd_err | cpuif_wr_err) ? HRESP_ERROR : HRESP_OKAY;
