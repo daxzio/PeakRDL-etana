@@ -19,7 +19,7 @@ class SignalInfo:
 
     name: str
     direction: str  # 'input' or 'output'
-    wire_type: str  # 'wire', 'logic', etc.
+    wire_type: str  # 'wire', 'reg', etc.
     packed_dim: str  # e.g., '[7:0]' or '[7:0] [5:0]'
     base_name: str  # Name with i_/o_ or hwif_in_/hwif_out_ removed
 
@@ -119,7 +119,7 @@ class TemplateGenerator:
 
             # Parse port declaration
             match = re.match(
-                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
+                r"^(input|output)\s+(wire|logic|reg)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
                 line,
             )
 
@@ -166,7 +166,7 @@ class TemplateGenerator:
 
             # Parse port declaration
             match = re.match(
-                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
+                r"^(input|output)\s+(wire|logic|reg)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
                 line,
             )
 
@@ -248,7 +248,7 @@ class TemplateGenerator:
             lines.append("    // Hardware interface signal declarations")
             for sig in hwif_signals:
                 dim_str = f"{sig.packed_dim} " if sig.packed_dim else ""
-                lines.append(f"    logic {dim_str}w_{sig.base_name};")
+                lines.append(f"    wire {dim_str}w_{sig.base_name};")
             lines.append("")
 
         # Instantiation

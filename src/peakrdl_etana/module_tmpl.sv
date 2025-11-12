@@ -16,10 +16,10 @@ module {{ds.module_name}}
         {%- endif %}
         {%- endfor %}
 
-        {%- if ds.has_paritycheck %}
+{%- if ds.has_paritycheck %}
 
-        output logic parity_error,
-        {%- endif %}
+        output reg parity_error,
+{%- endif %}
 
         {{cpuif.port_declaration|indent(8)}}
         {%- if hwif.has_hwif_ports  %},{% endif %}
@@ -30,29 +30,47 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     // CPU Bus interface logic
     //--------------------------------------------------------------------------
-    logic cpuif_req;
-    logic cpuif_req_is_wr;
-    logic [{{cpuif.addr_width-1}}:0] cpuif_addr;
-    logic [{{cpuif.data_width-1}}:0] cpuif_wr_data;
-    logic [{{cpuif.data_width-1}}:0] cpuif_wr_biten;
-    logic cpuif_req_stall_wr;
-    logic cpuif_req_stall_rd;
+    reg cpuif_req;
+    reg cpuif_req_is_wr;
+    {% if cpuif.addr_width == 1 %}
+    reg cpuif_addr;
+    {% else %}
+    reg [{{cpuif.addr_width-1}}:0] cpuif_addr;
+    {% endif %}
+    reg [{{cpuif.data_width-1}}:0] cpuif_wr_data;
+    reg [{{cpuif.data_width-1}}:0] cpuif_wr_biten;
+    wire cpuif_req_stall_wr;
+    wire cpuif_req_stall_rd;
 
-    logic cpuif_rd_ack;
-    logic cpuif_rd_err;
-    logic [{{cpuif.data_width-1}}:0] cpuif_rd_data;
+    wire cpuif_rd_ack;
+    wire cpuif_rd_err;
+    wire [{{cpuif.data_width-1}}:0] cpuif_rd_data;
 
-    logic cpuif_wr_ack;
-    logic cpuif_wr_err;
+    wire cpuif_wr_ack;
+    wire cpuif_wr_err;
+
+{% if ds.retime_read_response %}
+    reg cpuif_rd_ack_r;
+    reg cpuif_rd_err_r;
+    reg [{{cpuif.data_width-1}}:0] cpuif_rd_data_r;
+
+    assign cpuif_rd_ack = cpuif_rd_ack_r;
+    assign cpuif_rd_err = cpuif_rd_err_r;
+    assign cpuif_rd_data = cpuif_rd_data_r;
+{% endif %}
 
     {{cpuif.get_implementation()|indent}}
 
-    logic cpuif_req_masked;
+    wire cpuif_req_masked;
 {%- if ds.has_external_addressable %}
-    logic external_req;
-    logic external_pending;
-    logic external_wr_ack;
-    logic external_rd_ack;
+    reg external_req;
+    reg external_pending;
+    wire external_wr_ack;
+    wire external_rd_ack;
+{%- if ds.retime_read_response %}
+    reg external_rd_ack_r;
+    assign external_rd_ack = external_rd_ack_r;
+{%- endif %}
 //     always_ff {{get_always_ff_event(cpuif.reset)}} begin
     always {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
@@ -81,7 +99,7 @@ module {{ds.module_name}}
     {%- endif %}
 {%- elif ds.min_read_latency > ds.min_write_latency %}
     // Read latency > write latency. May need to delay next write that follows a read
-    logic [{{ds.min_read_latency - ds.min_write_latency - 1}}:0] cpuif_req_stall_sr;
+    reg [{{ds.min_read_latency - ds.min_write_latency - 1}}:0] cpuif_req_stall_sr;
     always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
             cpuif_req_stall_sr <= '0;
@@ -100,7 +118,7 @@ module {{ds.module_name}}
     {%- endif %}
 {%- else %}
     // Write latency > read latency. May need to delay next read that follows a write
-    logic [{{ds.min_write_latency - ds.min_read_latency - 1}}:0] cpuif_req_stall_sr;
+    reg [{{ds.min_write_latency - ds.min_read_latency - 1}}:0] cpuif_req_stall_sr;
     always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
             cpuif_req_stall_sr <= '0;
@@ -127,19 +145,23 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     {{address_decode.get_strobe_logic()|indent}}
 {%- if ds.has_external_addressable %}
-    logic decoded_strb_is_external;
+    reg decoded_strb_is_external;
 {% endif %}
 {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
-    logic decoded_err;
+    reg decoded_err;
 {% endif %}
 {%- if ds.has_external_block %}
-    logic [{{cpuif.addr_width-1}}:0] decoded_addr;
+    {% if cpuif.addr_width == 1 %}
+    wire decoded_addr;
+    {% else %}
+    wire [{{cpuif.addr_width-1}}:0] decoded_addr;
+    {% endif %}
 {% endif %}
-    logic decoded_req;
-    logic decoded_req_is_wr;
+    wire decoded_req;
+    wire decoded_req_is_wr;
     /* verilator lint_off UNUSEDSIGNAL */
-    logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
-    logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
+    wire [{{cpuif.data_width-1}}:0] decoded_wr_data;
+    wire [{{cpuif.data_width-1}}:0] decoded_wr_biten;
     /* verilator lint_on UNUSEDSIGNAL */
 
     always @(*) begin
@@ -148,13 +170,13 @@ module {{ds.module_name}}
         /* verilator lint_on UNUSEDSIGNAL */
     {%- if ds.has_external_addressable or ds.err_if_bad_addr or ds.err_if_bad_rw %}
         {%- if ds.has_external_addressable %}
-        logic is_external;
+        reg is_external;
         {%- endif %}
         {%- if ds.err_if_bad_addr %}
-        logic is_valid_addr;
+        reg is_valid_addr;
         {%- endif %}
         {%- if ds.err_if_bad_rw %}
-        logic is_invalid_rw;
+        reg is_invalid_rw;
         {%- endif %}
         {%- if ds.has_external_addressable %}
         is_external = '0;
@@ -186,8 +208,8 @@ module {{ds.module_name}}
     assign decoded_wr_biten = cpuif_wr_biten;
 {% if ds.has_writable_msb0_fields %}
     // bitswap for use by fields with msb0 ordering
-    logic [{{cpuif.data_width-1}}:0] decoded_wr_data_bswap;
-    logic [{{cpuif.data_width-1}}:0] decoded_wr_biten_bswap;
+    wire [{{cpuif.data_width-1}}:0] decoded_wr_data_bswap;
+    wire [{{cpuif.data_width-1}}:0] decoded_wr_biten_bswap;
     // Explicit bit reversal for Icarus Verilog compatibility
     genvar bitswap_i;
     generate
@@ -224,7 +246,7 @@ module {{ds.module_name}}
         if({{get_resetsignal(cpuif.reset)}}) begin
             parity_error <= '0;
         end else begin
-            logic err;
+            reg err;
             err = '0;
             {{parity.get_implementation()|indent(12)}}
             parity_error <= err;
@@ -245,12 +267,14 @@ module {{ds.module_name}}
     // Write response
     //--------------------------------------------------------------------------
 {%- if ext_write_acks.has_external_write() %}
+    reg external_wr_ack_r;
     always @(*) begin
-        logic wr_ack;
+        reg wr_ack;
         wr_ack = '0;
         {{ext_write_acks.get_implementation()|indent(8)}}
-        external_wr_ack = wr_ack;
+        external_wr_ack_r = wr_ack;
     end
+    assign external_wr_ack = external_wr_ack_r;
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_strb_is_external);
 {%- else %}
 {%- if ds.has_external_addressable %}
@@ -268,25 +292,27 @@ module {{ds.module_name}}
 //--------------------------------------------------------------------------
 // Readback
 //--------------------------------------------------------------------------
-    logic readback_external_rd_ack;
+    wire readback_external_rd_ack;
 {%- if ext_read_acks.has_external_read() %}
-    logic readback_external_rd_ack_c;
+    reg readback_external_rd_ack_c;
     always @(*) begin
-        logic rd_ack;
+        reg rd_ack;
         rd_ack = '0;
         {{ext_read_acks.get_implementation()|indent(8)}}
         readback_external_rd_ack_c = rd_ack;
     end
 
     {%- if ds.retime_read_fanin %}
+    reg readback_external_rd_ack_r;
     always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
-            readback_external_rd_ack <= '0;
+            readback_external_rd_ack_r <= '0;
         end else begin
-            readback_external_rd_ack <= readback_external_rd_ack_c;
+            readback_external_rd_ack_r <= readback_external_rd_ack_c;
         end
     end
 
+    assign readback_external_rd_ack = readback_external_rd_ack_r;
     {%- else %}
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
@@ -295,28 +321,28 @@ module {{ds.module_name}}
     assign readback_external_rd_ack = 0;
 {%- endif %}
 
-    logic readback_err;
-    logic readback_done;
-    logic [{{cpuif.data_width-1}}:0] readback_data;
+    reg readback_err;
+    reg readback_done;
+    reg [{{cpuif.data_width-1}}:0] readback_data;
 {{readback_implementation|indent}}
 {% if ds.retime_read_response %}
     always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
-            cpuif_rd_ack <= '0;
-            cpuif_rd_data <= '0;
-            cpuif_rd_err <= '0;
+            cpuif_rd_ack_r <= '0;
+            cpuif_rd_data_r <= '0;
+            cpuif_rd_err_r <= '0;
         {%- if ds.has_external_addressable %}
-            external_rd_ack <= '0;
+            external_rd_ack_r <= '0;
         {%- endif %}
         end else begin
         {%- if ds.has_external_addressable %}
-            external_rd_ack <= readback_external_rd_ack;
-            cpuif_rd_ack <= readback_done | readback_external_rd_ack;
+            external_rd_ack_r <= readback_external_rd_ack;
+            cpuif_rd_ack_r <= readback_done | readback_external_rd_ack;
         {%- else %}
-            cpuif_rd_ack <= readback_done;
+            cpuif_rd_ack_r <= readback_done;
         {%- endif %}
-            cpuif_rd_data <= readback_data;
-            cpuif_rd_err <= readback_err;
+            cpuif_rd_data_r <= readback_data;
+            cpuif_rd_err_r <= readback_err;
         end
     end
 {% else %}

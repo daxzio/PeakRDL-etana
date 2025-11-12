@@ -218,6 +218,15 @@ def do_bitswap(
         return SVInt(vswap, value.width)
 
 
+def verilog_range(width: Optional[int]) -> str:
+    """Return a Verilog range string for the given width, omitting [0:0] scalars."""
+    if width is None or width <= 0:
+        return ""
+    if width == 1:
+        return ""
+    return f"[{width-1}:0]"
+
+
 def is_external_for_codegen(node: Node, ds: "DesignState") -> bool:
     """Single source of truth for whether a node is treated as external
     by the code generator.

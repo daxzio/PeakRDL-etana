@@ -1,8 +1,8 @@
 from ..base import CpuifBase
 
 
-class AHB_Cpuif_flattened(CpuifBase):
-    template_path = "ahb_tmpl.sv"
+class AHBPipline_Cpuif_flattened(CpuifBase):
+    template_path = "ahbpipline_tmpl.sv"
 
     @property
     def port_declaration(self) -> str:

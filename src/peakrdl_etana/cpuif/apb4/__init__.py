@@ -7,18 +7,18 @@ class APB4_Cpuif_flattened(CpuifBase):
     @property
     def port_declaration(self) -> str:
         lines = [
-            "input wire " + self.signal("psel"),
-            "input wire " + self.signal("pwrite"),
+            self._decl("input wire", 1, self.signal("psel")),
+            self._decl("input wire", 1, self.signal("pwrite")),
             #             "/* verilator lint_off UNUSEDSIGNAL */",
-            "input wire " + self.signal("penable"),
-            "input wire [2:0] " + self.signal("pprot"),
+            self._decl("input wire", 1, self.signal("penable")),
+            self._decl("input wire", 3, self.signal("pprot")),
             #             "/* verilator lint_on UNUSEDSIGNAL */",
-            f"input wire [{self.addr_width-1}:0] " + self.signal("paddr"),
-            f"input wire [{self.data_width-1}:0] " + self.signal("pwdata"),
-            f"input wire [{self.data_width_bytes-1}:0] " + self.signal("pstrb"),
-            "output logic " + self.signal("pready"),
-            f"output logic [{self.data_width-1}:0] " + self.signal("prdata"),
-            "output logic " + self.signal("pslverr"),
+            self._decl("input wire", self.addr_width, self.signal("paddr")),
+            self._decl("input wire", self.data_width, self.signal("pwdata")),
+            self._decl("input wire", self.data_width_bytes, self.signal("pstrb")),
+            self._decl("output wire", 1, self.signal("pready")),
+            self._decl("output wire", self.data_width, self.signal("prdata")),
+            self._decl("output wire", 1, self.signal("pslverr")),
         ]
         return ",\n".join(lines)
 

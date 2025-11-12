@@ -1,11 +1,11 @@
 
 // State & holding regs
-logic is_active; // A request is being served (not yet fully responded)
-logic gnt_q; // one-cycle grant for A-channel
-logic rsp_pending; // response ready but not yet accepted by manager
-logic [{{cpuif.data_width-1}}:0] rsp_rdata_q;
-logic rsp_err_q;
-logic [$bits({{cpuif.signal("rid")}})-1:0] rid_q;
+reg is_active; // A request is being served (not yet fully responded)
+reg gnt_q; // one-cycle grant for A-channel
+reg rsp_pending; // response ready but not yet accepted by manager
+reg [{{cpuif.data_width-1}}:0] rsp_rdata_q;
+reg rsp_err_q;
+reg [$bits({{cpuif.signal("rid")}})-1:0] rid_q;
 
 // Latch AID on accept to echo back the response
 always_ff {{get_always_ff_event(cpuif.reset)}} begin

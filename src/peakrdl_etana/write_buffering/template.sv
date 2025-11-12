@@ -1,7 +1,14 @@
-logic {{wbuf_prefix}}_pending;
-logic [{{regwidth-1}}:0] {{wbuf_prefix}}_data;
-logic [{{regwidth-1}}:0] {{wbuf_prefix}}_biten;
-logic {{wbuf_prefix}}_trigger_q;
+reg {{wbuf_prefix}}_pending;
+{% if regwidth > 1 %}
+reg [{{regwidth-1}}:0] {{wbuf_prefix}}_data;
+reg [{{regwidth-1}}:0] {{wbuf_prefix}}_biten;
+{% else %}
+reg {{wbuf_prefix}}_data;
+reg {{wbuf_prefix}}_biten;
+{% endif %}
+{% if is_own_trigger %}
+reg {{wbuf_prefix}}_trigger_q;
+{% endif %}
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
         {{wbuf_prefix}}_pending <= '0;

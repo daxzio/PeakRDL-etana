@@ -1,17 +1,17 @@
 
 // Max Outstanding Transactions: {{cpuif.max_outstanding}}
-logic [{{clog2(cpuif.max_outstanding+1)-1}}:0] axil_n_in_flight;
-logic axil_prev_was_rd;
-logic axil_arvalid;
-logic [{{cpuif.addr_width-1}}:0] axil_araddr;
-logic axil_ar_accept;
-logic axil_awvalid;
-logic [{{cpuif.addr_width-1}}:0] axil_awaddr;
-logic axil_wvalid;
-logic [{{cpuif.data_width-1}}:0] axil_wdata;
-logic [{{cpuif.data_width_bytes-1}}:0] axil_wstrb;
-logic axil_aw_accept;
-logic axil_resp_acked;
+reg [{{clog2(cpuif.max_outstanding+1)-1}}:0] axil_n_in_flight;
+reg axil_prev_was_rd;
+reg axil_arvalid;
+reg [{{cpuif.addr_width-1}}:0] axil_araddr;
+reg axil_ar_accept;
+reg axil_awvalid;
+reg [{{cpuif.addr_width-1}}:0] axil_awaddr;
+reg axil_wvalid;
+reg [{{cpuif.data_width-1}}:0] axil_wdata;
+reg [{{cpuif.data_width_bytes-1}}:0] axil_wstrb;
+reg axil_aw_accept;
+reg axil_resp_acked;
 
 // Transaction request acceptance
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
@@ -68,7 +68,6 @@ always_comb begin
 end
 
 // Request dispatch
-// always_comb begin
 always @(*) begin
     cpuif_wr_data = axil_wdata;
     for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
@@ -161,11 +160,11 @@ end
 // Unused entries are expected to be optimized away
 {% endif %}
 
-logic [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_wptr;
-logic [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_rptr;
-logic [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_is_wr;
-logic [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_err;
-logic [{{cpuif.data_width-1}}:0] axil_resp_buffer_rdata [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0];
+reg [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_wptr;
+reg [{{clog2(cpuif.resp_buffer_size)}}:0] axil_resp_rptr;
+reg [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_is_wr;
+reg [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0] axil_resp_buffer_err;
+reg [{{cpuif.data_width-1}}:0] axil_resp_buffer_rdata [{{roundup_pow2(cpuif.resp_buffer_size)-1}}:0];
 
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
@@ -216,7 +215,6 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-// always_comb begin
 always @(*) begin
     axil_resp_acked = '0;
     {{cpuif.signal("bvalid")}} = '0;

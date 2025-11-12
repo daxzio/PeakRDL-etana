@@ -1,17 +1,16 @@
 {% if array_assignments is not none %}
 // Assign readback values to a flattened array
-logic [{{cpuif.data_width-1}}:0] readback_array[{{array_size}}];
+wire [{{cpuif.data_width-1}}:0] readback_array[{{array_size}}];
 {{array_assignments}}
 
 
 {%- if ds.retime_read_fanin %}
 
 // fanin stage
-logic [{{cpuif.data_width-1}}:0] readback_array_c[{{fanin_array_size}}];
+reg [{{cpuif.data_width-1}}:0] readback_array_c[{{fanin_array_size}}];
 for(genvar g=0; g<{{fanin_loop_iter}}; g++) begin
-    // always_comb begin
     always @(*) begin
-        automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
+        reg [{{cpuif.data_width-1}}:0] readback_data_var;
         readback_data_var = '0;
         for(int i=g*{{fanin_stride}}; i<((g+1)*{{fanin_stride}}); i++) readback_data_var |= readback_array[i];
         readback_array_c[g] = readback_data_var;
@@ -20,17 +19,16 @@ end
 {%- if fanin_residual_stride == 1 %}
 assign readback_array_c[{{fanin_array_size-1}}] = readback_array[{{array_size-1}}];
 {%- elif fanin_residual_stride > 1 %}
-// always_comb begin
 always @(*) begin
-    logic [{{cpuif.data_width-1}}:0] readback_data_var;
+    reg [{{cpuif.data_width-1}}:0] readback_data_var;
     readback_data_var = '0;
     for(int i={{(fanin_array_size-1) * fanin_stride}}; i<{{array_size}}; i++) readback_data_var |= readback_array[i];
     readback_array_c[{{fanin_array_size-1}}] = readback_data_var;
 end
 {%- endif %}
 
-logic [{{cpuif.data_width-1}}:0] readback_array_r[{{fanin_array_size}}];
-logic readback_done_r;
+reg [{{cpuif.data_width-1}}:0] readback_array_r[{{fanin_array_size}}];
+reg readback_done_r;
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
         for(int i=0; i<{{fanin_array_size}}; i++) readback_array_r[i] <= '0;
@@ -46,9 +44,8 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
 end
 
 // Reduce the array
-// always_comb begin
 always @(*) begin
-    logic [{{cpuif.data_width-1}}:0] readback_data_var;
+    reg [{{cpuif.data_width-1}}:0] readback_data_var;
     readback_done = readback_done_r;
 {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
     readback_err = decoded_err;
@@ -63,9 +60,8 @@ end
 {%- else %}
 
 // Reduce the array
-// always_comb begin
 always @(*) begin
-    logic [{{cpuif.data_width-1}}:0] readback_data_var;
+    reg [{{cpuif.data_width-1}}:0] readback_data_var;
     {%- if ds.has_external_addressable %}
     readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_strb_is_external;
     {%- else %}
@@ -85,11 +81,13 @@ end
 
 
 {%- else %}
-assign readback_done = decoded_req & ~decoded_req_is_wr;
-assign readback_data = '0;
+always @(*) begin
+    readback_done = decoded_req & ~decoded_req_is_wr;
+    readback_data = '0;
 {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
-assign readback_err = decoded_err;
+    readback_err = decoded_err;
 {%- else %}
-assign readback_err = '0;
+    readback_err = '0;
 {%- endif %}
+end
 {% endif %}

@@ -33,20 +33,23 @@ end
 {%- else -%}
 
 
-{%- if has_sw_readable and has_sw_writable %}
-assign {{prefix}}_req{{index_str}} = {{strb}}{{index_str}};
-{%- elif has_sw_readable and not has_sw_writable %}
-assign {{prefix}}_req{{index_str}} = !decoded_req_is_wr ? {{strb}}{{index_str}}: '0;
-{%- elif not has_sw_readable and has_sw_writable %}
-assign {{prefix}}_req{{index_str}} = decoded_req_is_wr ? {{strb}}{{index_str}} : '0;
-{%- endif %}
-assign {{prefix}}_req_is_wr{{index_str}} = decoded_req_is_wr;
+always @(*) begin
+    {{prefix}}_req{{index_str}} = '0;
+    {{prefix}}_req_is_wr{{index_str}} = decoded_req_is_wr;
 {%- if has_sw_writable %}
 {%- for inst_name in inst_names %}
-assign {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
-assign {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
+    {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
+    {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
 {%- endfor %}
 {%- endif %}
+{%- if has_sw_readable and has_sw_writable %}
+    {{prefix}}_req{{index_str}} = {{strb}}{{index_str}};
+{%- elif has_sw_readable and not has_sw_writable %}
+    if(!decoded_req_is_wr) {{prefix}}_req{{index_str}} = {{strb}}{{index_str}};
+{%- elif not has_sw_readable and has_sw_writable %}
+    if(decoded_req_is_wr) {{prefix}}_req{{index_str}} = {{strb}}{{index_str}};
+{%- endif %}
+end
 
 
 {%- endif %}

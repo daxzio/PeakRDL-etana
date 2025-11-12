@@ -7,17 +7,17 @@ class PassthroughCpuif(CpuifBase):
     @property
     def port_declaration(self) -> str:
         lines = [
-            "input wire s_cpuif_req",
-            "input wire s_cpuif_req_is_wr",
-            f"input wire [{self.addr_width-1}:0] s_cpuif_addr",
-            f"input wire [{self.data_width-1}:0] s_cpuif_wr_data",
-            f"input wire [{self.data_width-1}:0] s_cpuif_wr_biten",
-            "output wire s_cpuif_req_stall_wr",
-            "output wire s_cpuif_req_stall_rd",
-            "output wire s_cpuif_rd_ack",
-            "output wire s_cpuif_rd_err",
-            f"output wire [{self.data_width-1}:0] s_cpuif_rd_data",
-            "output wire s_cpuif_wr_ack",
-            "output wire s_cpuif_wr_err",
+            self._decl("input wire", 1, "s_cpuif_req"),
+            self._decl("input wire", 1, "s_cpuif_req_is_wr"),
+            self._decl("input wire", self.addr_width, "s_cpuif_addr"),
+            self._decl("input wire", self.data_width, "s_cpuif_wr_data"),
+            self._decl("input wire", self.data_width, "s_cpuif_wr_biten"),
+            self._decl("output wire", 1, "s_cpuif_req_stall_wr"),
+            self._decl("output wire", 1, "s_cpuif_req_stall_rd"),
+            self._decl("output wire", 1, "s_cpuif_rd_ack"),
+            self._decl("output wire", 1, "s_cpuif_rd_err"),
+            self._decl("output wire", self.data_width, "s_cpuif_rd_data"),
+            self._decl("output wire", 1, "s_cpuif_wr_ack"),
+            self._decl("output wire", 1, "s_cpuif_wr_err"),
         ]
         return ",\n".join(lines)

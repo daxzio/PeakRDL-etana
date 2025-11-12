@@ -1,6 +1,6 @@
 
 // Request
-logic is_active;
+reg is_active;
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
         is_active <= '0;
@@ -15,15 +15,21 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
                 is_active <= '1;
                 cpuif_req <= '1;
                 cpuif_req_is_wr <= {{cpuif.signal("pwrite")}};
-                {%- if cpuif.data_width_bytes == 1 %}
+                {%- if cpuif.addr_width == 1 %}
+                cpuif_addr <= {{cpuif.signal("paddr")}};
+                {%- elif cpuif.data_width_bytes == 1 %}
                 cpuif_addr <= {{cpuif.signal("paddr")}}[{{cpuif.addr_width-1}}:0];
                 {%- else %}
                 cpuif_addr <= { {{-cpuif.signal("paddr")}}[{{cpuif.addr_width-1}}:{{clog2(cpuif.data_width_bytes)}}], {{clog2(cpuif.data_width_bytes)}}'b0};
                 {%- endif %}
                 cpuif_wr_data <= {{cpuif.signal("pwdata")}};
+                {%- if cpuif.data_width_bytes == 1 %}
+                cpuif_wr_biten <= {8{ {{cpuif.signal("pstrb")}} }};
+                {%- else %}
                 for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
                     cpuif_wr_biten[i*8 +: 8] <= {8{ {{-cpuif.signal("pstrb")}}[i]}};
                 end
+                {%- endif %}
             end
         end else begin
             cpuif_req <= '0;

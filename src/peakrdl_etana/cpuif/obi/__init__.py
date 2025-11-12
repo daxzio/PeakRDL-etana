@@ -10,19 +10,19 @@ class OBI_Cpuif_flattened(CpuifBase):
     def port_declaration(self) -> str:
         lines = [
             # OBI Request Channel (A)
-            "input wire " + self.signal("req"),
-            "output logic " + self.signal("gnt"),
-            f"input wire [{self.addr_width-1}:0] " + self.signal("addr"),
-            "input wire " + self.signal("we"),
-            f"input wire [{self.data_width//8-1}:0] " + self.signal("be"),
-            f"input wire [{self.data_width-1}:0] " + self.signal("wdata"),
+            self._decl("input wire", 1, self.signal("req")),
+            self._decl("output wire", 1, self.signal("gnt")),
+            self._decl("input wire", self.addr_width, self.signal("addr")),
+            self._decl("input wire", 1, self.signal("we")),
+            self._decl("input wire", self.data_width // 8, self.signal("be")),
+            self._decl("input wire", self.data_width, self.signal("wdata")),
             "input wire [ID_WIDTH-1:0] " + self.signal("aid"),
             # OBI Response Channel (R)
-            "output logic " + self.signal("rvalid"),
-            "input wire " + self.signal("rready"),
-            f"output logic [{self.data_width-1}:0] " + self.signal("rdata"),
-            "output logic " + self.signal("err"),
-            "output logic [ID_WIDTH-1:0] " + self.signal("rid"),
+            self._decl("output wire", 1, self.signal("rvalid")),
+            self._decl("input wire", 1, self.signal("rready")),
+            self._decl("output wire", self.data_width, self.signal("rdata")),
+            self._decl("output wire", 1, self.signal("err")),
+            "output wire [ID_WIDTH-1:0] " + self.signal("rid"),
         ]
         return ",\n".join(lines)
 

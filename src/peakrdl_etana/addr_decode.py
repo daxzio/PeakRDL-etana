@@ -10,6 +10,10 @@ from .utils import (
     external_policy,
     has_sw_readable_descendants,
     has_sw_writable_descendants,
+    clog2,
+    is_pow2,
+    roundup_pow2,
+    verilog_range,
 )
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
@@ -113,12 +117,14 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         full_path = IndexedPath(self.addr_decode.top_node, node)
         array_dimensions = full_path.array_dimensions
 
+        range_str = verilog_range(active)
+        range_prefix = f"{range_str} " if range_str else ""
         if array_dimensions is None:
-            s = f"logic [{active-1}:0] {p.path};"
+            s = f"reg {range_prefix}{p.path};"
         else:
             # Format array dimensions as [dim1][dim2][dim3] for SystemVerilog
             array_suffix = "".join(f"[{dim}]" for dim in array_dimensions)
-            s = f"logic [{active-1}:0] {p.path} {array_suffix};"
+            s = f"reg {range_prefix}{p.path} {array_suffix};"
 
         self._logic_stack.append(s)
 
@@ -129,7 +135,9 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
-            s = f"logic {p.path};"
+            range_str = verilog_range(1)
+            range_prefix = f"{range_str} " if range_str else ""
+            s = f"reg {range_prefix}{p.path};"
             self._logic_stack.append(s)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -142,7 +150,9 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             # Declare strobe signal for external addrmap
             p = self.addr_decode.get_external_block_access_strobe(node)
-            s = f"logic {p.path};"
+            range_str = verilog_range(1)
+            range_prefix = f"{range_str} " if range_str else ""
+            s = f"reg {range_prefix}{p.path};"
             self._logic_stack.append(s)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -152,7 +162,9 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
             raise
         # Declare strobe signal for external mem
         p = self.addr_decode.get_external_block_access_strobe(node)
-        s = f"logic {p.path};"
+        range_str = verilog_range(1)
+        range_prefix = f"{range_str} " if range_str else ""
+        s = f"reg {range_prefix}{p.path};"
         self._logic_stack.append(s)
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:

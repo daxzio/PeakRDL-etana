@@ -73,3 +73,14 @@ class CpuifBase:
 
         template = jj_env.get_template(self.template_path)
         return template.render(context)
+
+    @staticmethod
+    def _range(width: int) -> str:
+        """Return Verilog range syntax, omitting scalars."""
+        return f"[{width-1}:0]" if width > 1 else ""
+
+    def _decl(self, prefix: str, width: int, name: str) -> str:
+        range_str = self._range(width)
+        if range_str:
+            return f"{prefix} {range_str} {name}"
+        return f"{prefix} {name}"

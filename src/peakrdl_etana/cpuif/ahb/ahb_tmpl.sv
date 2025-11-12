@@ -9,13 +9,13 @@ localparam HRESP_OKAY  = 1'b0;
 localparam HRESP_ERROR = 1'b1;
 
 // Request
-logic is_active;
-logic [{{cpuif.addr_width-1}}:0] addr_captured;
+reg is_active;
+reg [{{cpuif.addr_width-1}}:0] addr_captured;
 {%- if cpuif.data_width_bytes > 1 %}
-logic [{{clog2(cpuif.data_width_bytes)-1}}:0] addr_offset_captured;
+reg [{{clog2(cpuif.data_width_bytes)-1}}:0] addr_offset_captured;
 {%- endif %}
-logic write_captured;
-logic [2:0] size_captured;
+reg write_captured;
+reg [2:0] size_captured;
 
 always {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
@@ -218,7 +218,7 @@ always {{get_always_ff_event(cpuif.reset)}} begin
 end
 
 // Response
-logic [{{cpuif.data_width-1}}:0] read_data_extracted;
+reg [{{cpuif.data_width-1}}:0] read_data_extracted;
 
 // Extract read data based on captured HSIZE and address offset
 always @(*) begin
