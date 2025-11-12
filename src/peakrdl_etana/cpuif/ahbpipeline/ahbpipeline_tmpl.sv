@@ -36,6 +36,7 @@ logic [{{cpuif.data_width-1}}:0] stage1_wr_biten;
 
 logic queue_full_now;
 logic pop_stage0;
+logic stall_now;
 logic hready_int;
 
 always {{get_always_ff_event(cpuif.reset)}} begin
@@ -447,7 +448,8 @@ end
 
 assign queue_full_now = stage0_valid && stage1_valid;
 assign pop_stage0 = stage0_inflight && (cpuif_rd_ack || cpuif_wr_ack);
-assign hready_int = ~(queue_full_now && !pop_stage0);
+assign stall_now = (stage0_valid && stage0_write && !stage0_data_ready) || (stage0_inflight && !pop_stage0);
+assign hready_int = ~(stall_now || (queue_full_now && !pop_stage0));
 
 // Response extraction uses active stage information
 logic [{{cpuif.data_width-1}}:0] read_data_extracted;

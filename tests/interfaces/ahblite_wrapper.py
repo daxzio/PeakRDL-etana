@@ -2,10 +2,7 @@ import logging
 from cocotb import start_soon
 from cocotb.triggers import RisingEdge
 
-from cocotbext.ahb import AHBBus
-from cocotbext.ahb import AHBLiteMaster
-from cocotbext.ahb import AHBMonitor
-from cocotbext.ahb import AHBTrans, AHBBurst
+from cocotbext.ahb import AHBBus, AHBLiteMaster, AHBMonitor, AHBTrans, AHBBurst
 
 # from cocotbext.ahb import AHBMaster
 

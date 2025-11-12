@@ -1,11 +1,10 @@
+import math
 import logging
 from cocotb import start_soon
 from cocotb.triggers import RisingEdge
 
-from cocotbext.ahb import AHBBus
-from cocotbext.ahb import AHBLiteMaster
-from cocotbext.ahb import AHBMonitor
-from cocotbext.ahb import AHBTrans, AHBBurst
+from cocotbext.ahb import AHBBus, AHBLiteMaster, AHBMonitor, AHBTrans, AHBBurst
+
 
 # from cocotbext.ahb import AHBMaster
 
@@ -85,23 +84,42 @@ class AHBPipelineMasterDX(AHBLiteMaster):
         self,
         address: Union[int, Sequence[int]],
         value: Union[int, Sequence[int]],
-        length: int = 1,
+        mode: Union[int, Sequence[int]],
+        length: None,
     ):
+        if length is None:
+            self.length = self.incr
+        else:
+            self.length = length
+        if not math.log2(self.length).is_integer():
+            raise Exception(f"Length {self.length} must be a power of 2!")
+        self.addresses = []
+        self.mode = []
         if isinstance(address, collections.abc.Sequence):
-            self.addresses = address
+            self.addresses.append(address)
+            self.mode.append(mode)
         else:
-            self.addresses = []
-            for i in range(length):
+            for i in range(self.length // self.incr):
                 self.addresses.append(address + (i * self.incr))
+                self.mode.append(mode)
+        self.values = []
         if isinstance(value, collections.abc.Sequence):
-            self.values = value
+            self.values.append(value)
         else:
-            self.values = []
-            for i in range(length):
+            for i in range(self.length // self.incr):
                 if -1 == value:
                     self.values.append(value)
                 else:
                     self.values.append((value >> (i * self.buswidth)) & self.mask)
+
+    #         self.size = []
+    #         x = int(math.log2(len(self.addresses)))+1
+    #         x = 8
+    #         x = self.incr
+    #         print("x", x)
+    #         for i in range(self.length//self.incr):
+    #            self.size.append(x)
+    #         print(self.size)
 
     def enable_backpressure(self):
         self.backpressure = True
@@ -113,13 +131,15 @@ class AHBPipelineMasterDX(AHBLiteMaster):
         self,
         address: Union[int, Sequence[int]],
         value: Union[int, Sequence[int]],
-        length: Optional[int] = 1,
+        length: Optional[int] = None,
         error_expected: bool = False,
         **kwargs,
     ) -> Sequence[dict]:
-        self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
+        self.prepare_addresses(address, value, 1, length)  # type: ignore[arg-type]
 
-        ret = await super().write(self.addresses, self.values, **kwargs)
+        ret = await super().custom(
+            self.addresses, self.values, mode=self.mode, **kwargs
+        )
 
         # Check for error response (hresp != 0)
         for i, x in enumerate(ret):
@@ -142,12 +162,12 @@ class AHBPipelineMasterDX(AHBLiteMaster):
         self,
         address: Union[int, Sequence[int]],
         value: Optional[Union[int, Sequence[int]]] = -1,
-        length: Optional[int] = 1,
+        length: Optional[int] = None,
         error_expected: bool = False,
         **kwargs,
     ) -> Sequence[dict]:
-        self.prepare_addresses(address, value, length)  # type: ignore[arg-type]
-        ret = await super().read(self.addresses, **kwargs)
+        self.prepare_addresses(address, value, 0, length)  # type: ignore[arg-type]
+        ret = await super().custom(self.addresses, self.mode, mode=self.mode, **kwargs)
 
         for i, x in enumerate(ret):
             self.returned_val = int(x["data"], 16)

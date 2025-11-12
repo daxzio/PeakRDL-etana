@@ -13,23 +13,23 @@ class testbench:
         if hasattr(dut, "s_cpuif_req"):
             from interfaces.passthrough import PTBus, PTMaster
 
-            pt_bus = PTBus.from_prefix(dut, "s_cpuif")
-            self.intf = PTMaster(pt_bus, getattr(dut, "clk"))
+            self.pt_bus = PTBus.from_prefix(dut, "s_cpuif")
+            self.intf = PTMaster(self.pt_bus, getattr(dut, "clk"))
         elif hasattr(dut, "s_apb_penable"):
             from cocotbext.apb import ApbBus
             from cocotbext.apb import ApbMaster
 
-            apb_bus = ApbBus.from_prefix(dut, "s_apb")
-            self.intf = ApbMaster(apb_bus, getattr(dut, "clk"))
+            self.apb_bus = ApbBus.from_prefix(dut, "s_apb")
+            self.intf = ApbMaster(self.apb_bus, getattr(dut, "clk"))
         elif hasattr(dut, "s_ahb_hsel"):
             from cocotbext.ahb import AHBBus
 
             # from cocotbext.ahb import AHBMaster
-            from interfaces.ahblite_wrapper import AHBLiteMasterDX
+            from interfaces.ahbpipeline_wrapper import AHBPipelineMasterDX
 
-            ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
-            self.intf = AHBLiteMasterDX(
-                ahb_bus, getattr(dut, "clk"), getattr(dut, "rst")
+            self.ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
+            self.intf = AHBPipelineMasterDX(
+                self.ahb_bus, getattr(dut, "clk"), getattr(dut, "rst")
             )
 
             # self.intf = AHBMaster(ahb_bus, getattr(dut, "clk"), getattr(dut, "rst"))
@@ -40,13 +40,13 @@ class testbench:
         elif hasattr(dut, "s_obi_req"):
             from cocotbext.obi import ObiBus, ObiMaster
 
-            obi_bus = ObiBus.from_prefix(dut, "s_obi")
-            self.intf = ObiMaster(obi_bus, getattr(dut, "clk"))
+            self.obi_bus = ObiBus.from_prefix(dut, "s_obi")
+            self.intf = ObiMaster(self.obi_bus, getattr(dut, "clk"))
         elif hasattr(dut, "avalon_read"):
             from cocotbext.avalon import AvalonBus, AvalonMaster
 
-            avalon_bus = AvalonBus.from_prefix(dut, "avalon")
-            self.intf = AvalonMaster(avalon_bus, getattr(dut, "clk"))
+            self.avalon_bus = AvalonBus.from_prefix(dut, "avalon")
+            self.intf = AvalonMaster(self.avalon_bus, getattr(dut, "clk"))
         else:
             raise Exception("Unsupported interface")
 
