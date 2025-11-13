@@ -1,3 +1,4 @@
+import math
 from typing import TYPE_CHECKING, Union, Optional, List
 
 from systemrdl.node import FieldNode, RegNode
@@ -85,6 +86,12 @@ class AddressDecode:
         else:
             p = IndexedPath(self.top_node, node)
 
+        if p.array_dimensions is not None and math.prod(p.array_dimensions) == 1:
+            p.array_dimensions = None  # type: ignore[assignment]
+
+        if p.array_dimensions is None or p.element_count == 1:
+            p.index = []
+
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
@@ -116,15 +123,28 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         # Use IndexedPath to get ALL nested array dimensions
         full_path = IndexedPath(self.addr_decode.top_node, node)
         array_dimensions = full_path.array_dimensions
+        if array_dimensions is not None and math.prod(array_dimensions) == 1:
+            array_dimensions = None
 
-        range_str = verilog_range(active)
-        range_prefix = f"{range_str} " if range_str else ""
+        bit_width = active if active > 0 else 1
+
         if array_dimensions is None:
+            range_str = verilog_range(bit_width)
+            range_prefix = f"{range_str} " if range_str else ""
             s = f"reg {range_prefix}{p.path};"
         else:
-            # Format array dimensions as [dim1][dim2][dim3] for SystemVerilog
             array_suffix = "".join(f"[{dim}]" for dim in array_dimensions)
-            s = f"reg {range_prefix}{p.path} {array_suffix};"
+            if active == 1 and len(array_dimensions) == 1:
+                total_width = array_dimensions[0]
+                range_str = verilog_range(total_width)
+                if range_str:
+                    s = f"reg {range_str} {p.path};"
+                else:
+                    s = f"reg {p.path};"
+            else:
+                range_str = verilog_range(bit_width)
+                range_prefix = f"{range_str} " if range_str else ""
+                s = f"reg {range_prefix}{p.path} {array_suffix};"
 
         self._logic_stack.append(s)
 

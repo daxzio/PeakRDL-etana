@@ -37,10 +37,20 @@ class SVLogic:
     Represents a SystemVerilog logic signal
     """
 
-    def __init__(self, name: str, width: int, default_assignment: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        width: int,
+        default_assignment: str,
+        *,
+        flattened: bool = False,
+        array_dim: int = 1,
+    ) -> None:
         self.name = name
         self.width = width
         self.default_assignment = default_assignment
+        self.flattened = flattened
+        self.array_dim = array_dim
 
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, SVLogic):
@@ -50,6 +60,8 @@ class SVLogic:
             o.name == self.name
             and o.width == self.width
             and o.default_assignment == self.default_assignment
+            and o.flattened == self.flattened
+            and o.array_dim == self.array_dim
         )
 
 

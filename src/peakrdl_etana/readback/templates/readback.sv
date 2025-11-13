@@ -1,6 +1,6 @@
 {% if array_assignments is not none %}
 // Assign readback values to a flattened array
-wire [{{cpuif.data_width-1}}:0] readback_array[{{array_size}}];
+wire [{{cpuif.data_width*array_size-1}}:0] readback_array;
 {{array_assignments}}
 
 
@@ -12,17 +12,17 @@ for(genvar g=0; g<{{fanin_loop_iter}}; g++) begin
     always @(*) begin
         reg [{{cpuif.data_width-1}}:0] readback_data_var;
         readback_data_var = '0;
-        for(int i=g*{{fanin_stride}}; i<((g+1)*{{fanin_stride}}); i++) readback_data_var |= readback_array[i];
+        for(int i=g*{{fanin_stride}}; i<((g+1)*{{fanin_stride}}); i++) readback_data_var |= readback_array[i*{{cpuif.data_width}} +: {{cpuif.data_width}}];
         readback_array_c[g] = readback_data_var;
     end
 end
 {%- if fanin_residual_stride == 1 %}
-assign readback_array_c[{{fanin_array_size-1}}] = readback_array[{{array_size-1}}];
+assign readback_array_c[{{fanin_array_size-1}}] = readback_array[{{(array_size-1)*cpuif.data_width}} +: {{cpuif.data_width}}];
 {%- elif fanin_residual_stride > 1 %}
 always @(*) begin
     reg [{{cpuif.data_width-1}}:0] readback_data_var;
     readback_data_var = '0;
-    for(int i={{(fanin_array_size-1) * fanin_stride}}; i<{{array_size}}; i++) readback_data_var |= readback_array[i];
+    for(int i={{(fanin_array_size-1) * fanin_stride}}; i<{{array_size}}; i++) readback_data_var |= readback_array[i*{{cpuif.data_width}} +: {{cpuif.data_width}}];
     readback_array_c[{{fanin_array_size-1}}] = readback_data_var;
 end
 {%- endif %}
@@ -73,7 +73,7 @@ always @(*) begin
     readback_err = '0;
 {%- endif %}
     readback_data_var = '0;
-    for(int i=0; i<{{array_size}}; i++) readback_data_var |= readback_array[i];
+    for(int i=0; i<{{array_size}}; i++) readback_data_var |= readback_array[i*{{cpuif.data_width}} +: {{cpuif.data_width}}];
     readback_data = readback_data_var;
 end
 {%- endif %}

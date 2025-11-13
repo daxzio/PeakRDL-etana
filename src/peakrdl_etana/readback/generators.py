@@ -1,3 +1,4 @@
+import re
 from typing import TYPE_CHECKING, List
 
 from systemrdl.node import RegNode, MemNode, AddressableNode
@@ -11,6 +12,9 @@ from ..utils import (
     is_inside_external_block,
     external_policy,
     has_sw_readable_descendants,
+    simplify_linear_expr,
+    simplify_width_expr,
+    scale_linear_expr,
 )
 
 if TYPE_CHECKING:
@@ -28,12 +32,21 @@ class ReadbackLoopBody(LoopBody):
         s = super().__str__()
         token = f"${self.iterator}sz"
         s = s.replace(token, str(self.n_regs))
+        if self.n_regs == 1:
+            s = re.sub(r"\*1\b", "", s)
+        s = re.sub(r"\+ 0\b", "", s)
+        s = re.sub(r"\b0 \+\s*", "", s)
         return s
 
 
 class ReadbackAssignmentGenerator(RDLForLoopGenerator):
     i_type = "genvar"
     loop_body_cls = ReadbackLoopBody  # type: ignore[assignment]
+
+    _range_pattern = re.compile(
+        r"readback_array\[(?P<idx>[^\]]+)\]\[(?P<msb>[^:\]]+):(?P<lsb>[^\]]+)\]"
+    )
+    _index_pattern = re.compile(r"readback_array\[(?P<idx>[^\]]+)\]")
 
     def __init__(self, exp: "RegblockExporter") -> None:
         super().__init__()
@@ -621,3 +634,48 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
             )
             self.current_offset += 1
+
+    def add_content(self, s: str) -> None:  # type: ignore[override]
+        super().add_content(self._transform_readback_access(s))
+
+    def _transform_readback_access(self, text: str) -> str:
+        data_w = self.exp.cpuif.data_width
+
+        def repl_range(match: re.Match[str]) -> str:
+            idx = simplify_linear_expr(match.group("idx").strip())
+            msb = match.group("msb").strip()
+            lsb = match.group("lsb").strip()
+
+            lsb_expr = "0" if lsb in {"'0", "0'", "0"} else lsb
+
+            width_expr = simplify_width_expr(f"({msb})-({lsb_expr})+1")
+            start_expr = scale_linear_expr(idx, data_w)
+            if lsb_expr != "0":
+                lsb_simplified = simplify_linear_expr(lsb_expr)
+                start_expr = simplify_linear_expr(f"{start_expr}+{lsb_simplified}")
+            return f"readback_array[{start_expr} +: {width_expr}]"
+
+        text = self._range_pattern.sub(repl_range, text)
+
+        def repl_index(match: re.Match[str]) -> str:
+            idx = match.group("idx").strip()
+            if "+:" in idx or "-:" in idx:
+                return match.group(0)
+            idx = simplify_linear_expr(idx)
+            start_expr = scale_linear_expr(idx, data_w)
+            return f"readback_array[{start_expr} +: {data_w}]"
+
+        text = self._index_pattern.sub(repl_index, text)
+        return self._cleanup_part_selects(text)
+
+    def _cleanup_part_selects(self, text: str) -> str:
+        pattern = re.compile(
+            r"readback_array\[(?P<start>[^\]]*?)\s*\+\:\s*(?P<width>[^\]]+)\]"
+        )
+
+        def repl(match: re.Match[str]) -> str:
+            start = simplify_linear_expr(match.group("start"))
+            width = simplify_width_expr(match.group("width"))
+            return f"readback_array[{start} +: {width}]"
+
+        return pattern.sub(repl, text)

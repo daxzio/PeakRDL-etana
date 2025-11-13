@@ -10,7 +10,7 @@ always @(*) begin
     load_next_c = '0;
 
     {%- for signal in extra_combo_signals %}
-    {{field_logic.get_field_combo_identifier(node, signal.name)}} = {{signal.default_assignment}};
+    {{field_logic.get_field_combo_identifier(node, signal.name, width=signal.width)}} = {{signal.default_assignment}};
     {%- endfor %}
     {% for conditional in conditionals %}
     {%- if not loop.first %} else {% endif %}if({{conditional.get_predicate(node)}}) begin // {{conditional.comment}}

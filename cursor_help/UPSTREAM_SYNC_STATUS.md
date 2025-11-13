@@ -1,6 +1,6 @@
 # PeakRDL-etana Upstream Sync Status
 
-## Current Status (Last Updated: October 27, 2025)
+## Current Status (Last Updated: November 13, 2025)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
 **Upstream Location:** `/home/gomez/projects/PeakRDL-regblock`
@@ -10,8 +10,10 @@
 **Last Official Sync:** v1.1.1 (January 2025)
 **Architecture:** Flattened signals only (no SystemVerilog structs)
 
-**Status:** ✅ **FULLY SYNCED** - All critical fixes applied
-**Next Sync Review:** January 2026 (quarterly schedule)
+**Status:** ⚠️ **DIVERGED (Verilog-only branch work in progress)**
+Large-scale Verilog compliance refactors (wire/reg split, flattened packed arrays, shared expression helpers) have landed locally but are not reflected upstream. Future syncs must reconcile these structural differences before blindly porting new commits.
+
+**Next Sync Review:** ASAP after upstream publishes the next tagged release or before merging any additional upstream fixes (target: December 2025)
 
 ---
 
@@ -62,7 +64,7 @@ For each commit, determine:
 1. Read the upstream change
 2. Identify files affected
 3. Apply to matching etana files (see file mapping below)
-4. Adapt if needed (struct → flattened signals)
+4. Adapt if needed (struct → flattened signals). When changes involve index math or array part-selects, update the shared helpers in `src/peakrdl_etana/utils.py` instead of inlining regex fixes.
 5. Test thoroughly
 
 ### Step 4: Update This Document
@@ -162,6 +164,12 @@ Add the fix to "Fixes Applied" section below with:
     - Status: Need to verify etana's AHB is up-to-date
     - Action: Compare implementations
     - Effort: 1 hour
+
+24. **Verilog Compliance Helpers (local refactor, Nov 2025)**
+    - Local branch introduced `simplify_linear_expr`, `scale_linear_expr`, packed-vector readback/field storage updates, and decoded strobe adjustments.
+    - Status: **Etana-only**; upstream still uses struct-based helpers. Decide whether to propose upstream equivalent utilities or maintain fork-only divergence.
+    - Action: Document delta vs upstream templates and ensure future sync work reuses the shared helpers instead of reinstating ad-hoc regex logic.
+    - Effort: 1-2 hours to prepare comparison notes.
 
 ---
 

@@ -1,3 +1,5 @@
+import ast
+import math
 import re
 from typing import Match, Union, Optional, List, TYPE_CHECKING
 
@@ -47,6 +49,10 @@ class IndexedPath:
         # Convert to None if empty
         if not self.array_dimensions:
             self.array_dimensions = None  # type: ignore[assignment]
+
+        self.element_count = 1
+        if self.array_dimensions is not None:
+            self.element_count = math.prod(self.array_dimensions)
 
         try:
             self.width = self.target_node.width  # type: ignore[attr-defined]
@@ -113,6 +119,134 @@ class IndexedPath:
             for i in self.array_dimensions:
                 s += f"[{i}]"
         return s
+
+    @property
+    def flatten_index_expr(self) -> Optional[str]:
+        if not self.index or self.array_dimensions is None:
+            return None
+
+        if len(self.index) != len(self.array_dimensions):
+            return None
+
+        strides: List[int] = []
+        stride = 1
+        for dim in reversed(self.array_dimensions):
+            strides.insert(0, stride)
+            stride *= dim
+
+        terms: List[str] = []
+        for idx, stride in zip(self.index, strides):
+            if stride == 1:
+                terms.append(idx)
+            else:
+                terms.append(f"{idx}*{stride}")
+
+        if not terms:
+            return None
+        expr = " + ".join(terms)
+        return expr
+
+
+_ZERO_LITERAL_RE = re.compile(r"^'?([a-zA-Z]*d)?0$")
+
+
+def strip_outer_parens(expr: str) -> str:
+    expr = expr.strip()
+    while expr.startswith("(") and expr.endswith(")"):
+        inner = expr[1:-1].strip()
+        if inner.count("(") != inner.count(")"):
+            break
+        expr = inner
+    return expr
+
+
+def simplify_linear_expr(expr: str) -> str:
+    expr = strip_outer_parens(expr)
+    expr = re.sub(r"\s+", "", expr)
+
+    substitutions = (
+        (r"\*1(?=$|[\+\-\)])", ""),
+        (r"(^|[\+\-\(])1\*", r"\1"),
+        (r"\*1\*", "*"),
+        (r"\+0(?=$|[\+\-\)])", ""),
+        (r"(^|[\+\-\(])0\+", r"\1"),
+        (r"-0(?=$|[\+\-\)])", ""),
+    )
+    for pattern, replacement in substitutions:
+        expr = re.sub(pattern, replacement, expr)
+
+    return strip_outer_parens(expr)
+
+
+def _is_zero_literal(expr: str) -> bool:
+    return expr in {"0", "'0", "0'"} or bool(_ZERO_LITERAL_RE.fullmatch(expr))
+
+
+def scale_linear_expr(expr: str, factor: int) -> str:
+    expr = simplify_linear_expr(expr)
+
+    if factor == 0:
+        return "0"
+    if factor == 1 or _is_zero_literal(expr):
+        return expr
+
+    needs_paren = any(op in expr for op in "+-")
+    if needs_paren and not (expr.startswith("(") and expr.endswith(")")):
+        expr = f"({expr})"
+
+    result = f"{expr}*{factor}"
+    return simplify_linear_expr(result)
+
+
+_ALLOWED_BIN_OPS = (ast.Add, ast.Sub, ast.Mult)
+_ALLOWED_UNARY_OPS = (ast.UAdd, ast.USub)
+
+
+def _eval_constant_expr(expr: str) -> Optional[int]:
+    expr = strip_outer_parens(expr)
+    if not expr:
+        return None
+
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return None
+
+    def _eval(node: ast.AST) -> Optional[int]:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, int):
+            return node.value
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, _ALLOWED_UNARY_OPS):
+            operand = _eval(node.operand)
+            if operand is None:
+                return None
+            if isinstance(node.op, ast.UAdd):
+                return +operand
+            if isinstance(node.op, ast.USub):
+                return -operand
+        if isinstance(node, ast.BinOp) and isinstance(node.op, _ALLOWED_BIN_OPS):
+            left = _eval(node.left)
+            right = _eval(node.right)
+            if left is None or right is None:
+                return None
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+        return None
+
+    return _eval(tree)
+
+
+def simplify_width_expr(expr: str) -> str:
+    expr = simplify_linear_expr(expr)
+    value = _eval_constant_expr(expr)
+    if value is not None:
+        return str(value)
+    return expr
 
 
 def clog2(n: int) -> int:

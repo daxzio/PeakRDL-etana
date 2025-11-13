@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union, Dict, List
+from typing import TYPE_CHECKING, Union, Dict, List, Optional
 
 from systemrdl.rdltypes import PrecedenceType, InterruptType
 
@@ -11,7 +11,7 @@ from . import hw_set_clr
 from . import hw_interrupts
 from . import hw_interrupts_with_write
 
-from ..utils import IndexedPath
+from ..utils import IndexedPath, simplify_linear_expr, scale_linear_expr
 from ..sv_int import SVInt
 
 from .generators import FieldLogicGenerator
@@ -29,6 +29,7 @@ class FieldLogic:
         self._sw_conditionals: Dict[int, List[NextStateConditional]] = {}
 
         self.init_conditionals()
+        self.flatten_field_storage = True
 
     @property
     def ds(self) -> "DesignState":
@@ -64,10 +65,33 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_value"
-        if declare and not 0 == len(p.index):
-            s += f" {p.array_instances} "
-        else:
-            s += f"{p.index_str}"
+        if declare:
+            if (
+                self.flatten_field_storage
+                and p.array_dimensions is not None
+                and p.element_count > 1
+            ):
+                return s
+            if not 0 == len(p.index):
+                s += f" {p.array_instances} "
+            return s
+
+        if (
+            self.flatten_field_storage
+            and p.array_dimensions is not None
+            and p.element_count > 1
+        ):
+            index_expr = p.flatten_index_expr
+            if index_expr is None:
+                return s
+            index_expr = simplify_linear_expr(index_expr)
+            width = field.width
+            if width == 1:
+                return f"{s}[{index_expr}]"
+            start_expr = scale_linear_expr(index_expr, width)
+            return f"{s}[{start_expr} +: {width}]"
+
+        s += f"{p.index_str}"
         return s
 
     def get_next_q_identifier(self, field: "FieldNode", declare: bool = False) -> str:
@@ -78,14 +102,41 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_next_q"
-        if declare and not 0 == len(p.index):
-            s += f" {p.array_instances} "
-        else:
-            s += f"{p.index_str}"
+        if declare:
+            if (
+                self.flatten_field_storage
+                and p.array_dimensions is not None
+                and p.element_count > 1
+            ):
+                return s
+            if not 0 == len(p.index):
+                s += f" {p.array_instances} "
+            return s
+
+        if (
+            self.flatten_field_storage
+            and p.array_dimensions is not None
+            and p.element_count > 1
+        ):
+            index_expr = p.flatten_index_expr
+            if index_expr is None:
+                return s
+            index_expr = simplify_linear_expr(index_expr)
+            width = field.width
+            if width == 1:
+                return f"{s}[{index_expr}]"
+            start_expr = scale_linear_expr(index_expr, width)
+            return f"{s}[{start_expr} +: {width}]"
+
+        s += f"{p.index_str}"
         return s
 
     def get_field_combo_identifier(
-        self, field: "FieldNode", name: str, declare: bool = False
+        self,
+        field: "FieldNode",
+        name: str,
+        declare: bool = False,
+        width: Optional[int] = None,
     ) -> str:
         """
         Returns a Verilog string that represents a field's internal combinational
@@ -94,11 +145,57 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_combo_{p.path}_{name}"
-        if declare and not 0 == len(p.index):
-            s += f" {p.array_instances} "
-        else:
-            s += f"{p.index_str}"
+        if declare:
+            if (
+                self.flatten_field_storage
+                and p.array_dimensions is not None
+                and p.element_count > 1
+            ):
+                return s
+            if not 0 == len(p.index):
+                s += f" {p.array_instances} "
+            return s
+
+        if (
+            self.flatten_field_storage
+            and p.array_dimensions is not None
+            and p.element_count > 1
+        ):
+            index_expr = p.flatten_index_expr
+            if index_expr is None:
+                return s
+
+            resolved_width = (
+                width if width is not None else self._combo_width(field, name)
+            )
+            if resolved_width == 1:
+                return f"{s}[{index_expr}]"
+            start_expr = scale_linear_expr(index_expr, resolved_width)
+            return f"{s}[{start_expr} +: {resolved_width}]"
+
+        s += f"{p.index_str}"
         return s
+
+    def _combo_width(self, field: "FieldNode", name: str) -> int:
+        if name == "next":
+            return field.width
+        if name == "load_next":
+            return 1
+        if name in {
+            "overflow",
+            "underflow",
+            "incrthreshold",
+            "incrsaturate",
+            "decrthreshold",
+            "decrsaturate",
+            "parity_error",
+        }:
+            return 1
+        return field.width
+
+    def get_element_count(self, field: "FieldNode") -> int:
+        p = IndexedPath(self.top_node, field)
+        return p.element_count
 
     def get_counter_incr_strobe(self, field: "FieldNode") -> str:
         """
@@ -346,10 +443,29 @@ class FieldLogic:
         """
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_parity"
-        if declare and not 0 == len(p.index):
-            s += f" {p.array_instances} "
-        else:
-            s += f"{p.index_str}"
+        if declare:
+            if (
+                self.flatten_field_storage
+                and p.array_dimensions is not None
+                and p.element_count > 1
+            ):
+                return s
+            if not 0 == len(p.index):
+                s += f" {p.array_instances} "
+            return s
+
+        if (
+            self.flatten_field_storage
+            and p.array_dimensions is not None
+            and p.element_count > 1
+        ):
+            index_expr = p.flatten_index_expr
+            if index_expr is None:
+                return s
+            # parity storage is single bit per element
+            return f"{s}[{index_expr}]"
+
+        s += f"{p.index_str}"
         return s
 
     def get_parity_error_identifier(
@@ -360,10 +476,28 @@ class FieldLogic:
         """
         p = IndexedPath(self.top_node, field)
         s = f"field_combo_{p.path}_parity_error"
-        if declare and not 0 == len(p.index):
-            s += f" {p.array_instances} "
-        else:
-            s += f"{p.index_str}"
+        if declare:
+            if (
+                self.flatten_field_storage
+                and p.array_dimensions is not None
+                and p.element_count > 1
+            ):
+                return s
+            if not 0 == len(p.index):
+                s += f" {p.array_instances} "
+            return s
+
+        if (
+            self.flatten_field_storage
+            and p.array_dimensions is not None
+            and p.element_count > 1
+        ):
+            index_expr = p.flatten_index_expr
+            if index_expr is None:
+                return s
+            return f"{s}[{index_expr}]"
+
+        s += f"{p.index_str}"
         return s
 
     def has_next_q(self, field: "FieldNode") -> bool:
