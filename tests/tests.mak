@@ -22,6 +22,13 @@ YOSYS=0
 GIT_CHECK=0
 
 SYNTH_OUTPUT?=synth-rtl
+VIVADO_PART?=xc7a100tcsg324-1
+VIVADO_SCRIPT?=$(abspath $(SYNTH_OUTPUT)/vivado_synth.tcl)
+VIVADO_REPORT?=$(abspath $(SYNTH_OUTPUT)/vivado_utilization.rpt)
+HDL_DIR?=etana-rtl
+VIVADO_GLOB?=*.sv
+VIVADO_READ_CMD?=read_verilog -sv
+SYNTH_SOURCE_TARGET?=etana
 
 # MULTIDRIVEN test_counter_basics
 # ALWCOMBORDER test_counter_basics
@@ -37,6 +44,8 @@ ifeq ($(REGBLOCK),1)
 	COMPILE_ARGS += -Wno-WIDTHEXPAND
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
+	HDL_DIR=regblock-rtl
+	SYNTH_SOURCE_TARGET=regblock
 endif
 ifeq ($(GHDL),1)
     override SIM=ghdl
@@ -47,6 +56,10 @@ ifeq ($(GHDL),1)
         ./regblock-vhdl-rtl/*.vhd \
 		../interfaces/reg_utils.vhd
 	EXTRA_ARGS += --std=08
+	HDL_DIR=regblock-vhdl-rtl
+	VIVADO_GLOB=*.vhd
+	VIVADO_READ_CMD=read_vhdl
+	SYNTH_SOURCE_TARGET=regblock-vhdl
 endif
 ifeq ($(NVC),1)
     override SIM=nvc
@@ -134,8 +147,48 @@ yosys: etana
 	rm -rf $(SYNTH_OUTPUT)/*
 	yosys -q -s ../synthesis.ys
 
+vivado-synth: $(SYNTH_SOURCE_TARGET)
+	@if [ -z "$(strip $(VIVADO_PART))" ]; then \
+		echo "❌ ERROR: VIVADO_PART is not set. Example: make vivado-synth VIVADO_PART=xc7a100tcsg324-1"; \
+		exit 1; \
+	fi
+	@mkdir -p $(SYNTH_OUTPUT)
+	@printf "set_part %s\n" "$(VIVADO_PART)" > $(VIVADO_SCRIPT)
+	@printf '%s\n' 'set_msg_config -id {Common 17-55} -new_severity {WARNING}' >> $(VIVADO_SCRIPT)
+	@printf '%s\n' 'set rtl_dir [file normalize "./$(HDL_DIR)"]' >> $(VIVADO_SCRIPT)
+	@printf '%s\n' 'foreach file [glob -nocomplain "$${rtl_dir}/$(VIVADO_GLOB)"] {' >> $(VIVADO_SCRIPT)
+	@printf '%s\n' '    $(VIVADO_READ_CMD) $$file' >> $(VIVADO_SCRIPT)
+	@printf '%s\n' '}' >> $(VIVADO_SCRIPT)
+	@printf "synth_design -top %s -part %s\n" "$(TOPLEVEL)" "$(VIVADO_PART)" >> $(VIVADO_SCRIPT)
+	@printf "report_utilization -file %s -hierarchical -force\n" "$(VIVADO_REPORT)" >> $(VIVADO_SCRIPT)
+	@printf '%s\n' 'exit' >> $(VIVADO_SCRIPT)
+	@echo "🚀 Running Vivado synthesis for top '$(TOPLEVEL)' on part '$(VIVADO_PART)'"
+	@vivado -mode batch -nojournal -nolog -notrace -source $(VIVADO_SCRIPT)
+	@if [ ! -f "$(VIVADO_REPORT)" ]; then \
+		echo "❌ Vivado utilization report not found at $(VIVADO_REPORT)"; \
+		exit 1; \
+	fi
+	@{ \
+		stats=$$(awk -F'|' -v top="$(TOPLEVEL)" '/\|/ { \
+			for (i=1; i<=NF; ++i) {gsub(/^[ \t]+|[ \t]+$$/, "", $$i)}; \
+			if ($$2 == top && $$3 == "(top)") {print $$4" "$$8; exit} \
+		}' "$(VIVADO_REPORT)"); \
+		lut=$$(printf "%s" "$$stats" | awk '{print $$1}'); \
+		ff=$$(printf "%s" "$$stats" | awk '{print $$2}'); \
+		if [ -n "$$lut" ]; then \
+			printf "✅ Vivado Total LUTs :%8s\n" "$$lut"; \
+		else \
+			echo "⚠️  Could not determine LUT count from utilization report."; \
+		fi; \
+		if [ -n "$$ff" ]; then \
+			printf "✅ Vivado FFs        :%8s\n" "$$ff"; \
+		else \
+			echo "⚠️  Could not determine FF count from utilization report."; \
+		fi; \
+	}
+
 clean::
-	rm -rf sim_build/ __pycache__/ results.xml *.fst rdl-rtl
+	rm -rf sim_build/ __pycache__/ results.xml *.fst rdl-rtl $(SYNTH_OUTPUT)
 
 waves:
 	gtkwave sim_build/regblock.fst &
