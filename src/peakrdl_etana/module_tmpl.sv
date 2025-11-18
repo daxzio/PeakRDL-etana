@@ -141,6 +141,9 @@ module {{ds.module_name}}
     logic [{{cpuif.data_width-1}}:0] decoded_wr_data;
     logic [{{cpuif.data_width-1}}:0] decoded_wr_biten;
     /* verilator lint_on UNUSEDSIGNAL */
+{%- if address_decode.get_cpuif_index_logic() %}
+    {{address_decode.get_cpuif_index_logic()|indent}}
+{%- endif %}
 
     always @(*) begin
         /* verilator lint_off UNUSEDSIGNAL */

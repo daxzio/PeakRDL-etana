@@ -131,21 +131,133 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         return WalkerAction.Continue
 
     def enter_Reg(self, node: RegNode) -> WalkerAction:
-        if not node.has_sw_readable:
-            return WalkerAction.SkipDescendants
-
-        # Skip external registers - they use external rd_data protocol
-        # External modules handle their own buffering
-        if node.external:
-            # External registers always generate ONE readback entry (not per-subword)
-            # For wide external registers, the external module handles subword access
-            # and returns the appropriate data via rd_ack/rd_data
-            self.process_reg(node)
-            return WalkerAction.SkipDescendants
+        # Process ALL registers (readable and write-only) to match cpuif_index
+        # Write-only registers need readback_array entries (returning '0)
+        # to match cpuif_index assignments
 
         # Check if this register is inside an external regfile/addrmap
         # If so, skip it - the parent external block handles the readback
         if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
+            return WalkerAction.SkipDescendants
+
+        # For write-only registers, create a readback_array entry that returns '0
+        if not node.has_sw_readable:
+            # Write-only register - create readback entry returning '0
+            accesswidth = node.get_property("accesswidth")
+            regwidth = node.get_property("regwidth")
+            bus_width = self.exp.cpuif.data_width
+
+            if accesswidth < regwidth:
+                # Write-only wide register - one entry per subword
+                n_subwords = regwidth // accesswidth
+                astrb = self.exp.dereferencer.get_access_strobe(
+                    node, reduce_substrobes=False
+                )
+                for subword_idx in range(n_subwords):
+                    rd_strb = f"({astrb.path}{astrb.index_str}[{subword_idx}] && !decoded_req_is_wr)"
+                    if accesswidth < bus_width:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        )
+                    else:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        )
+                    self.current_offset += 1
+            else:
+                # Write-only normal register - one entry
+                p = self.exp.dereferencer.get_access_strobe(node)
+                rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
+                if regwidth < bus_width:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                    )
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{regwidth}] = '0;"
+                    )
+                else:
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                    )
+                self.current_offset += 1
+            return WalkerAction.SkipDescendants
+
+        # Skip external registers - they use external rd_data protocol
+        # External modules handle their own buffering
+        # BUT: External wide registers need one readback entry per subword to match cpuif_index
+        # External write-only registers also need readback entries (returning '0)
+        if node.external:
+            accesswidth = node.get_property("accesswidth")
+            regwidth = node.get_property("regwidth")
+            bus_width = self.exp.cpuif.data_width
+
+            # Check if write-only external register
+            if not node.has_sw_readable:
+                # External write-only register - create readback entries returning '0
+                if accesswidth < regwidth:
+                    # External write-only wide register - one entry per subword
+                    n_subwords = regwidth // accesswidth
+                    astrb = self.exp.dereferencer.get_access_strobe(
+                        node, reduce_substrobes=False
+                    )
+                    for subword_idx in range(n_subwords):
+                        rd_strb = f"({astrb.path}{astrb.index_str}[{subword_idx}] && !decoded_req_is_wr)"
+                        if accesswidth < bus_width:
+                            self.add_content(
+                                f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            )
+                        else:
+                            self.add_content(
+                                f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            )
+                        self.current_offset += 1
+                else:
+                    # External write-only normal register - one entry
+                    p = self.exp.dereferencer.get_access_strobe(node)
+                    rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
+                    if regwidth < bus_width:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        )
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{regwidth}] = '0;"
+                        )
+                    else:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        )
+                    self.current_offset += 1
+                return WalkerAction.SkipDescendants
+
+            # External readable register - process normally
+            if accesswidth < regwidth:
+                # External wide register: generate one readback entry per subword
+                # Each subword has a separate cpuif_index, so we need separate readback_array entries.
+                # Use rd_ack only (without hwif_out_req) to handle timing:
+                # - When retime is disabled, hwif_out_req is combinational and may not align with rd_ack
+                # - The external module returns rd_data for the requested subword (via hwif_out_req)
+                # - cpuif_index selects the correct readback_array entry based on address
+                # - Since rd_data is shared, both subwords get the same data, but cpuif_index ensures
+                #   the correct entry is selected
+                n_subwords = regwidth // accesswidth
+                rd_data = self.exp.hwif.get_external_rd_data(node, True)
+                rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
+                bus_width = self.exp.cpuif.data_width
+                for subword_idx in range(n_subwords):
+                    # Use rd_ack only - cpuif_index selects the correct entry
+                    rd_strb = f"{rd_ack}"
+                    if accesswidth < bus_width:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {rd_data} : '0;"
+                        )
+                    else:
+                        self.add_content(
+                            f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {rd_data} : '0;"
+                        )
+                    self.current_offset += 1
+            else:
+                # External normal register - one readback entry
+                self.process_reg(node)
             return WalkerAction.SkipDescendants
 
         accesswidth = node.get_property("accesswidth")
@@ -403,10 +515,17 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             )
 
             for subword_idx in range(n_subwords):
-                # Each subword gets its own readback entry
+                # Each subword gets its own readback entry to match cpuif_index assignments
                 # For external registers, rd_data is accesswidth-sized, not regwidth
                 # The external module returns only the accessed subword (32-bit)
-                rd_strb = f"({rd_ack} && {astrb.path}{astrb.index_str}[{subword_idx}])"
+                # Use only rd_ack (like normal external registers) because rd_ack timing
+                # doesn't align with decoded_reg_strb timing (1-cycle delay in emulator).
+                # Both entries will get rd_data when any subword is accessed, but that's OK
+                # because cpuif_index ensures we only read the correct entry.
+                # When accessing subword 0: cpuif_index = base, readback_array[base] has rd_data ✓
+                # When accessing subword 1: cpuif_index = base+1, readback_array[base+1] has rd_data ✓
+                # rd_data already contains the correct subword data from the external module.
+                rd_strb = f"{rd_ack}"
                 # rd_data is accesswidth wide (32-bit), return full signal
                 if accesswidth < bus_width:
                     self.add_content(
@@ -437,9 +556,28 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f"assign readback_array[{self.current_offset_str}][{high}:{low}] = '0;"
                     )
                     self.current_offset += 1
+                    subword_idx += 1
 
                 # Advance to subword that contains the start of the field
-                subword_idx = field.low // accesswidth
+                # Create entries for any empty subwords between current and target subword
+                target_subword = field.low // accesswidth
+                while subword_idx < target_subword:
+                    # Create conditional zero assignment for empty subword
+                    current_access_strb = self.exp.dereferencer.get_access_strobe(
+                        node, reduce_substrobes=False
+                    )
+                    array_indices = (
+                        current_access_strb.index_str
+                        if current_access_strb.index_str
+                        else ""
+                    )
+                    rd_strb = f"({current_access_strb.path}{array_indices}[{subword_idx}] && !decoded_req_is_wr)"
+                    self.add_content(
+                        f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                    )
+                    self.current_offset += 1
+                    subword_idx += 1
+
                 current_bit = accesswidth * subword_idx
 
             if current_bit != field.low:
@@ -604,8 +742,12 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 f"assign readback_array[{self.current_offset_str}][{high}:{low}] = '0;"
             )
             self.current_offset += 1
+            # Move to next subword
+            subword_idx += 1
 
         # Handle any remaining empty subwords
+        # We need to create entries for ALL remaining subwords to match cpuif_index
+        # which assigns indices to all subwords sequentially
         expected_subwords = node.get_property("regwidth") // accesswidth
         for remaining_subword_idx in range(subword_idx, expected_subwords):
             # Create conditional zero assignment for empty subword using correct strobe
