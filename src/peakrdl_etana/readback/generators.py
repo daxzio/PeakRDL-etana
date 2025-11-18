@@ -150,34 +150,28 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             if accesswidth < regwidth:
                 # Write-only wide register - one entry per subword
                 n_subwords = regwidth // accesswidth
-                astrb = self.exp.dereferencer.get_access_strobe(
-                    node, reduce_substrobes=False
-                )
                 for subword_idx in range(n_subwords):
-                    rd_strb = f"({astrb.path}{astrb.index_str}[{subword_idx}] && !decoded_req_is_wr)"
                     if accesswidth < bus_width:
                         self.add_content(
-                            f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = '0;"
                         )
                     else:
                         self.add_content(
-                            f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            f"assign readback_array[{self.current_offset_str}] = '0;"
                         )
                     self.current_offset += 1
             else:
                 # Write-only normal register - one entry
-                p = self.exp.dereferencer.get_access_strobe(node)
-                rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
                 if regwidth < bus_width:
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = '0;"
                     )
                     self.add_content(
                         f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{regwidth}] = '0;"
                     )
                 else:
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        f"assign readback_array[{self.current_offset_str}] = '0;"
                     )
                 self.current_offset += 1
             return WalkerAction.SkipDescendants
@@ -197,34 +191,28 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 if accesswidth < regwidth:
                     # External write-only wide register - one entry per subword
                     n_subwords = regwidth // accesswidth
-                    astrb = self.exp.dereferencer.get_access_strobe(
-                        node, reduce_substrobes=False
-                    )
                     for subword_idx in range(n_subwords):
-                        rd_strb = f"({astrb.path}{astrb.index_str}[{subword_idx}] && !decoded_req_is_wr)"
                         if accesswidth < bus_width:
                             self.add_content(
-                                f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                                f"assign readback_array[{self.current_offset_str}][{accesswidth-1}:0] = '0;"
                             )
                         else:
                             self.add_content(
-                                f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                                f"assign readback_array[{self.current_offset_str}] = '0;"
                             )
                         self.current_offset += 1
                 else:
                     # External write-only normal register - one entry
-                    p = self.exp.dereferencer.get_access_strobe(node)
-                    rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
                     if regwidth < bus_width:
                         self.add_content(
-                            f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = '0;"
                         )
                         self.add_content(
                             f"assign readback_array[{self.current_offset_str}][{bus_width-1}:{regwidth}] = '0;"
                         )
                     else:
                         self.add_content(
-                            f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                            f"assign readback_array[{self.current_offset_str}] = '0;"
                         )
                     self.current_offset += 1
                 return WalkerAction.SkipDescendants
@@ -340,10 +328,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         current_bit = 0
         p = self.exp.dereferencer.get_access_strobe(node)
-        if self.policy.is_external(node):
+        is_external = self.policy.is_external(node)
+        if is_external:
             rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
-        else:
-            rd_strb = f"({p.path}{p.index_str} && !decoded_req_is_wr)"
         # Fields are sorted by ascending low bit
         for field in node.fields():
             if not field.is_sw_readable:
@@ -355,7 +342,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     f"assign readback_array[{self.current_offset_str}][{field.low-1}:{current_bit}] = '0;"
                 )
 
-            if self.policy.is_external(node):
+            if is_external:
                 value = self.exp.hwif.get_external_rd_data(field, True)
             else:
                 value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
@@ -363,8 +350,12 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 # Field gets bitswapped since it is in [low:high] orientation
                 value = do_bitswap(value, field.width)  # type: ignore[assignment]
 
+            if is_external:
+                assign_rhs = f"{rd_strb} ? {value} : '0"
+            else:
+                assign_rhs = f"{value}"
             self.add_content(
-                f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"
+                f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {assign_rhs};"
             )
 
             current_bit = field.high + 1
@@ -386,23 +377,17 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         if accesswidth < regwidth:
             # Is wide reg
             n_subwords = regwidth // accesswidth
-            astrb = self.exp.dereferencer.get_access_strobe(
-                node, reduce_substrobes=False
-            )
             for i in range(n_subwords):
-                rd_strb = f"({astrb.path}[{i}] && !decoded_req_is_wr)"
                 bslice = f"[{(i + 1) * accesswidth - 1}:{i*accesswidth}]"
                 self.add_content(
-                    f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {rbuf}{bslice} : '0;"
+                    f"assign readback_array[{self.current_offset_str}] = {rbuf}{bslice};"
                 )
                 self.current_offset += 1
 
         else:
             # Is regular reg
-            p = self.exp.dereferencer.get_access_strobe(node)
-            rd_strb = f"({p.path} && !decoded_req_is_wr)"
             self.add_content(
-                f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rd_strb} ? {rbuf} : '0;"
+                f"assign readback_array[{self.current_offset_str}][{regwidth-1}:0] = {rbuf};"
             )
 
             bus_width = self.exp.cpuif.data_width
@@ -426,7 +411,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
         # Generate assignments for first sub-word
         bidx = 0
-        rd_strb = f"({astrb.path}[0] && !decoded_req_is_wr)"
         for field in node.fields():
             if not field.is_sw_readable:
                 continue
@@ -464,7 +448,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     )
 
                 self.add_content(
-                    f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"
+                    f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {value};"
                 )
                 bidx = accesswidth
             else:
@@ -474,7 +458,7 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     # Field gets bitswapped since it is in [low:high] orientation
                     value = do_bitswap(value, field.width)
                 self.add_content(
-                    f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {rd_strb} ? {value} : '0;"
+                    f"assign readback_array[{self.current_offset_str}][{field.high}:{field.low}] = {value};"
                 )
                 bidx = field.high + 1
 
@@ -491,10 +475,9 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         for i in range(1, n_subwords):
             # Include array indices before subword index
             array_indices = astrb.index_str if astrb.index_str else ""
-            rd_strb = f"({astrb.path}{array_indices}[{i}] && !decoded_req_is_wr)"
             bslice = f"[{(i + 1) * accesswidth - 1}:{i*accesswidth}]"
             self.add_content(
-                f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {rbuf}{bslice} : '0;"
+                f"assign readback_array[{self.current_offset_str}] = {rbuf}{bslice};"
             )
             self.current_offset += 1
 
@@ -562,18 +545,8 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                 # Create entries for any empty subwords between current and target subword
                 target_subword = field.low // accesswidth
                 while subword_idx < target_subword:
-                    # Create conditional zero assignment for empty subword
-                    current_access_strb = self.exp.dereferencer.get_access_strobe(
-                        node, reduce_substrobes=False
-                    )
-                    array_indices = (
-                        current_access_strb.index_str
-                        if current_access_strb.index_str
-                        else ""
-                    )
-                    rd_strb = f"({current_access_strb.path}{array_indices}[{subword_idx}] && !decoded_req_is_wr)"
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
+                        f"assign readback_array[{self.current_offset_str}] = '0;"
                     )
                     self.current_offset += 1
                     subword_idx += 1
@@ -593,21 +566,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
             # loop until the entire field's assignments have been generated
             field_pos = field.low
             while current_bit <= field.high:
-                # Assign the field
-                # For external registers, use rd_ack; for internal, use access strobe
-                if self.policy.is_external(node):
-                    rd_strb = self.exp.hwif.get_external_rd_ack(node, True)
-                else:
-                    # Rebuild strobe path for each subword to include correct subword index
-                    current_access_strb = self.exp.dereferencer.get_access_strobe(
-                        node, reduce_substrobes=False
-                    )
-                    array_indices = (
-                        current_access_strb.index_str
-                        if current_access_strb.index_str
-                        else ""
-                    )
-                    rd_strb = f"({current_access_strb.path}{array_indices}[{subword_idx}] && !decoded_req_is_wr)"
                 if (field_pos == field.low) and (
                     field.high < accesswidth * (subword_idx + 1)
                 ):
@@ -615,17 +573,13 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                     low = field.low - accesswidth * subword_idx
                     high = field.high - accesswidth * subword_idx
 
-                    # For external registers, use external rd_data; for internal, use dereferencer
-                    if self.policy.is_external(node):
-                        value = self.exp.hwif.get_external_rd_data(field, True)
-                    else:
-                        value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                    value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                     if field.msb < field.lsb:
                         # Field gets bitswapped since it is in [low:high] orientation
                         value = do_bitswap(value, field.width)  # type: ignore[assignment]
 
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}][{high}:{low}] = {rd_strb} ? {value} : '0;"
+                        f"assign readback_array[{self.current_offset_str}][{high}:{low}] = {value};"
                     )
 
                     current_bit = field.high + 1
@@ -653,29 +607,17 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_high = field.width - 1 - f_high
                         f_low, f_high = f_high, f_low
 
-                        # For external registers, use external rd_data; for internal, use dereferencer
-                        if self.policy.is_external(node):
-                            field_value = self.exp.hwif.get_external_rd_data(
-                                field, True
-                            )
-                        else:
-                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                         value = do_bitswap(  # type: ignore[assignment]
                             do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
                     else:
-                        # For external registers, use external rd_data; for internal, use dereferencer
-                        if self.policy.is_external(node):
-                            field_value = self.exp.hwif.get_external_rd_data(
-                                field, True
-                            )
-                        else:
-                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                         value = do_slice(field_value, f_high, f_low)  # type: ignore[assignment]
 
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"
+                        f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {value};"
                     )
 
                     # advance to the next subword
@@ -702,29 +644,17 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
                         f_high = field.width - 1 - f_high
                         f_low, f_high = f_high, f_low
 
-                        # For external registers, use external rd_data; for internal, use dereferencer
-                        if self.policy.is_external(node):
-                            field_value = self.exp.hwif.get_external_rd_data(
-                                field, True
-                            )
-                        else:
-                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                         value = do_bitswap(  # type: ignore[assignment]
                             do_slice(field_value, f_high, f_low),
                             f_high - f_low + 1,
                         )
                     else:
-                        # For external registers, use external rd_data; for internal, use dereferencer
-                        if self.policy.is_external(node):
-                            field_value = self.exp.hwif.get_external_rd_data(
-                                field, True
-                            )
-                        else:
-                            field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
+                        field_value = self.exp.dereferencer.get_value(field)  # type: ignore[assignment]
                         value = do_slice(field_value, f_high, f_low)  # type: ignore[assignment]
 
                     self.add_content(
-                        f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {rd_strb} ? {value} : '0;"
+                        f"assign readback_array[{self.current_offset_str}][{r_high}:{r_low}] = {value};"
                     )
 
                     current_bit = field.high + 1
@@ -749,17 +679,6 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
         # We need to create entries for ALL remaining subwords to match cpuif_index
         # which assigns indices to all subwords sequentially
         expected_subwords = node.get_property("regwidth") // accesswidth
-        for remaining_subword_idx in range(subword_idx, expected_subwords):
-            # Create conditional zero assignment for empty subword using correct strobe
-            current_access_strb = self.exp.dereferencer.get_access_strobe(
-                node, reduce_substrobes=False
-            )
-            array_indices = (
-                current_access_strb.index_str if current_access_strb.index_str else ""
-            )
-            rd_strb = f"({current_access_strb.path}{array_indices}[{remaining_subword_idx}] && !decoded_req_is_wr)"
-
-            self.add_content(
-                f"assign readback_array[{self.current_offset_str}] = {rd_strb} ? {bus_width}'h0 : '0;"
-            )
+        for _ in range(subword_idx, expected_subwords):
+            self.add_content(f"assign readback_array[{self.current_offset_str}] = '0;")
             self.current_offset += 1

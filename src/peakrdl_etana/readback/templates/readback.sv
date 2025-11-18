@@ -51,10 +51,11 @@ always @(*) begin
     readback_done = readback_done_r;
 {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
     readback_err = decoded_err;
+    readback_data = decoded_err ? '0 : readback_array[cpuif_index];
 {%- else %}
     readback_err = '0;
-{%- endif %}
     readback_data = readback_array[cpuif_index];
+{%- endif %}
 end
 
 {%- else %}
@@ -69,10 +70,11 @@ always @(*) begin
     {%- endif %}
 {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
     readback_err = decoded_err;
+    readback_data = decoded_err ? '0 : readback_array[cpuif_index];
 {%- else %}
     readback_err = '0;
-{%- endif %}
     readback_data = readback_array[cpuif_index];
+{%- endif %}
 end
 {%- endif %}
 
