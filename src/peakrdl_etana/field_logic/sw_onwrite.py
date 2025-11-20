@@ -36,7 +36,7 @@ class _OnWrite(NextStateConditional):
             if field.get_property("swwe") or field.get_property("swwel"):
                 # dereferencer will wrap swwel complement if necessary
                 qualifier = self.exp.dereferencer.get_field_propref_value(field, "swwe")
-                return f"{p.path} && decoded_req_is_wr && {qualifier}"
+                return f"{p.path}{p.index_str} && decoded_req_is_wr && {qualifier}"
 
             return f"{p.path}{p.index_str} && decoded_req_is_wr"
 
