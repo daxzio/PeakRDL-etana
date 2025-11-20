@@ -22,7 +22,7 @@ class _OnRead(NextStateConditional):
         else:
             # is regular register
             strb = self.exp.dereferencer.get_access_strobe(field)
-            return f"{strb.path} && !decoded_req_is_wr"
+            return f"{strb.path}{strb.index_str} && !decoded_req_is_wr"
 
 
 class ClearOnRead(_OnRead):
