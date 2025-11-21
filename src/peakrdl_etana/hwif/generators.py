@@ -300,7 +300,11 @@ class InputLogicGenerator(RDLListener):
         if node.is_up_counter or node.is_down_counter:
             if node.is_up_counter:
                 incr_prop = node.get_property("incr")
-                if incr_prop is None or incr_prop is True:
+                if (
+                    incr_prop is None
+                    or isinstance(incr_prop, bool)
+                    and incr_prop is True
+                ):
                     # Needs implied incr signal
                     implied_props.append("incr")
 
@@ -310,7 +314,11 @@ class InputLogicGenerator(RDLListener):
 
             if node.is_down_counter:
                 decr_prop = node.get_property("decr")
-                if decr_prop is None or decr_prop is True:
+                if (
+                    decr_prop is None
+                    or isinstance(decr_prop, bool)
+                    and decr_prop is True
+                ):
                     # Needs implied decr signal
                     implied_props.append("decr")
 

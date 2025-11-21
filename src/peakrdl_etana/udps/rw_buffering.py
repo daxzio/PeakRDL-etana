@@ -25,9 +25,9 @@ class xBufferTrigger(UDPDefinition):
                 self.msg.error(
                     "%s '%s' references %s '%s' but its width is not 1"
                     % (
-                        type(node.inst).__name__.lower(),
+                        node.component_type_name,  # type: ignore[attr-defined]
                         node.inst_name,
-                        type(value.inst).__name__.lower(),
+                        value.component_type_name,  # type: ignore[attr-defined]
                         value.inst_name,
                     ),
                     self.get_src_ref(node),
@@ -48,7 +48,7 @@ class xBufferTrigger(UDPDefinition):
                 self.msg.error(
                     "%s '%s' references property '%s->%s' but its width is not 1"
                     % (
-                        type(node.inst).__name__.lower(),
+                        node.component_type_name,  # type: ignore[attr-defined]
                         node.inst_name,
                         value.node.inst_name,
                         value.name,
@@ -65,7 +65,7 @@ class xBufferTrigger(UDPDefinition):
             # All other reference types are invalid
             self.msg.error(
                 "Reference to a %s component is incompatible with the '%s' property."
-                % (type(node.inst).__name__.lower(), self.name),
+                % (node.component_type_name, self.name),  # type: ignore[attr-defined]
                 self.get_src_ref(node),
             )
 

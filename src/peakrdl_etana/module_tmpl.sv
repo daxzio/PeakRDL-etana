@@ -150,20 +150,20 @@ module {{ds.module_name}}
         {%- if ds.has_external_addressable %}
         logic is_external;
         {%- endif %}
-        {%- if ds.err_if_bad_addr %}
+        {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         logic is_valid_addr;
         {%- endif %}
         {%- if ds.err_if_bad_rw %}
-        logic is_invalid_rw;
+        logic is_valid_rw;
         {%- endif %}
         {%- if ds.has_external_addressable %}
         is_external = '0;
         {%- endif %}
-        {%- if ds.err_if_bad_addr %}
+        {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         is_valid_addr = '0;
         {%- endif %}
         {%- if ds.err_if_bad_rw %}
-        is_invalid_rw = '0;
+        is_valid_rw = '0;
         {%- endif %}
     {%- endif %}
         {{address_decode.get_implementation()|indent(8)}}
@@ -172,7 +172,13 @@ module {{ds.module_name}}
         external_req = is_external;
     {%- endif %}
     {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
-        decoded_err = (~is_valid_addr | is_invalid_rw) & decoded_req;
+        {%- if ds.err_if_bad_addr and ds.err_if_bad_rw %}
+        decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req;
+        {%- elif ds.err_if_bad_addr %}
+        decoded_err = ~is_valid_addr & decoded_req;
+        {%- elif ds.err_if_bad_rw %}
+        decoded_err = (is_valid_addr & ~is_valid_rw) & decoded_req;
+        {%- endif %}
     {%- endif %}
     end
 

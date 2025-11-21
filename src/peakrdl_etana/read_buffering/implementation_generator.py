@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from systemrdl.component import Reg
 from systemrdl.node import RegNode
 
 from ..forloop_generator import RDLForLoopGenerator
@@ -21,7 +20,6 @@ class RBufLogicGenerator(RDLForLoopGenerator):
 
     def enter_Reg(self, node: RegNode) -> None:
         super().enter_Reg(node)
-        assert isinstance(node.inst, Reg)
 
         # Skip external registers - they don't have read buffer logic
         # External modules handle their own buffering
