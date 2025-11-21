@@ -15,6 +15,20 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-1800}"
 REGBLOCK_MODE="${REGBLOCK:-0}"
 GHDL_MODE="${GHDL:-0}"
 
+# Parse command-line arguments in VAR=value format
+for arg in "$@"; do
+	if [[ "$arg" =~ ^([^=]+)=(.*)$ ]]; then
+		var_name="${BASH_REMATCH[1]}"
+		var_value="${BASH_REMATCH[2]}"
+		case "$var_name" in
+			REGBLOCK) REGBLOCK_MODE="$var_value" ;;
+			GHDL) GHDL_MODE="$var_value" ;;
+			VIVADO_PART) VIVADO_PART="$var_value" ;;
+			TIMEOUT_SEC) TIMEOUT_SEC="$var_value" ;;
+		esac
+	fi
+done
+
 SKIP_TESTS=(
 	"test_user_cpuif"
 	"test_pkg_params"
@@ -53,11 +67,18 @@ collect_metric_from_log() {
 
 collect_metric_from_report() {
 	local report_file="$1"
-	awk -F'|' '/regblock/ {
+	local regblock_mode="$2"
+	local top_name
+	if [ "$regblock_mode" = "1" ]; then
+		top_name="regblock_wrapper"
+	else
+		top_name="regblock"
+	fi
+	awk -F'|' -v top="$top_name" '/regblock/ {
 		for (i = 1; i <= NF; ++i) {
 			gsub(/^[ \t]+|[ \t]+$/, "", $i)
 		}
-		if ($2 == "regblock" && $3 == "(top)") {
+		if ($2 == top && $3 == "(top)") {
 			print $4 " " $8
 			exit
 		}
@@ -102,7 +123,7 @@ for dir in test_*/; do
 		if [ -z "$lut" ] || [ -z "$ff" ]; then
 			report_path="${dir}synth-rtl/vivado_utilization.rpt"
 			if [ -f "$report_path" ]; then
-				read -r lut ff <<<"$(collect_metric_from_report "$report_path")"
+				read -r lut ff <<<"$(collect_metric_from_report "$report_path" "$REGBLOCK_MODE")"
 			fi
 		fi
 
