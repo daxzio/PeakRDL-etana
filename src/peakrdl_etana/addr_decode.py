@@ -203,24 +203,38 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         return WalkerAction.Continue
 
     def _get_address_str(self, node: "AddressableNode", subword_offset: int = 0) -> str:
+        """
+        Generate address string expression for direct comparison with cpuif_addr.
+
+        Args:
+            node: Addressable node
+            subword_offset: Subword offset in bytes
+        """
+        addr_width = self.addr_decode.exp.ds.addr_width
         if len(self._array_stride_stack):
-            a = str(
+            # Use address width consistently for all parts of the expression
+            # Cast loop variables to address width to avoid width expansion warnings
+            base_addr = str(
                 SVInt(
                     node.raw_absolute_address
                     - self.addr_decode.top_node.raw_absolute_address
                     + subword_offset,
-                    32,
+                    addr_width,
                 )
             )
+            # Build expression with proper casting to avoid width expansion
+            expr_parts = [base_addr]
             for i, stride in enumerate(self._array_stride_stack):
-                a += f" + i{i}*{SVInt(stride, self.addr_decode.exp.ds.addr_width)}"
+                expr_parts.append(f"({addr_width})'(i{i})*{SVInt(stride, addr_width)}")
+            # Cast the entire expression to address width for direct comparison
+            a = f"({addr_width})'({'+'.join(expr_parts)})"
         else:
             a = str(
                 SVInt(
                     node.raw_absolute_address
                     - self.addr_decode.top_node.raw_absolute_address
                     + subword_offset,
-                    self.addr_decode.exp.ds.addr_width,
+                    addr_width,
                 )
             )
         return a
@@ -331,13 +345,10 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
         if regwidth == accesswidth:
             p = self.addr_decode.get_access_strobe(node)
-            if len(self._array_stride_stack):
-                self.add_content(f"next_cpuif_addr = {self._get_address_str(node)};")
-                addr_match = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
-            else:
-                addr_match = (
-                    f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node)})"
-                )
+            # Use direct comparison with properly cast expression
+            addr_match = (
+                f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node)})"
+            )
 
             # Determine strobe condition based on read/write access
             readable = node.has_sw_readable
@@ -378,13 +389,8 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             subword_stride = accesswidth // 8
             for i in range(n_subwords):
                 p = self.addr_decode.get_access_strobe(node)
-                if len(self._array_stride_stack):
-                    self.add_content(
-                        f"next_cpuif_addr = {self._get_address_str(node, subword_offset=(i*subword_stride))};"
-                    )
-                    rhs = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
-                else:
-                    rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"
+                # Use direct comparison with properly cast expression
+                rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"
                 if 0 == len(p.index):
                     s = f"{p.path}[{i}] = {rhs};"
                 else:
@@ -489,15 +495,22 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
             - self.addr_decode.top_node.raw_absolute_address
             + subword_offset
         )
+        addr_width = self.addr_decode.exp.ds.addr_width
 
         if len(self._array_stride_stack):
             # For arrays, generate: base + i0*stride0 + i1*stride1 + ...
-            a = str(SVInt(base_addr, 32))
+            # Use address width consistently for all parts of the expression
+            # Cast loop variables to address width to avoid width expansion warnings
+            base_addr_str = str(SVInt(base_addr, addr_width))
+            # Build expression with proper casting to avoid width expansion
+            expr_parts = [base_addr_str]
             for i, stride in enumerate(self._array_stride_stack):
-                a += f" + i{i}*{SVInt(stride, self.addr_decode.exp.ds.addr_width)}"
+                expr_parts.append(f"({addr_width})'(i{i})*{SVInt(stride, addr_width)}")
+            # Cast the entire expression to ensure consistent width
+            a = f"({addr_width})'({'+'.join(expr_parts)})"
         else:
             # Single element
-            a = str(SVInt(base_addr, self.addr_decode.exp.ds.addr_width))
+            a = str(SVInt(base_addr, addr_width))
         return a
 
     def push_loop(self, dim: int) -> None:
@@ -723,7 +736,8 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
             self.add_content(
                 f"    for(int {loop_var}=0; {loop_var}<{mementries}; {loop_var}++) begin"
             )
-            entry_addr = f"{addr_str} + {loop_var}*{SVInt(entry_stride, addr_width)}"
+            # Cast the entire expression to ensure consistent width
+            entry_addr = f"({addr_width})'({addr_str} + ({addr_width})'({loop_var})*{SVInt(entry_stride, addr_width)})"
             self.add_content(f"        if (cpuif_addr == {entry_addr}) begin")
             self.add_content(f"            cpuif_index = {base_index};")
             self.add_content("        end")
@@ -816,16 +830,23 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
                 # Only include outer loop variables if we're actually inside an arrayed component (base_index_stack not empty)
                 if self._base_index_stack:
                     # Include outer loop variables from parent arrayed components
-                    first_reg_base_str = str(SVInt(reg_base_addr, 32))
+                    # Use address width consistently and cast loop variables
+                    base_addr_str = str(SVInt(reg_base_addr, addr_width))
+                    expr_parts = [base_addr_str]
                     for i, stride in enumerate(self._array_stride_stack):
-                        first_reg_base_str += f" + i{i}*{SVInt(stride, addr_width)}"
+                        expr_parts.append(
+                            f"({addr_width})'(i{i})*{SVInt(stride, addr_width)}"
+                        )
+                    # Cast the entire expression to ensure consistent width
+                    first_reg_base_str = f"({addr_width})'({'+'.join(expr_parts)})"
                 else:
                     first_reg_base_str = str(SVInt(reg_base_addr, addr_width))
                 self.add_content(
                     f"    for(int {loop_var}=0; {loop_var}<{dim}; {loop_var}++) begin"
                 )
                 # Add register array offset to first register base
-                addr_expr = f"{first_reg_base_str} + {loop_var}*{SVInt(addr_stride, addr_width)}"
+                # Cast the entire expression to ensure consistent width
+                addr_expr = f"({addr_width})'({first_reg_base_str} + ({addr_width})'({loop_var})*{SVInt(addr_stride, addr_width)})"
                 self.add_content(f"        if (cpuif_addr == {addr_expr}) begin")
                 self.add_content(
                     f"            cpuif_index = {base_index} + {loop_var}{index_offset_str};"
@@ -851,7 +872,8 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
                 )
                 # When we're inside the register's own loop, we don't include outer loop variables
                 # because the loop IS for this register's array dimensions
-                addr_expr = f"{SVInt(reg_base_addr, addr_width)} + {loop_var}*{SVInt(addr_stride, addr_width)}"
+                # Cast the entire expression to ensure consistent width
+                addr_expr = f"({addr_width})'({SVInt(reg_base_addr, addr_width)} + ({addr_width})'({loop_var})*{SVInt(addr_stride, addr_width)})"
                 self.add_content(f"    if (cpuif_addr == {addr_expr}) begin")
                 # When inside the register's own loop, index is just base + loop_var (no offset_str)
                 self.add_content(f"        cpuif_index = {base_index} + {loop_var};")
@@ -895,9 +917,15 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
                             - self.addr_decode.top_node.raw_absolute_address
                             + subword_idx * subword_stride
                         )
-                        base_addr_str = str(SVInt(reg_base_addr, 32))
+                        # Use address width consistently and cast loop variables
+                        base_addr_str = str(SVInt(reg_base_addr, addr_width))
+                        expr_parts = [base_addr_str]
                         for i, stride in enumerate(self._array_stride_stack):
-                            base_addr_str += f" + i{i}*{SVInt(stride, addr_width)}"
+                            expr_parts.append(
+                                f"({addr_width})'(i{i})*{SVInt(stride, addr_width)}"
+                            )
+                        # Cast the entire expression to ensure consistent width
+                        base_addr_str = f"({addr_width})'({'+'.join(expr_parts)})"
                     else:
                         base_addr_str = self._get_address_str(
                             node, subword_idx * subword_stride
@@ -934,7 +962,8 @@ class CpuifIndexGenerator(RDLForLoopGenerator):
                         + subword_idx * subword_stride
                     )
                     # When we're inside the register's own loop, we don't include outer loop variables
-                    addr_expr = f"{SVInt(reg_base_addr, addr_width)} + {loop_var}*{SVInt(addr_stride, addr_width)}"
+                    # Cast the entire expression to ensure consistent width
+                    addr_expr = f"({addr_width})'({SVInt(reg_base_addr, addr_width)} + ({addr_width})'({loop_var})*{SVInt(addr_stride, addr_width)})"
                     self.add_content(f"    if (cpuif_addr == {addr_expr}) begin")
                     # When inside the register's own loop, index is base + loop_var*n_subwords + subword_idx
                     self.add_content(
