@@ -96,14 +96,20 @@ class ReadbackAssignmentGenerator(RDLForLoopGenerator):
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
         if node.external:
-            # Only generate readback for sw-readable memories (skip write-only)
+            # Generate readback for all external memories to match cpuif_index
+            # Write-only memories need readback entries (returning '0) to match cpuif_index assignments
             if node.is_sw_readable:
                 strb = self.exp.hwif.get_external_rd_ack(node, True)
                 data = self.exp.hwif.get_external_rd_data(node, True)
                 self.add_content(
                     f"assign readback_array[{self.current_offset_str}] = {strb} ? {data} : '0;"
                 )
-                self.current_offset += 1
+            else:
+                # Write-only external memory - create readback entry returning '0
+                self.add_content(
+                    f"assign readback_array[{self.current_offset_str}] = '0;"
+                )
+            self.current_offset += 1
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 

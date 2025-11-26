@@ -53,8 +53,7 @@ module {{ds.module_name}}
     logic external_pending;
     logic external_wr_ack;
     logic external_rd_ack;
-//     always_ff {{get_always_ff_event(cpuif.reset)}} begin
-    always {{get_always_ff_event(cpuif.reset)}} begin
+    always_ff {{get_always_ff_event(cpuif.reset)}} begin
         if({{get_resetsignal(cpuif.reset)}}) begin
             external_pending <= '0;
         end else begin
