@@ -1,0 +1,46 @@
+addrmap top {
+    reg {
+        field {
+            sw=rw; hw=na;
+        } f[7:0] = 0;
+        field {
+            sw=rw; hw=na;
+        } g[23:16] = 0;
+    } a[31];
+
+    reg {
+        field {
+            sw=rw; hw=na;
+        } f[7:0] = 0x11;
+        field {
+            sw=rw; hw=na;
+        } g[23:16] = 0x11;
+    } b[26];
+    reg {
+        field {
+            sw=rw; hw=na;
+        } f[31:0] = 0x0;
+    } c @0xf0;
+    reg {
+        field {
+            sw=rw; hw=na;
+        } f[7:0] = 0x11;
+        field {
+            sw=rw; hw=na;
+        } g[23:16] = 0x11;
+    } d[8] @0xf8;
+
+    external reg {
+        field {
+            sw=rw; hw=na;
+        } f[7:0] = 0x11;
+        field {
+            sw=rw; hw=na;
+        } g[23:16] = 0x11;
+    } e[8] @0x20c;
+
+    external mem {
+        memwidth = 32;
+        mementries = 13;
+    } mm @ 0x300;
+};

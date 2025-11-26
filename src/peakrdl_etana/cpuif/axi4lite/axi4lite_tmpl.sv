@@ -68,7 +68,6 @@ always_comb begin
 end
 
 // Request dispatch
-// always_comb begin
 always @(*) begin
     cpuif_wr_data = axil_wdata;
     for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
@@ -216,7 +215,6 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-// always_comb begin
 always @(*) begin
     axil_resp_acked = '0;
     {{cpuif.signal("bvalid")}} = '0;

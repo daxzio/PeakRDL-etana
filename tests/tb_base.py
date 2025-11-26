@@ -21,6 +21,7 @@ class testbench:
 
             apb_bus = ApbBus.from_prefix(dut, "s_apb")
             self.intf = ApbMaster(apb_bus, getattr(dut, "clk"))
+            self.intf.intra_delay = 1
         elif hasattr(dut, "s_ahb_hsel"):
             from cocotbext.ahb import AHBBus
 

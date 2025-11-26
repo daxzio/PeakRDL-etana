@@ -42,6 +42,7 @@ ifeq ($(REGBLOCK),1)
 	COMPILE_ARGS += -Wno-WIDTHTRUNC
 	COMPILE_ARGS += -Wno-UNOPTFLAT
 	COMPILE_ARGS += -Wno-WIDTHEXPAND
+	COMPILE_ARGS += -Wno-BLKLOOPINIT
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 	HDL_DIR=regblock-rtl

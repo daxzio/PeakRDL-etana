@@ -1,5 +1,4 @@
 {%- import 'field_logic/templates/counter_macros.sv' as counter_macros with context -%}
-// always_comb begin
 always @(*) begin
     logic [{{node.width-1}}:0] next_c;
     logic load_next_c;
