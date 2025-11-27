@@ -1,6 +1,6 @@
 {%- import 'field_logic/templates/counter_macros.sv' as counter_macros with context -%}
 always @(*) begin
-    logic [{{node.width-1}}:0] next_c;
+    logic{% if node.width > 1 %} [{{node.width-1}}:0]{% endif %} next_c;
     logic load_next_c;
     next_c = {{field_logic.get_storage_identifier(node)}};
     load_next_c = '0;
