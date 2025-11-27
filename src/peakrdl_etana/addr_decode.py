@@ -117,11 +117,21 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         array_dimensions = full_path.array_dimensions
 
         if array_dimensions is None:
-            s = f"logic [{active-1}:0] {p.path};"
+            # No array dimensions
+            if active == 1:
+                # Single bit: remove [0:0] range
+                s = f"logic {p.path};"
+            else:
+                s = f"logic [{active-1}:0] {p.path};"
         else:
-            # Format array dimensions as [dim1][dim2][dim3] for SystemVerilog
+            # Has array dimensions
             array_suffix = "".join(f"[{dim}]" for dim in array_dimensions)
-            s = f"logic [{active-1}:0] {p.path} {array_suffix};"
+            if active == 1:
+                # Single bit with array: remove [0:0] but keep unpacked array format
+                s = f"logic {p.path} {array_suffix};"
+            else:
+                # Multi-bit with array: keep unpacked array format
+                s = f"logic [{active-1}:0] {p.path} {array_suffix};"
 
         self._logic_stack.append(s)
 
