@@ -12,8 +12,10 @@ from random import randint
 
 
 def get_index(val, i, width=32):
+    """Get value from array signal at index i"""
+    # val is now an unpacked array, so access element directly
     mask = 2**width - 1
-    return (int(val.value) >> i * width) & mask
+    return int(val[i].value) & mask
 
 
 async def check_range(tb, addr, depth=32, width=32, hwr=False):

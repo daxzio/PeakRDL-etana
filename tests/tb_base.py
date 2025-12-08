@@ -57,4 +57,20 @@ class testbench:
                 setattr(self, attr, sig)
                 # Only initialize inputs, not outputs
                 if attr.startswith("hwif_in_"):
-                    sig.value = 0
+                    # Handle array signals (unpacked dimensions)
+                    try:
+                        # Check if signal is an array by trying to access length
+                        if hasattr(sig, "__len__"):
+                            # It's an array, initialize each element
+                            for i in range(len(sig)):
+                                sig[i].value = 0
+                        else:
+                            # Scalar signal
+                            sig.value = 0
+                    except (TypeError, AttributeError):
+                        # Fallback: try scalar assignment
+                        try:
+                            sig.value = 0
+                        except Exception:
+                            # Skip if we can't initialize (might be a complex type)
+                            pass

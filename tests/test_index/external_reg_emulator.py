@@ -35,23 +35,32 @@ class ExternalRegArrayEmulator:
         self.storage_g = [0x11] * self.NUM_REGS
 
         # Initialize driven signals to safe defaults
-        self.rd_ack.value = 0
-        self.wr_ack.value = 0
-        self.rd_data_f.value = 0
-        self.rd_data_g.value = 0
+        # rd_ack and wr_ack are arrays
+        for i in range(self.NUM_REGS):
+            self.rd_ack[i].value = 0
+            self.wr_ack[i].value = 0
+            self.rd_data_f[i].value = 0
+            self.rd_data_g[i].value = 0
 
     async def run(self):
         """Clocked process that services external requests."""
         while True:
             await RisingEdge(self.clk)
             # Default: deassert acknowledgments each cycle
-            self.rd_ack.value = 0
-            self.wr_ack.value = 0
+            for i in range(self.NUM_REGS):
+                self.rd_ack[i].value = 0
+                self.wr_ack[i].value = 0
 
+            # Read array signals - each element is a single bit
             try:
-                req_val = int(self.req.value)
-                req_is_wr_val = int(self.req_is_wr.value)
-            except ValueError:
+                req_val = 0
+                req_is_wr_val = 0
+                for idx in range(self.NUM_REGS):
+                    if int(self.req[idx].value):
+                        req_val |= 1 << idx
+                    if int(self.req_is_wr[idx].value):
+                        req_is_wr_val |= 1 << idx
+            except (ValueError, TypeError):
                 # Ignore cycles with unknowns
                 continue
 
@@ -76,12 +85,13 @@ class ExternalRegArrayEmulator:
         self.storage_f[idx] = self._apply_mask(self.storage_f[idx], f_data, f_mask, 8)
         self.storage_g[idx] = self._apply_mask(self.storage_g[idx], g_data, g_mask, 8)
 
-        self.wr_ack.value = 1 << idx
+        self.wr_ack[idx].value = 1
 
     def _handle_read(self, idx: int):
-        self.rd_data_f.value = self.storage_f[idx] << (idx * 8)
-        self.rd_data_g.value = self.storage_g[idx] << (idx * 8)
-        self.rd_ack.value = 1 << idx
+        # Set the specific array element
+        self.rd_data_f[idx].value = self.storage_f[idx]
+        self.rd_data_g[idx].value = self.storage_g[idx]
+        self.rd_ack[idx].value = 1
 
     @staticmethod
     def _apply_mask(current: int, new: int, mask: int, width: int) -> int:
@@ -96,9 +106,14 @@ class ExternalRegArrayEmulator:
 
     @staticmethod
     def _extract_chunk(signal, idx: int, width: int) -> int:
-        value = int(signal.value)
-        mask = (1 << width) - 1
-        return (value >> (idx * width)) & mask
+        # This method is no longer used since we now access array elements directly
+        # Keeping for backward compatibility but it shouldn't be called
+        if hasattr(signal, "__getitem__"):
+            return int(signal[idx].value)
+        else:
+            value = int(signal.value)
+            mask = (1 << width) - 1
+            return (value >> (idx * width)) & mask
 
 
 class ExternalMemEmulator:

@@ -81,7 +81,7 @@ class HwifSignal:
         unpacked_dims = ""
         for first, last in reversed(self.array_dims):
             size = abs(first - last) + 1
-            unpacked_dims += f"[{size-1}:0] "
+            unpacked_dims += f" [{size-1}:0]"
 
         # Build packed dimension (bit width)
         if self.width == 1 and self.lsb == 0:
@@ -89,8 +89,8 @@ class HwifSignal:
         else:
             packed_dim = f"[{self.lsb + self.width - 1}:{self.lsb}] "
 
-        # Format: <direction> logic [unpacked...] [packed] <name>
-        return f"{self.direction} logic {unpacked_dims}{packed_dim}{self.prefix}_{self.port_name}"
+        # Format: <direction> logic [packed] <name> [unpacked...]
+        return f"{self.direction} logic {packed_dim}{self.prefix}_{self.port_name}{unpacked_dims}"
 
 
 def parse_hwif_report(report_path: str) -> Tuple[List[HwifSignal], List[HwifSignal]]:

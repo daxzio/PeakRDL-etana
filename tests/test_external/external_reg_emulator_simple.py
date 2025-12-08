@@ -217,9 +217,9 @@ class ExtRegArrayEmulator:
         self.dut = dut
         self.clk = clk
 
-        # Protocol signals (packed arrays)
-        self.req = dut.hwif_out_ext_reg_array_req  # [31:0]
-        self.req_is_wr = dut.hwif_out_ext_reg_array_req_is_wr  # scalar
+        # Protocol signals (now unpacked arrays)
+        self.req = dut.hwif_out_ext_reg_array_req  # [31:0] unpacked array
+        self.req_is_wr = dut.hwif_out_ext_reg_array_req_is_wr  # [31:0] unpacked array
 
         # Try register-level signals first (etana), then field-level (regblock wrapper)
         self.wr_data = getattr(dut, "hwif_out_ext_reg_array_wr_data", None)
@@ -240,8 +240,10 @@ class ExtRegArrayEmulator:
         self.storage = [0] * 32
 
         # Initialize acks and read data to prevent X propagation
-        self.rd_ack.value = 0
-        self.wr_ack.value = 0
+        # rd_ack and wr_ack are now unpacked arrays [31:0]
+        for i in range(32):
+            self.rd_ack[i].value = 0
+            self.wr_ack[i].value = 0
         # Initialize rd_data as packed array (can't index individual elements)
         # Cocotb will initialize the full packed array
 
@@ -250,29 +252,29 @@ class ExtRegArrayEmulator:
         while True:
             await RisingEdge(self.clk)
 
-            # Default: no acks
-            self.rd_ack.value = 0
-            self.wr_ack.value = 0
+            # Default: no acks (rd_ack and wr_ack are now unpacked arrays)
+            for i in range(32):
+                self.rd_ack[i].value = 0
+                self.wr_ack[i].value = 0
 
             # Handle X values gracefully
-            try:
-                req_val = int(self.req.value)
-            except ValueError:
-                continue
-
-            # Check which array element is being accessed
+            # req and req_is_wr are now unpacked arrays, check each element
             for i in range(32):
-                if (req_val >> i) & 1:
-                    # Extract is_wr bit for element i from packed array
-                    is_wr_packed = int(self.req_is_wr.value)
-                    is_wr_bit = (is_wr_packed >> i) & 1
+                try:
+                    req_bit = int(self.req[i].value)
+                    is_wr_bit = int(self.req_is_wr[i].value)
+                except (ValueError, TypeError):
+                    continue
+
+                if req_bit:
                     if is_wr_bit == 1:
-                        # Write request - extract data and biten for element i
-                        # wr_data is [31:0][31:0], extract [i]
-                        packed_data = int(self.wr_data.value)
-                        packed_biten = int(self.wr_biten.value)
-                        element_data = (packed_data >> (i * 32)) & 0xFFFFFFFF
-                        element_biten = (packed_biten >> (i * 32)) & 0xFFFFFFFF
+                        # Write request - wr_data and wr_biten are now unpacked arrays
+                        # Access element [i] directly
+                        try:
+                            element_data = int(self.wr_data[i].value) & 0xFFFFFFFF
+                            element_biten = int(self.wr_biten[i].value) & 0xFFFFFFFF
+                        except (ValueError, TypeError):
+                            continue
 
                         # Apply bit-enable mask
                         for bit in range(32):
@@ -282,22 +284,15 @@ class ExtRegArrayEmulator:
                                 else:
                                     self.storage[i] &= ~(1 << bit)
 
-                        # Ack for element i
-                        ack_val = 1 << i
-                        self.wr_ack.value = ack_val
+                        # Ack for element i (unpacked array)
+                        self.wr_ack[i].value = 1
                     else:
-                        # Read request - return data for element i
-                        # The rd_data is a packed 2D array [31:0][31:0]
-                        # We need to set just element [i] in the packed format
-                        # Pack all storage into the signal (cocotb will extract element i)
-                        packed_data = 0
-                        for j in range(32):
-                            packed_data |= self.storage[j] << (j * 32)
-                        self.rd_data.value = packed_data
+                        # Read request - rd_data is now an unpacked array [31:0][31:0]
+                        # Set element [i] directly
+                        self.rd_data[i].value = self.storage[i]
 
-                        # Ack for element i
-                        ack_val = 1 << i
-                        self.rd_ack.value = ack_val
+                        # Ack for element i (unpacked array)
+                        self.rd_ack[i].value = 1
                     break  # Only one element at a time
 
 
