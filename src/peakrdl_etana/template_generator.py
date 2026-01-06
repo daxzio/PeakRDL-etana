@@ -118,8 +118,9 @@ class TemplateGenerator:
                 continue
 
             # Parse port declaration
+            # Pattern matches: direction wire_type [packed_dim] signal_name [unpacked_dim]
             match = re.match(
-                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
+                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)(?:\s*(\[[\w:\s]+\]))?\s*$",
                 line,
             )
 
@@ -128,13 +129,23 @@ class TemplateGenerator:
                 wire_type = match.group(2) or "wire"
                 packed_dim = (match.group(3) or "").strip()
                 name = match.group(4)
+                unpacked_dim = (match.group(5) or "").strip()
+
+                # Combine packed and unpacked dimensions
+                if unpacked_dim:
+                    if packed_dim:
+                        full_dim = f"{packed_dim} {unpacked_dim}"
+                    else:
+                        full_dim = unpacked_dim
+                else:
+                    full_dim = packed_dim
 
                 signals.append(
                     SignalInfo(
                         name=name,
                         direction=direction,
                         wire_type=wire_type,
-                        packed_dim=packed_dim,
+                        packed_dim=full_dim,
                         base_name=name,
                     )
                 )
@@ -165,8 +176,10 @@ class TemplateGenerator:
                 continue
 
             # Parse port declaration
+            # Pattern matches: direction wire_type [packed_dim] signal_name [unpacked_dim]
+            # Example: "output logic [31:0] o_shadow[31:0]"
             match = re.match(
-                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)\s*$",
+                r"^(input|output)\s+(wire|logic)?\s*((?:\s*\[[\w:\s]+\])+)?\s*(\w+)(?:\s*(\[[\w:\s]+\]))?\s*$",
                 line,
             )
 
@@ -175,6 +188,16 @@ class TemplateGenerator:
                 wire_type = match.group(2) or "wire"
                 packed_dim = (match.group(3) or "").strip()
                 name = match.group(4)
+                unpacked_dim = (match.group(5) or "").strip()
+
+                # Combine packed and unpacked dimensions
+                if unpacked_dim:
+                    if packed_dim:
+                        full_dim = f"{packed_dim} {unpacked_dim}"
+                    else:
+                        full_dim = unpacked_dim
+                else:
+                    full_dim = packed_dim
 
                 # Extract base name by removing hwif_in_/hwif_out_ or i_/o_ prefix
                 base_name = name
@@ -192,7 +215,7 @@ class TemplateGenerator:
                         name=name,
                         direction=direction,
                         wire_type=wire_type,
-                        packed_dim=packed_dim,
+                        packed_dim=full_dim,
                         base_name=base_name,
                     )
                 )
@@ -236,9 +259,23 @@ class TemplateGenerator:
 
             for sig in other_apb:
                 type_str = f"{sig.wire_type} " if sig.wire_type != "wire" else ""
-                dim_str = f"{sig.packed_dim} " if sig.packed_dim else ""
-
-                lines.append(f"        ,{sig.direction} {type_str}{dim_str}{sig.name}")
+                # Format dimensions: packed before name, unpacked after name
+                if sig.packed_dim:
+                    parts = sig.packed_dim.split(" ", 1)
+                    if len(parts) == 2:
+                        # Has both packed and unpacked dimensions
+                        packed_part = parts[0]
+                        unpacked_part = parts[1]
+                        lines.append(
+                            f"        ,{sig.direction} {type_str}{packed_part} {sig.name}{unpacked_part}"
+                        )
+                    else:
+                        # Only packed dimension
+                        lines.append(
+                            f"        ,{sig.direction} {type_str}{sig.packed_dim} {sig.name}"
+                        )
+                else:
+                    lines.append(f"        ,{sig.direction} {type_str}{sig.name}")
 
         lines.append(");")
         lines.append("")
@@ -247,8 +284,23 @@ class TemplateGenerator:
         if hwif_signals:
             lines.append("    // Hardware interface signal declarations")
             for sig in hwif_signals:
-                dim_str = f"{sig.packed_dim} " if sig.packed_dim else ""
-                lines.append(f"    logic {dim_str}w_{sig.base_name};")
+                # Format dimensions: packed before name, unpacked after name
+                # Example: [31:0] o_shadow[31:0] -> logic [31:0] w_shadow[31:0];
+                if sig.packed_dim:
+                    # Check if there's an unpacked dimension (after a space)
+                    parts = sig.packed_dim.split(" ", 1)
+                    if len(parts) == 2:
+                        # Has both packed and unpacked dimensions
+                        packed_part = parts[0]
+                        unpacked_part = parts[1]
+                        lines.append(
+                            f"    logic {packed_part} w_{sig.base_name}{unpacked_part};"
+                        )
+                    else:
+                        # Only packed dimension
+                        lines.append(f"    logic {sig.packed_dim} w_{sig.base_name};")
+                else:
+                    lines.append(f"    logic w_{sig.base_name};")
             lines.append("")
 
         # Instantiation
