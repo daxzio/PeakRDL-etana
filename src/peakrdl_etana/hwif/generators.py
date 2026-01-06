@@ -27,6 +27,7 @@ class InputLogicGenerator(RDLListener):
         self.out_port: List[str] = []
         self.regfile_array: List[str] = []
         self.vector_text = ""  # Initialize to empty string
+        self.unpacked_dims = ""  # Initialize unpacked dimensions for after signal name
         self.policy = external_policy(self.hwif.ds)
 
     def get_logic(self, node: "Node") -> Optional[str]:
@@ -188,6 +189,7 @@ class InputLogicGenerator(RDLListener):
 
     def exit_Regfile(self, node: "RegfileNode") -> None:
         self.regfile_array = []
+        self.unpacked_dims = ""  # Reset unpacked dimensions
 
     def enter_Reg(self, node: "RegNode") -> None:
         from ..utils import IndexedPath
@@ -198,14 +200,16 @@ class InputLogicGenerator(RDLListener):
 
         self.vector = 1
         self.vector_text = ""
+        self.unpacked_dims = ""  # Unpacked dimensions for after signal name
 
         # Use IndexedPath to get ALL nested array dimensions
         p = IndexedPath(self.hwif.top_node, node)
         array_dimensions = p.array_dimensions if p.array_dimensions is not None else []
 
-        # Build dimension text - dimensions should be in order (outer to inner)
+        # Build unpacked dimensions (arrays) - placed AFTER signal name
+        # Format: signal_name [3:0] [1:0] (unpacked array format)
         for i in array_dimensions:
-            self.vector_text += f"[{i-1}:0] "
+            self.unpacked_dims += f" [{i-1}:0]"
             self.vector *= i
 
         # Skip generating ports for registers inside external regfiles/addrmaps
@@ -235,7 +239,7 @@ class InputLogicGenerator(RDLListener):
 
             p = IndexedPath(self.hwif.top_node, node)
             intr_identifier = f"{self.hwif.hwif_out_str}_{p.path}_intr"
-            self.hwif_port.append(f"output logic {self.vector_text}{intr_identifier}")
+            self.hwif_port.append(f"output logic {intr_identifier}{self.unpacked_dims}")
 
         if has_halt:
             # Register has halt output
@@ -243,27 +247,30 @@ class InputLogicGenerator(RDLListener):
 
             p = IndexedPath(self.hwif.top_node, node)
             halt_identifier = f"{self.hwif.hwif_out_str}_{p.path}_halt"
-            self.hwif_port.append(f"output logic {self.vector_text}{halt_identifier}")
+            self.hwif_port.append(f"output logic {halt_identifier}{self.unpacked_dims}")
 
         if self.policy.is_external(node):
             vector_extend = ""
             if not 1 == self.n_subwords:
-                vector_extend = f"[{self.n_subwords-1}:0] "
+                vector_extend = f"[{self.n_subwords-1}:0]"
 
             x = self.hwif.get_output_identifier(node)  # type: ignore[arg-type]
-            self.hwif_port.append(
-                f"output logic {self.vector_text}{vector_extend}{x}_req"
-            )
+            if vector_extend:
+                self.hwif_port.append(
+                    f"output logic {vector_extend} {x}_req{self.unpacked_dims}"
+                )
+            else:
+                self.hwif_port.append(f"output logic {x}_req{self.unpacked_dims}")
             # Always generate req_is_wr for external registers
             # External modules need to distinguish read vs write requests
-            self.hwif_port.append(f"output logic {self.vector_text}{x}_req_is_wr")
+            self.hwif_port.append(f"output logic {x}_req_is_wr{self.unpacked_dims}")
             if node.has_sw_readable:
                 self.hwif_port.append(
-                    f"input wire {self.vector_text}{self.hwif.get_external_rd_ack(node)}"
+                    f"input wire {self.hwif.get_external_rd_ack(node)}{self.unpacked_dims}"
                 )
             if node.has_sw_writable:
                 self.hwif_port.append(
-                    f"input wire {self.vector_text}{self.hwif.get_external_wr_ack(node)}"
+                    f"input wire {self.hwif.get_external_wr_ack(node)}{self.unpacked_dims}"
                 )
 
     def enter_Field(self, node: "FieldNode") -> None:
@@ -338,9 +345,9 @@ class InputLogicGenerator(RDLListener):
 
         width = node.width
         if width > 1:
-            field_text = self.vector_text + f"[{width-1}:0]"
+            packed_dim = f"[{width-1}:0]"
         else:
-            field_text = self.vector_text
+            packed_dim = ""
         if self.policy.is_external(node):
             # For external registers with only ONE field,
             # regblock generates per-register signals without field name suffix
@@ -356,37 +363,77 @@ class InputLogicGenerator(RDLListener):
                 accesswidth = node.parent.get_property("accesswidth")
                 port_width = accesswidth
                 if port_width > 1:
-                    field_text = self.vector_text + f"[{port_width-1}:0]"
+                    packed_dim = f"[{port_width-1}:0]"
                 else:
-                    field_text = self.vector_text
+                    packed_dim = ""
 
             if node.is_sw_readable:
-                self.hwif_port.append(
-                    f"input wire {field_text} {self.hwif.get_external_rd_data(node)}"
-                )
+                rd_data_name = self.hwif.get_external_rd_data(node)
+                if packed_dim:
+                    self.hwif_port.append(
+                        f"input wire {packed_dim} {rd_data_name}{self.unpacked_dims}"
+                    )
+                else:
+                    self.hwif_port.append(
+                        f"input wire {rd_data_name}{self.unpacked_dims}"
+                    )
             if node.is_sw_writable:
                 x = self.hwif.get_output_identifier(node.parent)  # type: ignore[arg-type]
                 # Match regblock naming: {reg}_wr_data_{field} for multi-field registers
                 # For single-field registers: {reg}_wr_data (no field suffix)
                 if is_single_field:
-                    self.hwif_port.append(f"output logic {field_text} {x}_wr_data")
-                    self.hwif_port.append(f"output logic {field_text} {x}_wr_biten")
+                    if packed_dim:
+                        self.hwif_port.append(
+                            f"output logic {packed_dim} {x}_wr_data{self.unpacked_dims}"
+                        )
+                        self.hwif_port.append(
+                            f"output logic {packed_dim} {x}_wr_biten{self.unpacked_dims}"
+                        )
+                    else:
+                        self.hwif_port.append(
+                            f"output logic {x}_wr_data{self.unpacked_dims}"
+                        )
+                        self.hwif_port.append(
+                            f"output logic {x}_wr_biten{self.unpacked_dims}"
+                        )
                 else:
-                    self.hwif_port.append(
-                        f"output logic {field_text} {x}_wr_data_{node.inst_name}"
-                    )
-                    self.hwif_port.append(
-                        f"output logic {field_text} {x}_wr_biten_{node.inst_name}"
-                    )
+                    if packed_dim:
+                        self.hwif_port.append(
+                            f"output logic {packed_dim} {x}_wr_data_{node.inst_name}{self.unpacked_dims}"
+                        )
+                        self.hwif_port.append(
+                            f"output logic {packed_dim} {x}_wr_biten_{node.inst_name}{self.unpacked_dims}"
+                        )
+                    else:
+                        self.hwif_port.append(
+                            f"output logic {x}_wr_data_{node.inst_name}{self.unpacked_dims}"
+                        )
+                        self.hwif_port.append(
+                            f"output logic {x}_wr_biten_{node.inst_name}{self.unpacked_dims}"
+                        )
         else:
             if self.hwif.has_value_input(node):
                 # Check if field has 'next' property - if so, the signal provides the input
                 if node.get_property("next") is None:
                     input_identifier = self.hwif.get_input_identifier(node, index=False)
-                    self.hwif_port.append(f"input wire {field_text} {input_identifier}")
+                    if packed_dim:
+                        self.hwif_port.append(
+                            f"input wire {packed_dim} {input_identifier}{self.unpacked_dims}"
+                        )
+                    else:
+                        self.hwif_port.append(
+                            f"input wire {input_identifier}{self.unpacked_dims}"
+                        )
             if self.hwif.has_value_output(node):
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
-                self.hwif_port.append(f"output logic {field_text} {output_identifier}")
+                if packed_dim:
+                    self.hwif_port.append(
+                        f"output logic {packed_dim} {output_identifier}{self.unpacked_dims}"
+                    )
+                else:
+                    self.hwif_port.append(
+                        f"output logic {output_identifier}{self.unpacked_dims}"
+                    )
 
             # Add implied property output signals (bitwise reductions, access strobes, counter events)
             for prop in ["anded", "ored", "xored", "swmod", "swacc"]:
@@ -394,10 +441,9 @@ class InputLogicGenerator(RDLListener):
                     prop_identifier = self.hwif.get_implied_prop_output_identifier(
                         node, prop, index=False
                     )
-                    # These outputs are single-bit
-                    prop_output_text = self.vector_text
+                    # These outputs are single-bit (no packed dimension, only unpacked)
                     self.hwif_port.append(
-                        f"output logic {prop_output_text} {prop_identifier}"
+                        f"output logic {prop_identifier}{self.unpacked_dims}"
                     )
 
             # Access strobe outputs
@@ -405,17 +451,15 @@ class InputLogicGenerator(RDLListener):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "rd_swacc", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
             if node.get_property("wr_swacc", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "wr_swacc", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
 
             # Counter event outputs
@@ -423,17 +467,15 @@ class InputLogicGenerator(RDLListener):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "overflow", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
             if node.get_property("underflow", default=False):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "underflow", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
 
             # Counter threshold outputs
@@ -441,17 +483,15 @@ class InputLogicGenerator(RDLListener):
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "incrthreshold", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
             if node.get_property("decrthreshold", default=False) is not False:
                 prop_identifier = self.hwif.get_implied_prop_output_identifier(
                     node, "decrthreshold", index=False
                 )
-                prop_output_text = self.vector_text
                 self.hwif_port.append(
-                    f"output logic {prop_output_text} {prop_identifier}"
+                    f"output logic {prop_identifier}{self.unpacked_dims}"
                 )
 
             # Add implied property input signals
@@ -462,11 +502,15 @@ class InputLogicGenerator(RDLListener):
                 # Determine width based on property type
                 if prop in ["incrvalue", "decrvalue"]:
                     # These are value properties, use field width
-                    prop_field_text = self.vector_text + f"[{width-1}:0]"
+                    prop_packed_dim = f"[{width-1}:0]"
+                    self.hwif_port.append(
+                        f"input wire {prop_packed_dim} {prop_identifier}{self.unpacked_dims}"
+                    )
                 else:
                     # These are single-bit control signals
-                    prop_field_text = self.vector_text
-                self.hwif_port.append(f"input wire {prop_field_text} {prop_identifier}")
+                    self.hwif_port.append(
+                        f"input wire {prop_identifier}{self.unpacked_dims}"
+                    )
 
     def enter_Signal(self, node: "SignalNode") -> None:
         # Signals that are not promoted to top-level need to be added as ports
@@ -476,8 +520,12 @@ class InputLogicGenerator(RDLListener):
                 return
 
         width = node.width if node.width is not None else 1
-        signal_text = (
-            self.vector_text + f"[{width-1}:0]" if width > 1 else self.vector_text
-        )
-        input_identifier = self.hwif.get_input_identifier(node, index=False)
-        self.hwif_port.append(f"input wire {signal_text} {input_identifier}")
+        if width > 1:
+            signal_packed_dim = f"[{width-1}:0]"
+            self.hwif_port.append(
+                f"input wire {signal_packed_dim} {self.hwif.get_input_identifier(node, index=False)}{self.unpacked_dims}"
+            )
+        else:
+            self.hwif_port.append(
+                f"input wire {self.hwif.get_input_identifier(node, index=False)}{self.unpacked_dims}"
+            )

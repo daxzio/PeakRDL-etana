@@ -170,7 +170,9 @@ class Hwif:
         """
         if isinstance(node, FieldNode):
             if not node.is_sw_readable:
-                raise
+                raise RuntimeError(
+                    f"Field {node.inst_name} is not sw_readable, cannot get rd_data signal"
+                )
             # Check if this is a register with only ONE field
             # For single-field external registers, regblock uses register-level signals (no field suffix)
             n_fields = sum(

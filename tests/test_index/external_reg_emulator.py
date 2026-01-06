@@ -34,54 +34,58 @@ class ExternalRegArrayEmulator:
         self.storage_f = [0x11] * self.NUM_REGS
         self.storage_g = [0x11] * self.NUM_REGS
 
-        # Initialize driven signals to safe defaults
-        self.rd_ack.value = 0
-        self.wr_ack.value = 0
-        self.rd_data_f.value = 0
-        self.rd_data_g.value = 0
+        # Initialize driven signals to safe defaults (unpacked arrays - initialize each element)
+        for i in range(self.NUM_REGS):
+            self.rd_ack[i].value = 0
+            self.wr_ack[i].value = 0
+            self.rd_data_f[i].value = 0
+            self.rd_data_g[i].value = 0
 
     async def run(self):
         """Clocked process that services external requests."""
         while True:
             await RisingEdge(self.clk)
-            # Default: deassert acknowledgments each cycle
-            self.rd_ack.value = 0
-            self.wr_ack.value = 0
+            # Default: deassert acknowledgments each cycle (unpacked arrays)
+            for i in range(self.NUM_REGS):
+                self.rd_ack[i].value = 0
+                self.wr_ack[i].value = 0
 
-            try:
-                req_val = int(self.req.value)
-                req_is_wr_val = int(self.req_is_wr.value)
-            except ValueError:
-                # Ignore cycles with unknowns
-                continue
-
-            if req_val == 0:
-                continue
-
+            # Check each array element (unpacked arrays)
             for idx in range(self.NUM_REGS):
-                if (req_val >> idx) & 0x1:
-                    is_write = (req_is_wr_val >> idx) & 0x1
+                try:
+                    req_val = int(self.req[idx].value)
+                    if req_val == 0:
+                        continue
+
+                    is_write = int(self.req_is_wr[idx].value)
                     if is_write:
                         self._handle_write(idx)
                     else:
                         self._handle_read(idx)
                     break  # Only one entry can be active per cycle
+                except (ValueError, AttributeError):
+                    # Ignore cycles with unknowns
+                    continue
 
     def _handle_write(self, idx: int):
-        f_data = self._extract_chunk(self.wr_data_f, idx, 8)
-        f_mask = self._extract_chunk(self.wr_biten_f, idx, 8)
-        g_data = self._extract_chunk(self.wr_data_g, idx, 8)
-        g_mask = self._extract_chunk(self.wr_biten_g, idx, 8)
+        # Unpacked arrays - access elements directly
+        f_data = int(self.wr_data_f[idx].value)
+        f_mask = int(self.wr_biten_f[idx].value)
+        g_data = int(self.wr_data_g[idx].value)
+        g_mask = int(self.wr_biten_g[idx].value)
 
         self.storage_f[idx] = self._apply_mask(self.storage_f[idx], f_data, f_mask, 8)
         self.storage_g[idx] = self._apply_mask(self.storage_g[idx], g_data, g_mask, 8)
 
-        self.wr_ack.value = 1 << idx
+        # Unpacked array - set element directly
+        self.wr_ack[idx].value = 1
 
     def _handle_read(self, idx: int):
-        self.rd_data_f.value = self.storage_f[idx] << (idx * 8)
-        self.rd_data_g.value = self.storage_g[idx] << (idx * 8)
-        self.rd_ack.value = 1 << idx
+        # Unpacked arrays - set elements directly
+        self.rd_data_f[idx].value = self.storage_f[idx]
+        self.rd_data_g[idx].value = self.storage_g[idx]
+        # Unpacked array - set element directly
+        self.rd_ack[idx].value = 1
 
     @staticmethod
     def _apply_mask(current: int, new: int, mask: int, width: int) -> int:
@@ -93,12 +97,6 @@ class ExternalRegArrayEmulator:
                 else:
                     result &= ~(1 << bit)
         return result
-
-    @staticmethod
-    def _extract_chunk(signal, idx: int, width: int) -> int:
-        value = int(signal.value)
-        mask = (1 << width) - 1
-        return (value >> (idx * width)) & mask
 
 
 class ExternalMemEmulator:
