@@ -15,15 +15,15 @@ This guide documents how to migrate SystemVerilog-based tests to Python/Cocotb t
 
 **📚 For detailed troubleshooting and recent fixes, see**: `MIGRATION_SESSION_OCT_2025.md`
 
-**🔄 Last Updated:** November 21, 2025 - All tests migrated and synced with upstream
+**🔄 Last Updated:** January 7, 2026 - All migrated tests synced with upstream through regblock commit 9fc95b8
 
 ---
 
 ## Prerequisites
 
 ```bash
-# Python virtual environment (use venv-3.12.3/):
-source venv-3.12.3/bin/activate
+# Python virtual environment (example):
+source /mnt/sda/projects/PeakRDL-etana/venv.2.0.0/bin/activate
 pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-etana
 
 # Clone PeakRDL-regblock for reference (if not already available):
@@ -243,8 +243,8 @@ await tb.clk.wait_clkn(5)  # Wait 5 cycles
 ### Step 5: Test with Regblock Reference
 
 ```bash
-source ../../venv-3.12.3/bin/activate
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+source /mnt/sda/projects/PeakRDL-etana/venv.2.0.0/bin/activate
+make clean regblock sim SIM=verilator REGBLOCK=1
 ```
 
 **If it passes:** ✅ Test is correct!
@@ -268,7 +268,7 @@ make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
 ### Step 6: Test with Etana (Optional)
 
 ```bash
-make clean etana sim COCOTB_REV=1.9.2 REGBLOCK=0
+make clean etana sim SIM=verilator REGBLOCK=0
 ```
 
 **If it fails:** Bug in PeakRDL-etana (not your test)
@@ -427,6 +427,22 @@ async def run(self):
 - ❌ Use `await Timer()` delays before asserting acks
 - ❌ Use `await ReadOnly()` (causes "write during read-only phase" errors)
 - ❌ Use `await RisingEdge()` delays before responding (causes hangs)
+
+### Lesson 5b (Jan 2026): Multi-field External Register Readback
+
+**Issue**: Etana may generate per-field external `rd_data` ports (eg `*_rd_data_<field>`) rather than a single register-level `*_rd_data`.
+
+**Rule of thumb**:
+- For multi-field external regs, assemble the expected readback value from field `rd_data` ports.
+- Treat each field `rd_data` as **right-aligned** (field bits come from the LSBs of the returned bus) unless the test/RDL explicitly defines otherwise.
+
+### Lesson 5c (Jan 2026): External Blocks Only (No Internal Regs)
+
+**Issue**: If the design contains only `external` components, PeakRDL may warn that it cannot infer CPU data width.
+
+**What to do**:
+- This is typically benign for tests (defaults to 32-bit). Prefer to validate with `REGBLOCK=1` first.
+- Example test added/migrated: `tests/test_only_external_blocks/`.
 
 ### Lesson 6: Identifying Test Enhancements vs New Tests
 
@@ -919,6 +935,15 @@ read_val = await tb.intf.read(0x00)
 verify_only_readable_fields(read_val)
 ```
 
+### 4. Verilator Warnings Treated as Errors (Jan 2026)
+
+**Issue**: Your Verilator setup treats some warnings as fatal (examples encountered: `CMPCONST`, `UNSIGNED`).
+
+**Guidance**:
+- Prefer fixing width/range issues in templates when practical.
+- For benign tool-noise in tests, suppress per-test using `COMPILE_ARGS += -Wno-...` in the test `Makefile`.
+  - Example: `tests/test_wide_external/` (CMPCONST) and `tests/test_only_external_blocks/` (UNSIGNED).
+
 ---
 
 ## Testing Infrastructure
@@ -1015,10 +1040,12 @@ make clean etana sim SIM=verilator REGBLOCK=0
 
 **See:** test_simple, test_enum, test_field_types as reference examples
 
-**Status:** All 26 tests migrated successfully using this approach ✅
+**Status:** Migration flow validated end-to-end and kept in sync with upstream regblock through 9fc95b8 ✅
 
-**Last Migration Update:** November 21, 2025
-- ✅ test_cpuif_err_rsp - Updated to match upstream RDL changes (overlapped registers, external regfile)
+**Last Migration Update:** January 7, 2026
+- ✅ Readback mux refactor integration completed (upstream #155/#165)
+- ✅ `test_wide_external` verified with regblock reference first (per workflow)
+- ✅ Added and migrated upstream-only test: `test_only_external_blocks`
 
 ---
 
