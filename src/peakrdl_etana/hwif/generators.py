@@ -99,7 +99,10 @@ class InputLogicGenerator(RDLListener):
                 self.hwif_port.append(f"input wire {prefix_in}_rd_ack")
 
     def enter_Mem(self, node: "MemNode") -> None:
-        width = node.get_property("memwidth")
+        # For external memories, data signals use CPUIF bus width, not memwidth
+        # This matches peakrdl-regblock behavior: external block data signals
+        # always match the CPUIF bus width regardless of block contents
+        data_width = self.hwif.exp.cpuif.data_width
         addr_width = clog2(node.size)
         ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
         ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
@@ -109,17 +112,23 @@ class InputLogicGenerator(RDLListener):
             self.hwif_port.append(f"output logic {ext_out}_addr")
         self.hwif_port.append(f"output logic {ext_out}_req")
         if node.is_sw_readable:
-            if width > 1:
-                self.hwif_port.append(f"input logic [{width-1}:0] {ext_in}_rd_data")
+            if data_width > 1:
+                self.hwif_port.append(
+                    f"input logic [{data_width-1}:0] {ext_in}_rd_data"
+                )
             else:
                 self.hwif_port.append(f"input logic {ext_in}_rd_data")
             self.hwif_port.append(f"input logic {ext_in}_rd_ack")
         if node.is_sw_writable:
             self.hwif_port.append(f"input logic {ext_in}_wr_ack")
             self.hwif_port.append(f"output logic {ext_out}_req_is_wr")
-            if width > 1:
-                self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_data")
-                self.hwif_port.append(f"output logic [{width-1}:0] {ext_out}_wr_biten")
+            if data_width > 1:
+                self.hwif_port.append(
+                    f"output logic [{data_width-1}:0] {ext_out}_wr_data"
+                )
+                self.hwif_port.append(
+                    f"output logic [{data_width-1}:0] {ext_out}_wr_biten"
+                )
             else:
                 self.hwif_port.append(f"output logic {ext_out}_wr_data")
                 self.hwif_port.append(f"output logic {ext_out}_wr_biten")
