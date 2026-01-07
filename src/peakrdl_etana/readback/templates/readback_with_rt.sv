@@ -8,7 +8,7 @@ endfunction
 
 // readback stage 1
 logic [{{cpuif.data_width-1}}:0] readback_data_rt_c[{{2 ** high_addr_width}}];
-always_comb begin
+always @(*) begin
     logic [{{cpuif.data_width-1}}:0] readback_data_var[{{2 ** high_addr_width}}];
     for(int i=0; i<{{2 ** high_addr_width}}; i++) readback_data_var[i] = '0;
     {{readback_mux|indent}}
@@ -40,9 +40,9 @@ end
 {% if ds.has_external_block %}
 logic [{{cpuif.data_width-1}}:0] readback_ext_block_data_rt_c;
 logic readback_is_ext_block_c;
-always_comb begin
-    automatic logic [{{cpuif.data_width-1}}:0] readback_data_var;
-    automatic logic is_external_block_var;
+always @(*) begin
+    logic [{{cpuif.data_width-1}}:0] readback_data_var;
+    logic is_external_block_var;
     readback_data_var = '0;
     is_external_block_var = '0;
     {{ext_block_readback_mux|indent}}
@@ -64,7 +64,7 @@ end
 {% endif %}
 
 // readback stage 2
-always_comb begin
+always @(*) begin
     {%- if ds.has_external_block %}
     if(readback_is_ext_block) begin
         readback_data = readback_ext_block_data_rt;

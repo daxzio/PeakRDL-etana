@@ -164,12 +164,12 @@ class InputLogicGenerator(RDLListener):
             has_sw_wr = has_sw_writable_descendants(node)
             has_sw_rd = has_sw_readable_descendants(node)
 
+            # For external blocks, data signals always match the CPUIF bus width
+            # (same rule as external memories). Wide/narrow register semantics are
+            # handled by the external block's addressing and byte enables.
+            data_width = self.hwif.exp.cpuif.data_width
+
             if has_sw_wr:
-                # Get the data width from first register in regfile
-                data_width = 32  # Default, will be overridden
-                for reg in node.registers():
-                    data_width = reg.get_property("regwidth")
-                    break
                 if data_width > 1:
                     self.hwif_port.append(
                         f"output logic [{data_width-1}:0] {prefix_out}_wr_data"
@@ -183,11 +183,6 @@ class InputLogicGenerator(RDLListener):
                 self.hwif_port.append(f"input wire {prefix_in}_wr_ack")
 
             if has_sw_rd:
-                # Get the data width from first register in regfile
-                data_width = 32  # Default
-                for reg in node.registers():
-                    data_width = reg.get_property("regwidth")
-                    break
                 if data_width > 1:
                     self.hwif_port.append(
                         f"input wire [{data_width-1}:0] {prefix_in}_rd_data"

@@ -1,4 +1,4 @@
-always_comb begin
+always @(*) begin
     // Icarus limitation: does not support overriding variable lifetime (automatic).
     // A regular block-local temp is sufficient here since logic is purely combinational.
     logic [{{cpuif.data_width-1}}:0] readback_data_var;

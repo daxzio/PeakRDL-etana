@@ -128,7 +128,7 @@ Add the fix to "Fixes Applied" section below with:
 10. **Assertion Names (#151)** - Added descriptive names for debugging
     - File: `src/peakrdl_etana/module_tmpl.sv`
 
-11. **Avalon NBA Fix (#152)** - Fixed non-blocking assignment in always_comb
+11. **Avalon NBA Fix (#152)** - Fixed non-blocking assignment in combinational logic
     - File: `src/peakrdl_etana/cpuif/avalon/avalon_tmpl.sv`
 
 12. **Whitespace Cleanup (#148)** - Improved package formatting
@@ -295,15 +295,15 @@ assert(condition) else $error("message");
 assert_descriptive_name: assert(condition) else $error("message");
 ```
 
-### Pattern 2: NBA Fixes in always_comb
+### Pattern 2: NBA Fixes in combinational logic
 ```systemverilog
 // Before (WRONG)
-always_comb begin
+always @(*) begin
     signal <= value;  // NBA in comb
 end
 
 // After (CORRECT)
-always_comb begin
+always @(*) begin
     signal = value;  // Blocking assignment
 end
 ```
