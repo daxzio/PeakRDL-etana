@@ -7,7 +7,6 @@ from ..utils import (
     clog2,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
-    is_wide_single_field_register,
     external_policy,
 )
 
@@ -360,7 +359,6 @@ class InputLogicGenerator(RDLListener):
                 1 for f in node.parent.fields() if f.is_sw_readable or f.is_sw_writable
             )
             is_single_field = n_fields == 1
-            is_wide_single_field = is_wide_single_field_register(node.parent)
 
             # For external registers, always use accesswidth for data port width
             # This ensures correct width even when regwidth == accesswidth (not "wide")
