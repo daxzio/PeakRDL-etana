@@ -43,10 +43,13 @@ ifeq ($(REGBLOCK),1)
 	COMPILE_ARGS += -Wno-UNOPTFLAT
 	COMPILE_ARGS += -Wno-WIDTHEXPAND
 	COMPILE_ARGS += -Wno-BLKLOOPINIT
-	# Some large address ranges can cause Verilator to notice comparisons that are
-	# constant due to limited signal width (eg, upper bound equals max representable).
-	# This is benign for our testbenches, so do not fail the build on it.
-	COMPILE_ARGS += -Wno-CMPCONST
+	# # Some large address ranges can cause Verilator to notice comparisons that are
+	# # constant due to limited signal width (eg, upper bound equals max representable).
+	# # This is benign for our testbenches, so do not fail the build on it.
+	# COMPILE_ARGS += -Wno-CMPCONST
+	# # Address range comparisons on small addr widths can trigger UNSIGNED warnings.
+	# # These are not actionable for our generated SV, so don't fail builds on it.
+	# COMPILE_ARGS += -Wno-UNSIGNED
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 	HDL_DIR=regblock-rtl
