@@ -358,14 +358,14 @@ class InputLogicGenerator(RDLListener):
             is_single_field = n_fields == 1
             is_wide_single_field = is_wide_single_field_register(node.parent)
 
-            if is_wide_single_field:
-                # Use accesswidth for wide registers
-                accesswidth = node.parent.get_property("accesswidth")
-                port_width = accesswidth
-                if port_width > 1:
-                    packed_dim = f"[{port_width-1}:0]"
-                else:
-                    packed_dim = ""
+            # For external registers, always use accesswidth for data port width
+            # This ensures correct width even when regwidth == accesswidth (not "wide")
+            accesswidth = node.parent.get_property("accesswidth")
+            port_width = accesswidth
+            if port_width > 1:
+                packed_dim = f"[{port_width-1}:0]"
+            else:
+                packed_dim = ""
 
             if node.is_sw_readable:
                 rd_data_name = self.hwif.get_external_rd_data(node)
