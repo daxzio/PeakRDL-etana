@@ -301,6 +301,24 @@ module {{ds.module_name}}
     assign readback_external_rd_ack = 0;
 {%- endif %}
 
+    // Readback mux address
+    // When external accesses are present, hold address stable so readback mux can
+    // continue selecting the correct external data while waiting for rd_ack.
+    logic [{{cpuif.addr_width-1}}:0] rd_mux_addr;
+{%- if ds.has_external_addressable %}
+    logic [{{cpuif.addr_width-1}}:0] pending_rd_addr;
+    always_ff {{get_always_ff_event(cpuif.reset)}} begin
+        if({{get_resetsignal(cpuif.reset)}}) begin
+            pending_rd_addr <= '0;
+        end else begin
+            if(decoded_req) pending_rd_addr <= cpuif_addr;
+        end
+    end
+    assign rd_mux_addr = decoded_req ? cpuif_addr : pending_rd_addr;
+{%- else %}
+    assign rd_mux_addr = cpuif_addr;
+{%- endif %}
+
     logic readback_err;
     logic readback_done;
     logic [{{cpuif.data_width-1}}:0] readback_data;

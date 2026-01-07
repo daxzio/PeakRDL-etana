@@ -454,6 +454,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "has_sw_readable": node.has_sw_readable,
             "has_hw_writable": node.has_hw_writable,
             "has_hw_readable": node.has_hw_readable,
+            "cpuif_data_width": self.exp.cpuif.data_width,
             "prefix": prefix,
             "strb": strb,
             "index_str": index_str,

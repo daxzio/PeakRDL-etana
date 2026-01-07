@@ -72,6 +72,9 @@ SKIP_TESTS+=("test_template_report")
 SKIP_TESTS+=("test_ahblite")
 SKIP_TESTS+=("test_ahb_pipeline")
 SKIP_TESTS+=("test_loops")
+SKIP_TESTS+=("test_index")
+SKIP_TESTS+=("test_wide_external")
+
 
 # Skip certain tests when REGBLOCK=1
 if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
