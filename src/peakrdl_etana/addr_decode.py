@@ -230,6 +230,21 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             )
         return a
 
+    def _get_addr_match_range_expr(
+        self, *, addr_lo: str, addr_lo_int: int, addr_hi: str
+    ) -> str:
+        """
+        Build an address range match expression for unsigned CPU addresses.
+
+        Verilator can warn if we emit redundant comparisons like (addr >= 0)
+        since they are always true for unsigned vectors. When the lower bound is
+        a constant 0 and there is no array-index arithmetic, omit the lower
+        bound to avoid UNSIGNED warnings.
+        """
+        if not self._array_stride_stack and addr_lo_int == 0:
+            return f"(cpuif_addr <= {addr_hi})"
+        return f"(cpuif_addr >= {addr_lo}) & (cpuif_addr <= {addr_hi})"
+
     #     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
     #         expr_width = self.addr_decode.exp.ds.addr_width
     #         a = str(SVInt(
@@ -244,7 +259,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            addr_lo_int = (
+                node.raw_absolute_address
+                - self.addr_decode.top_node.raw_absolute_address
+            )
+            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
+            rhs = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
             self.add_content(f"{strb.path} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
@@ -270,7 +290,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            rhs = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            addr_lo_int = (
+                node.raw_absolute_address
+                - self.addr_decode.top_node.raw_absolute_address
+            )
+            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
+            rhs = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
             self.add_content(f"{strb.path} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
@@ -294,7 +319,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if node.external:
             addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            addr_match = f"cpuif_req_masked & (cpuif_addr >= {addr_str}) & (cpuif_addr <= {addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)})"
+            addr_lo_int = (
+                node.raw_absolute_address
+                - self.addr_decode.top_node.raw_absolute_address
+            )
+            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
+            addr_match = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
 
             # Determine strobe condition based on read/write access
             readable = node.is_sw_readable

@@ -63,10 +63,17 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
 
     def process_external_block(self, node: AddressableNode) -> None:
         addr_lo = self._get_address_str(node)
+        addr_lo_int = node.raw_absolute_address - self.ds.top_node.raw_absolute_address
         addr_hi = f"{addr_lo} + {SVInt(node.size - 1, self.exp.ds.addr_width)}"
-        self.add_content(
-            f"if((rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})) begin"
-        )
+
+        # Avoid emitting redundant comparisons like (rd_mux_addr >= 0) which can
+        # trigger Verilator UNSIGNED warnings when warnings are treated as errors.
+        if not self._array_stride_stack and addr_lo_int == 0:
+            cond = f"(rd_mux_addr <= {addr_hi})"
+        else:
+            cond = f"(rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})"
+
+        self.add_content(f"if({cond}) begin")
         data = self.exp.hwif.get_external_rd_data(node, True)
         self.add_content(f"    readback_data_var = {data};")
         self.add_content("end")
@@ -450,10 +457,15 @@ class RetimedExtBlockReadbackMuxGenerator(ReadbackMuxGenerator):
 
     def process_external_block(self, node: AddressableNode) -> None:
         addr_lo = self._get_address_str(node)
+        addr_lo_int = node.raw_absolute_address - self.ds.top_node.raw_absolute_address
         addr_hi = f"{addr_lo} + {SVInt(node.size - 1, self.exp.ds.addr_width)}"
-        self.add_content(
-            f"if((rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})) begin"
-        )
+
+        if not self._array_stride_stack and addr_lo_int == 0:
+            cond = f"(rd_mux_addr <= {addr_hi})"
+        else:
+            cond = f"(rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})"
+
+        self.add_content(f"if({cond}) begin")
         data = self.exp.hwif.get_external_rd_data(node, True)
         self.add_content(f"    readback_data_var = {data};")
         self.add_content("    is_external_block_var = 1'b1;")
