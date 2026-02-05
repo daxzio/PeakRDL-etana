@@ -1,7 +1,7 @@
 from .rw_buffering import BufferWrites, WBufferTrigger
 from .rw_buffering import BufferReads, RBufferTrigger
 from .extended_swacc import ReadSwacc, WriteSwacc
-from .reg_only import RegOnly
+from .reg_only import VerilogRegOnly
 
 ALL_UDPS = [
     BufferWrites,
@@ -10,5 +10,5 @@ ALL_UDPS = [
     RBufferTrigger,
     ReadSwacc,
     WriteSwacc,
-    RegOnly,
+    VerilogRegOnly,
 ]

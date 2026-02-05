@@ -7,7 +7,7 @@
  * For more details, see: https://peakrdl-etana.readthedocs.io/en/latest/udps/intro.html
  */
 
-property reg_only {
+property verilog_reg_only {
     component = reg;
     type = boolean;
 };

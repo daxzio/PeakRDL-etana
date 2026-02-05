@@ -29,7 +29,9 @@ class InputLogicGenerator(RDLListener):
         self.vector_text = ""  # Initialize to empty string
         self.unpacked_dims = ""  # Initialize unpacked dimensions for after signal name
         self.policy = external_policy(self.hwif.ds)
-        self.current_reg_only = False  # Track if current register has reg_only property
+        self.current_verilog_reg_only = (
+            False  # Track if current register has verilog_reg_only property
+        )
 
     def get_logic(self, node: "Node") -> Optional[str]:
 
@@ -203,8 +205,8 @@ class InputLogicGenerator(RDLListener):
         self.unpacked_dims = ""  # Reset unpacked dimensions
 
     def exit_Reg(self, node: "RegNode") -> None:
-        # Reset reg_only flag when exiting register
-        self.current_reg_only = False
+        # Reset verilog_reg_only flag when exiting register
+        self.current_verilog_reg_only = False
 
     def enter_Reg(self, node: "RegNode") -> None:
         from ..utils import IndexedPath
@@ -216,7 +218,9 @@ class InputLogicGenerator(RDLListener):
         self.vector = 1
         self.vector_text = ""
         self.unpacked_dims = ""  # Unpacked dimensions for after signal name
-        self.current_reg_only = node.get_property("reg_only", default=False)
+        self.current_verilog_reg_only = node.get_property(
+            "verilog_reg_only", default=False
+        )
 
         # Use IndexedPath to get ALL nested array dimensions
         p = IndexedPath(self.hwif.top_node, node)
@@ -240,8 +244,8 @@ class InputLogicGenerator(RDLListener):
                 return  # Skip this register
             parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
 
-        # Handle reg_only: generate single vector signal for the entire register
-        if self.current_reg_only and not self.policy.is_external(node):
+        # Handle verilog_reg_only: generate single vector signal for the entire register
+        if self.current_verilog_reg_only and not self.policy.is_external(node):
             hw_writable_fields = [f for f in node.fields() if f.is_hw_writable]
             hw_readable_fields = [f for f in node.fields() if f.is_hw_readable]
 
@@ -283,8 +287,8 @@ class InputLogicGenerator(RDLListener):
                     self.hwif_port.append(
                         f"output logic {out_identifier}{self.unpacked_dims}"
                     )
-            # Don't process individual fields for reg_only registers
-            # (enter_Field will check current_reg_only and skip)
+            # Don't process individual fields for verilog_reg_only registers
+            # (enter_Field will check current_verilog_reg_only and skip)
 
         # Check for register-level interrupt outputs
         # Interrupt and halt are field properties, so check if any field in the register has them
@@ -336,8 +340,8 @@ class InputLogicGenerator(RDLListener):
                 )
 
     def enter_Field(self, node: "FieldNode") -> None:
-        # Skip fields if parent register has reg_only property
-        if self.current_reg_only:
+        # Skip fields if parent register has verilog_reg_only property
+        if self.current_verilog_reg_only:
             return
 
         # Skip fields inside external blocks - parent block has bus interface

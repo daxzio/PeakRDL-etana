@@ -72,10 +72,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.intr_fields = []
         self.halt_fields = []
 
-        # For reg_only registers, declare internal signals for field I/O
-        reg_only = node.get_property("reg_only", default=False)
-        if reg_only and self.declarations_only:
-            self.generate_reg_only_internal_signals(node)
+        # For verilog_reg_only registers, declare internal signals for field I/O
+        verilog_reg_only = node.get_property("verilog_reg_only", default=False)
+        if verilog_reg_only and self.declarations_only:
+            self.generate_verilog_reg_only_internal_signals(node)
 
         return WalkerAction.Continue
 
@@ -132,10 +132,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             self.assign_external_reg_outputs(node)
             return
 
-        # Handle reg_only: break up register vector into/from individual fields
-        reg_only = node.get_property("reg_only", default=False)
-        if reg_only and not self.declarations_only:
-            self.generate_reg_only_signal_breakup(node)
+        # Handle verilog_reg_only: break up register vector into/from individual fields
+        verilog_reg_only = node.get_property("verilog_reg_only", default=False)
+        if verilog_reg_only and not self.declarations_only:
+            self.generate_verilog_reg_only_signal_breakup(node)
 
         # Assign register's intr output
         if self.intr_fields:
@@ -181,13 +181,13 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             )
             self.add_content("    " + "\n    || ".join(strs) + ";")
 
-    def generate_reg_only_internal_signals(self, node: "RegNode") -> None:
+    def generate_verilog_reg_only_internal_signals(self, node: "RegNode") -> None:
         """
-        For registers with reg_only property, declare internal signals for field I/O
+        For registers with verilog_reg_only property, declare internal signals for field I/O
         that will be connected to/from the register-level vector signals.
         """
         declarations = []
-        declarations.append(f"// reg_only signals for {node.get_path()}")
+        declarations.append(f"// verilog_reg_only signals for {node.get_path()}")
 
         for field in node.fields():
             width = field.width
@@ -223,9 +223,9 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         # Push all declarations to the top section
         self.push_top("\n".join(declarations))
 
-    def generate_reg_only_signal_breakup(self, node: "RegNode") -> None:
+    def generate_verilog_reg_only_signal_breakup(self, node: "RegNode") -> None:
         """
-        For registers with reg_only property, generate assignments that:
+        For registers with verilog_reg_only property, generate assignments that:
         - Break up the register input vector into individual field signals (for hw_writable)
         - Combine individual field outputs into the register output vector (for hw_readable)
         """

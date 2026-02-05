@@ -60,3 +60,12 @@ To enable these UDPs, compile this RDL file prior to the rest of your design:
         - Enables an output strobe that is asserted on sw writes.
 
           See: :ref:`extended_swacc`.
+
+    *   - verilog_reg_only
+        - reg
+        - boolean
+        - If set, the register's hardware interface signals are grouped as a single
+          vector at the top level instead of individual field signals. Internally,
+          the vector is automatically broken up into the individual fields.
+
+          See: :ref:`verilog_reg_only`.
