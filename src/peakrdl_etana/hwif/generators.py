@@ -29,6 +29,7 @@ class InputLogicGenerator(RDLListener):
         self.vector_text = ""  # Initialize to empty string
         self.unpacked_dims = ""  # Initialize unpacked dimensions for after signal name
         self.policy = external_policy(self.hwif.ds)
+        self.current_reg_only = False  # Track if current register has reg_only property
 
     def get_logic(self, node: "Node") -> Optional[str]:
 
@@ -201,6 +202,10 @@ class InputLogicGenerator(RDLListener):
         self.regfile_array = []
         self.unpacked_dims = ""  # Reset unpacked dimensions
 
+    def exit_Reg(self, node: "RegNode") -> None:
+        # Reset reg_only flag when exiting register
+        self.current_reg_only = False
+
     def enter_Reg(self, node: "RegNode") -> None:
         from ..utils import IndexedPath
 
@@ -211,6 +216,7 @@ class InputLogicGenerator(RDLListener):
         self.vector = 1
         self.vector_text = ""
         self.unpacked_dims = ""  # Unpacked dimensions for after signal name
+        self.current_reg_only = node.get_property("reg_only", default=False)
 
         # Use IndexedPath to get ALL nested array dimensions
         p = IndexedPath(self.hwif.top_node, node)
@@ -233,6 +239,52 @@ class InputLogicGenerator(RDLListener):
             ):
                 return  # Skip this register
             parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
+
+        # Handle reg_only: generate single vector signal for the entire register
+        if self.current_reg_only and not self.policy.is_external(node):
+            hw_writable_fields = [f for f in node.fields() if f.is_hw_writable]
+            hw_readable_fields = [f for f in node.fields() if f.is_hw_readable]
+
+            # Calculate the actual width needed based on field positions
+            max_bit_writable = (
+                max([f.high for f in hw_writable_fields]) if hw_writable_fields else -1
+            )
+            max_bit_readable = (
+                max([f.high for f in hw_readable_fields]) if hw_readable_fields else -1
+            )
+
+            # Only generate ports for non-external registers with hw-accessible fields
+            if hw_writable_fields:
+                # Input vector for hw_writable fields
+                reg_identifier = f"{self.hwif.hwif_in_str}_{p.path}"
+                width = max_bit_writable + 1
+
+                if width > 1:
+                    packed_dim = f"[{width-1}:0]"
+                    self.hwif_port.append(
+                        f"input wire {packed_dim} {reg_identifier}{self.unpacked_dims}"
+                    )
+                else:
+                    self.hwif_port.append(
+                        f"input wire {reg_identifier}{self.unpacked_dims}"
+                    )
+
+            if hw_readable_fields:
+                # Output vector for hw_readable fields
+                out_identifier = f"{self.hwif.hwif_out_str}_{p.path}"
+                width = max_bit_readable + 1
+
+                if width > 1:
+                    packed_dim = f"[{width-1}:0]"
+                    self.hwif_port.append(
+                        f"output logic {packed_dim} {out_identifier}{self.unpacked_dims}"
+                    )
+                else:
+                    self.hwif_port.append(
+                        f"output logic {out_identifier}{self.unpacked_dims}"
+                    )
+            # Don't process individual fields for reg_only registers
+            # (enter_Field will check current_reg_only and skip)
 
         # Check for register-level interrupt outputs
         # Interrupt and halt are field properties, so check if any field in the register has them
@@ -284,6 +336,10 @@ class InputLogicGenerator(RDLListener):
                 )
 
     def enter_Field(self, node: "FieldNode") -> None:
+        # Skip fields if parent register has reg_only property
+        if self.current_reg_only:
+            return
+
         # Skip fields inside external blocks - parent block has bus interface
         parent = node.parent
         while parent is not None and parent != self.hwif.top_node:

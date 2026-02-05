@@ -1,0 +1,13 @@
+/*
+ * This file defines several property extensions that are understood by the
+ * PeakRDL-Etana SystemVerilog code generator.
+ *
+ * Compile this file prior to your other SystemRDL sources.
+ *
+ * For more details, see: https://peakrdl-etana.readthedocs.io/en/latest/udps/intro.html
+ */
+
+property reg_only {
+    component = reg;
+    type = boolean;
+};
