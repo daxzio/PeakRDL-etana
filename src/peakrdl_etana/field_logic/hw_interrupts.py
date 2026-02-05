@@ -16,7 +16,14 @@ class Sticky(NextStateConditional):
     comment = "multi-bit sticky"
 
     def is_match(self, field: "FieldNode") -> bool:
-        return field.is_hw_writable and field.get_property("sticky")
+        # If a field is marked as stickybit, it should be handled by the Stickybit
+        # rule instead of this one. Stickybit fields "accumulate" events (bitwise),
+        # while sticky fields latch an entire nonzero value.
+        return (
+            field.is_hw_writable
+            and field.get_property("sticky")
+            and not field.get_property("stickybit")
+        )
 
     def get_predicate(self, field: "FieldNode") -> str:
         input_val = self.exp.hwif.get_input_identifier(field)

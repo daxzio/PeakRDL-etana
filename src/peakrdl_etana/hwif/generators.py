@@ -9,6 +9,7 @@ from ..utils import (
     has_sw_readable_descendants,
     external_policy,
 )
+from ..identifier_filter import kw_filter as kwf
 
 if TYPE_CHECKING:
     from systemrdl.node import Node, RegfileNode
@@ -101,10 +102,16 @@ class InputLogicGenerator(RDLListener):
         # For external memories, data signals use CPUIF bus width, not memwidth
         # This matches peakrdl-regblock behavior: external block data signals
         # always match the CPUIF bus width regardless of block contents
+        #
+        # Use IndexedPath-derived naming so identifiers are consistent (and
+        # lowercase) across port declarations and internal logic.
         data_width = self.hwif.exp.cpuif.data_width
         addr_width = clog2(node.size)
-        ext_in = f"{self.hwif.hwif_in_str}_{node.inst_name}"
-        ext_out = f"{self.hwif.hwif_out_str}_{node.inst_name}"
+        from ..utils import IndexedPath
+
+        p = IndexedPath(self.hwif.top_node, node)
+        ext_in = f"{self.hwif.hwif_in_str}_{p.path}"
+        ext_out = f"{self.hwif.hwif_out_str}_{p.path}"
         if addr_width > 1:
             self.hwif_port.append(f"output logic [{addr_width-1}:0] {ext_out}_addr")
         else:
@@ -399,19 +406,20 @@ class InputLogicGenerator(RDLListener):
                             f"output logic {x}_wr_biten{self.unpacked_dims}"
                         )
                 else:
+                    field_suffix = kwf(node.inst_name.lower())
                     if packed_dim:
                         self.hwif_port.append(
-                            f"output logic {packed_dim} {x}_wr_data_{node.inst_name}{self.unpacked_dims}"
+                            f"output logic {packed_dim} {x}_wr_data_{field_suffix}{self.unpacked_dims}"
                         )
                         self.hwif_port.append(
-                            f"output logic {packed_dim} {x}_wr_biten_{node.inst_name}{self.unpacked_dims}"
+                            f"output logic {packed_dim} {x}_wr_biten_{field_suffix}{self.unpacked_dims}"
                         )
                     else:
                         self.hwif_port.append(
-                            f"output logic {x}_wr_data_{node.inst_name}{self.unpacked_dims}"
+                            f"output logic {x}_wr_data_{field_suffix}{self.unpacked_dims}"
                         )
                         self.hwif_port.append(
-                            f"output logic {x}_wr_biten_{node.inst_name}{self.unpacked_dims}"
+                            f"output logic {x}_wr_biten_{field_suffix}{self.unpacked_dims}"
                         )
         else:
             if self.hwif.has_value_input(node):

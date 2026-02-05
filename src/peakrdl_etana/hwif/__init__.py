@@ -186,7 +186,7 @@ class Hwif:
             if is_single_field:
                 s = f"{self.hwif_in_str}_{p_reg.path}_rd_data"
             else:
-                field_suffix = f"_{node.inst_name}"
+                field_suffix = f"_{kwf(node.inst_name.lower())}"
                 s = f"{self.hwif_in_str}_{p_reg.path}_rd_data{field_suffix}"
             p = p_reg  # For index handling below
         elif isinstance(node, RegfileNode):
