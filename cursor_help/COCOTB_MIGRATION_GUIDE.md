@@ -23,7 +23,7 @@ This guide documents how to migrate SystemVerilog-based tests to Python/Cocotb t
 
 ```bash
 # Python virtual environment (example):
-source /mnt/sda/projects/PeakRDL-etana/venv.2.0.0/bin/activate
+source venv/bin/activate   # or your project venv, e.g. venv.2.0.0
 pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-etana
 
 # Clone PeakRDL-regblock for reference (if not already available):
@@ -243,7 +243,7 @@ await tb.clk.wait_clkn(5)  # Wait 5 cycles
 ### Step 5: Test with Regblock Reference
 
 ```bash
-source /mnt/sda/projects/PeakRDL-etana/venv.2.0.0/bin/activate
+source venv/bin/activate   # or your project venv, e.g. venv.2.0.0
 make clean regblock sim SIM=verilator REGBLOCK=1
 ```
 

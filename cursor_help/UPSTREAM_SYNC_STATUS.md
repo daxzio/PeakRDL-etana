@@ -3,7 +3,7 @@
 ## Current Status (Last Updated: January 7, 2026)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
-**Upstream Location:** `/mnt/sda/projects/PeakRDL-regblock`
+**Upstream Location:** Set `UPSTREAM_REGBLOCK` to your PeakRDL-regblock checkout path (e.g. `export UPSTREAM_REGBLOCK=/path/to/PeakRDL-regblock`).
 **Upstream Version:** Latest main (commit 9fc95b8 - December 11, 2025)
 **This Fork Version:** 0.22.0
 **Fork Point:** v0.22.0 (December 2024)
@@ -13,6 +13,8 @@
 **Status:** ✅ **FULLY SYNCED** - All applicable upstream fixes through 9fc95b8 applied
 **Last Sync:** January 7, 2026
 **Next Sync Review:** April 2026 (quarterly schedule)
+
+**Path variables (set for sync commands):** `UPSTREAM_REGBLOCK` = path to PeakRDL-regblock repo; `ETANA_TESTS` = path to this repo's `tests/` directory (e.g. `$(pwd)/tests` when run from repo root).
 
 **Etana Branch:** `rb_cpu_index`
 **Etana Commit:** d6ae417 (Jan 7, 2026)
@@ -51,7 +53,7 @@ assign my_signal = hwif_in_my_reg_my_field;
 
 ### Step 1: Check for New Upstream Changes
 ```bash
-cd /mnt/sda/projects/PeakRDL-regblock
+cd $UPSTREAM_REGBLOCK
 git fetch origin
 git log --oneline origin/main --since="2025-12-11"
 ```
@@ -59,13 +61,13 @@ git log --oneline origin/main --since="2025-12-11"
 ### Step 1b: Check for RDL File Updates
 ```bash
 # Find all RDL files that were modified
-cd /mnt/sda/projects/PeakRDL-regblock
+cd $UPSTREAM_REGBLOCK
 git log --oneline origin/main --since="2025-12-11" --name-only | grep "\.rdl$" | sort -u
 
-# Compare specific test RDL files
+# Compare specific test RDL files (ETANA_TESTS = path to this repo's tests/)
 for test in test_cpuif_err_rsp test_parity; do
     if ! diff -q "tests/$test/regblock.rdl" \
-                 "/mnt/sda/projects/PeakRDL-etana/tests/$test/regblock.rdl"; then
+                 "$ETANA_TESTS/$test/regblock.rdl"; then
         echo "$test: RDL differs - update needed"
     fi
 done
@@ -74,8 +76,8 @@ done
 **CRITICAL:** If upstream RDL files changed, copy them directly (never edit):
 ```bash
 # Upstream RDL always wins - copy it directly
-cp /mnt/sda/projects/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
-   /mnt/sda/projects/PeakRDL-etana/tests/test_<name>/regblock.rdl
+cp $UPSTREAM_REGBLOCK/tests/test_<name>/regblock.rdl \
+   $ETANA_TESTS/test_<name>/regblock.rdl
 ```
 
 ### Step 2: Analyze Each Commit
@@ -385,7 +387,7 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 1. **Read this entire document first**
 2. **Understand the architectural difference (structs vs flattened)**
-3. **Check upstream for new commits:** `cd /home/gomez/projects/PeakRDL-regblock && git log --oneline`
+3. **Check upstream for new commits:** `cd $UPSTREAM_REGBLOCK && git log --oneline`
 4. **For each commit, ask:** Is this struct-specific?
 5. **If not:** Apply following file mapping
 6. **Test thoroughly**
