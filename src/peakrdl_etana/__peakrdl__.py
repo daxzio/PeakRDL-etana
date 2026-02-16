@@ -16,7 +16,7 @@ from .cpuif import (
     passthrough,
     avalon,
     ahblite,
-    ahbpipeline,
+    ahb,
     obi,
 )
 from .udps import ALL_UDPS
@@ -67,7 +67,7 @@ class Exporter(ExporterSubcommandPlugin):
             "apb3-flat": apb3.APB3_Cpuif_flattened,
             "apb4-flat": apb4.APB4_Cpuif_flattened,
             "ahblite-flat": ahblite.AHBLite_Cpuif_flattened,
-            "ahb-pipeline-flat": ahbpipeline.AHBPipeline_Cpuif_flattened,
+            "ahb-flat": ahb.AHB_Cpuif_flattened,
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
             "obi-flat": obi.OBI_Cpuif_flattened,

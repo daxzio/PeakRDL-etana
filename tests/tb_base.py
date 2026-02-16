@@ -26,10 +26,10 @@ class testbench:
             from cocotbext.ahb import AHBBus
 
             # from cocotbext.ahb import AHBMaster
-            from interfaces.ahbpipeline_wrapper import AHBPipelineMasterDX
+            from interfaces.ahb_wrapper import AHBMasterDX
 
             self.ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
-            self.intf = AHBPipelineMasterDX(
+            self.intf = AHBMasterDX(
                 self.ahb_bus, getattr(dut, "clk"), getattr(dut, "rst")
             )
 

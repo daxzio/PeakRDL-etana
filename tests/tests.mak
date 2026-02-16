@@ -3,10 +3,11 @@ TOPLEVEL_LANG?=verilog
 COCOTB_REV?=2.0.0
 
 TOPLEVEL?=regblock
+# Set MODULE for cocotb 1.x (which uses MODULE for test discovery).
+# Set COCOTB_TEST_MODULES for cocotb 2.x when configured.
+MODULE?=test_dut
 ifeq ($(COCOTB_REV),2.0.0)
 	COCOTB_TEST_MODULES?=test_dut
-else
-	MODULE?=test_dut
 endif
 
 PEAKRDL_ARGS+=
@@ -83,6 +84,19 @@ ifeq ($(YOSYS),1)
 endif
 
 # WIDTHEXPAND test_counter_basics
+ifeq ($(TOPLEVEL_LANG),verilog)
+	ifeq ($(SIM), icarus)
+        SIM_BUILD:=sim_build_icarus
+	else ifeq ($(SIM), ius)
+        SIM_BUILD:=sim_build_ius
+	else ifeq ($(SIM),xcelium)
+        SIM_BUILD:=sim_build_xcelium
+	else ifeq ($(SIM),verilator)
+        SIM_BUILD:=sim_build_verilator
+	else ifneq ($(filter $(SIM),questa modelsim ),)
+        SIM_BUILD:=sim_build_questa
+	endif
+endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 ifeq ($(SIM),verilator)
@@ -194,6 +208,13 @@ vivado-synth: $(SYNTH_SOURCE_TARGET)
 
 clean::
 	rm -rf sim_build/ __pycache__/ results.xml *.fst rdl-rtl $(SYNTH_OUTPUT)
+	rm -rf ${SIM_BUILD}
 
 waves:
-	gtkwave sim_build/regblock.fst &
+ifeq ($(SIM), icarus)
+	gtkwave ${SIM_BUILD}/*.fst &
+else ifeq ($(SIM), ius)
+	simvision -waves waves.shm &
+else ifeq ($(SIM),verilator)
+	gtkwave dump.fst &
+endif
