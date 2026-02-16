@@ -22,8 +22,9 @@ always_ff {{get_always_ff_event(resetsignal)}} begin
         {{prefix}}_req_is_wr{{index_str}} <= decoded_req_is_wr;
     {%- if has_sw_writable %}
     {%- for inst_name in inst_names %}
-        {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
-        {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
+        // Zero-extend to CPUIF width to avoid Verilator width warnings.
+        {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} <= {{cpuif_data_width}}'(decoded_wr_data{{inst_name[1]}});
+        {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} <= {{cpuif_data_width}}'(decoded_wr_biten{{inst_name[1]}});
     {%- endfor %}
     {%- endif %}
     end
@@ -43,8 +44,9 @@ assign {{prefix}}_req{{index_str}} = decoded_req_is_wr ? {{strb}}{{index_str}} :
 assign {{prefix}}_req_is_wr{{index_str}} = decoded_req_is_wr;
 {%- if has_sw_writable %}
 {%- for inst_name in inst_names %}
-assign {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = decoded_wr_data{{inst_name[1]}};
-assign {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = decoded_wr_biten{{inst_name[1]}};
+// Zero-extend to CPUIF width to avoid Verilator width warnings.
+assign {{prefix}}_wr_data{{inst_name[0]}}{{index_str}} = {{cpuif_data_width}}'(decoded_wr_data{{inst_name[1]}});
+assign {{prefix}}_wr_biten{{inst_name[0]}}{{index_str}} = {{cpuif_data_width}}'(decoded_wr_biten{{inst_name[1]}});
 {%- endfor %}
 {%- endif %}
 

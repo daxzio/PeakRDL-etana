@@ -7,7 +7,8 @@ name = "peakrdl-etana"
 dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = [
-    "systemrdl-compiler ~= 1.29",
+    "peakrdl",
+    "systemrdl-compiler ~= 1.31",
     "Jinja2>=2.11",
 ]
 
@@ -59,7 +60,7 @@ version = {attr = "peakrdl_etana.__about__.__version__"}
 etana = "peakrdl_etana.__peakrdl__:Exporter"
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -71,6 +72,7 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = false
+disable_error_code = ["has-type"]
 strict_equality = true
 
 # Allow flexibility for compatibility

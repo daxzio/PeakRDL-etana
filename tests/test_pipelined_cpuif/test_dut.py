@@ -24,7 +24,8 @@ async def test_dut_pipelined_cpuif(dut):
     await RisingEdge(tb.clk.clk)
     for i in range(64):
         expected = i + 0x12340000
-        actual = (int(tb.hwif_out_x.value) >> (i * 32)) & 0xFFFFFFFF
+        # hwif_out_x is now an unpacked array - access element directly
+        actual = int(tb.hwif_out_x[i].value) & 0xFFFFFFFF
         assert (
             actual == expected
         ), f"hwif_out.x[{i}] = 0x{actual:08x}, expected 0x{expected:08x}"

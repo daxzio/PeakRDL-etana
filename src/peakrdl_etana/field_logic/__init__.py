@@ -248,7 +248,7 @@ class FieldLogic:
                 # Unbuffered. Use decoder strobe directly with byte enable check
                 p = self.exp.dereferencer.get_access_strobe(field)
                 wr_biten = self._get_wr_biten_for_field(field)
-                return f"{p.path} && decoded_req_is_wr && (|({wr_biten}))"
+                return f"{p.path}{p.index_str} && decoded_req_is_wr && (|({wr_biten}))"
 
         if w_modifiable and r_modifiable:
             # assert swmod on both sw read and write
@@ -257,21 +257,23 @@ class FieldLogic:
                 if buffer_reads:
                     rstrb = self.exp.read_buffering.get_trigger(field.parent)
                 else:
-                    rstrb = f"{p.path} && !decoded_req_is_wr"
+                    rstrb = f"{p.path}{p.index_str} && !decoded_req_is_wr"
 
                 if buffer_writes:
                     wstrb = self.exp.write_buffering.get_write_strobe(field)
                 else:
                     # Use byte enable check for write operations
                     wr_biten = self._get_wr_biten_for_field(field)
-                    wstrb = f"{p.path} && decoded_req_is_wr && (|({wr_biten}))"
+                    wstrb = (
+                        f"{p.path}{p.index_str} && decoded_req_is_wr && (|({wr_biten}))"
+                    )
 
                 return f"{wstrb} || {rstrb}"
             else:
                 # Unbuffered. Use decoder strobe directly
                 # For read-write modifiable fields, check byte enables only for writes
                 wr_biten = self._get_wr_biten_for_field(field)
-                return f"({p.path} && !decoded_req_is_wr) || ({p.path} && decoded_req_is_wr && (|({wr_biten})))"
+                return f"({p.path}{p.index_str} && !decoded_req_is_wr) || ({p.path}{p.index_str} && decoded_req_is_wr && (|({wr_biten})))"
 
         if not w_modifiable and r_modifiable:
             # assert swmod only on sw read
@@ -279,7 +281,7 @@ class FieldLogic:
             if buffer_reads:
                 rstrb = self.exp.read_buffering.get_trigger(field.parent)
             else:
-                rstrb = f"{p.path} && !decoded_req_is_wr"
+                rstrb = f"{p.path}{p.index_str} && !decoded_req_is_wr"
             return rstrb
 
         # Not sw modifiable

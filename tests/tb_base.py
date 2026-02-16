@@ -21,6 +21,7 @@ class testbench:
 
             self.apb_bus = ApbBus.from_prefix(dut, "s_apb")
             self.intf = ApbMaster(self.apb_bus, getattr(dut, "clk"))
+        #             self.intf.intra_delay = 1
         elif hasattr(dut, "s_ahb_hsel"):
             from cocotbext.ahb import AHBBus
 
@@ -56,4 +57,35 @@ class testbench:
                 setattr(self, attr, sig)
                 # Only initialize inputs, not outputs
                 if attr.startswith("hwif_in_"):
-                    sig.value = 0
+                    # Try to initialize as an unpacked array first
+                    # Unpacked arrays need element-by-element initialization
+                    initialized = False
+
+                    # Method 1: Check if len() works and it's > 1 (arrays typically have multiple elements)
+                    try:
+                        array_len = len(sig)
+                        if array_len > 1:
+                            # Try to initialize as array
+                            try:
+                                # Test if indexing works
+                                _ = sig[0]
+                                # Initialize all elements
+                                for i in range(array_len):
+                                    try:
+                                        sig[i].value = 0
+                                    except Exception:
+                                        pass
+                                initialized = True
+                            except (TypeError, IndexError, AttributeError):
+                                # len() worked but indexing failed - might be a special type
+                                pass
+                    except (TypeError, AttributeError):
+                        pass
+
+                    # Method 2: If array initialization didn't work, try scalar
+                    if not initialized:
+                        try:
+                            sig.value = 0
+                        except Exception:
+                            # Skip if we can't initialize
+                            pass

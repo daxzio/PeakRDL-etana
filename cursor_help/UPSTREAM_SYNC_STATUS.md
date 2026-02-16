@@ -1,17 +1,23 @@
 # PeakRDL-etana Upstream Sync Status
 
-## Current Status (Last Updated: October 27, 2025)
+## Current Status (Last Updated: January 7, 2026)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
-**Upstream Location:** `/home/gomez/projects/PeakRDL-regblock`
-**Upstream Version:** 1.1.1+ (commit e245178 - Latest main)
+**Upstream Location:** Set `UPSTREAM_REGBLOCK` to your PeakRDL-regblock checkout path (e.g. `export UPSTREAM_REGBLOCK=/path/to/PeakRDL-regblock`).
+**Upstream Version:** Latest main (commit 9fc95b8 - December 11, 2025)
 **This Fork Version:** 0.22.0
 **Fork Point:** v0.22.0 (December 2024)
 **Last Official Sync:** v1.1.1 (January 2025)
 **Architecture:** Flattened signals only (no SystemVerilog structs)
 
-**Status:** ✅ **FULLY SYNCED** - All critical fixes applied
-**Next Sync Review:** January 2026 (quarterly schedule)
+**Status:** ✅ **FULLY SYNCED** - All applicable upstream fixes through 9fc95b8 applied
+**Last Sync:** January 7, 2026
+**Next Sync Review:** April 2026 (quarterly schedule)
+
+**Path variables (set for sync commands):** `UPSTREAM_REGBLOCK` = path to PeakRDL-regblock repo; `ETANA_TESTS` = path to this repo's `tests/` directory (e.g. `$(pwd)/tests` when run from repo root).
+
+**Etana Branch:** `rb_cpu_index`
+**Etana Commit:** d6ae417 (Jan 7, 2026)
 
 ---
 
@@ -47,9 +53,31 @@ assign my_signal = hwif_in_my_reg_my_field;
 
 ### Step 1: Check for New Upstream Changes
 ```bash
-cd /home/gomez/projects/PeakRDL-regblock
+cd $UPSTREAM_REGBLOCK
 git fetch origin
-git log --oneline origin/main --since="2025-10-27"
+git log --oneline origin/main --since="2025-12-11"
+```
+
+### Step 1b: Check for RDL File Updates
+```bash
+# Find all RDL files that were modified
+cd $UPSTREAM_REGBLOCK
+git log --oneline origin/main --since="2025-12-11" --name-only | grep "\.rdl$" | sort -u
+
+# Compare specific test RDL files (ETANA_TESTS = path to this repo's tests/)
+for test in test_cpuif_err_rsp test_parity; do
+    if ! diff -q "tests/$test/regblock.rdl" \
+                 "$ETANA_TESTS/$test/regblock.rdl"; then
+        echo "$test: RDL differs - update needed"
+    fi
+done
+```
+
+**CRITICAL:** If upstream RDL files changed, copy them directly (never edit):
+```bash
+# Upstream RDL always wins - copy it directly
+cp $UPSTREAM_REGBLOCK/tests/test_<name>/regblock.rdl \
+   $ETANA_TESTS/test_<name>/regblock.rdl
 ```
 
 ### Step 2: Analyze Each Commit
@@ -65,12 +93,21 @@ For each commit, determine:
 4. Adapt if needed (struct → flattened signals)
 5. Test thoroughly
 
-### Step 4: Update This Document
+### Step 4: Check and Migrate Tests (if RDL changed)
+If any test RDL files were updated:
+1. Copy the RDL file from upstream (as above)
+2. Check if test_dut.py needs updates for new RDL structure
+3. Update test_dut.py if needed (register names, address ranges, etc.)
+4. Test with: `make clean regblock sim REGBLOCK=1`
+5. Verify passes with both regblock and etana
+
+### Step 5: Update This Document
 Add the fix to "Fixes Applied" section below with:
 - Upstream commit hash
 - What it fixes
 - Files changed
 - Any adaptation notes
+- Test migration status (if applicable)
 
 ---
 
@@ -93,7 +130,7 @@ Add the fix to "Fixes Applied" section below with:
 10. **Assertion Names (#151)** - Added descriptive names for debugging
     - File: `src/peakrdl_etana/module_tmpl.sv`
 
-11. **Avalon NBA Fix (#152)** - Fixed non-blocking assignment in always_comb
+11. **Avalon NBA Fix (#152)** - Fixed non-blocking assignment in combinational logic
     - File: `src/peakrdl_etana/cpuif/avalon/avalon_tmpl.sv`
 
 12. **Whitespace Cleanup (#148)** - Improved package formatting
@@ -138,6 +175,76 @@ Add the fix to "Fixes Applied" section below with:
     - Restored 5 tests to passing status
     - Compatible with both Cocotb 1.9.2 and 2.0.0
 
+### Applied from Main (October 27, 2025 → November 18, 2025) ✅
+
+20. **Error Response for Overlapped Registers Fix (#178, efbddcc)** - Nov 16, 2025
+    - Fixed error response handling for overlapped registers with read-only and write-only attributes
+    - Changed from `is_invalid_rw` to `is_valid_rw` logic for better handling of overlapped register access
+    - Files: `src/peakrdl_etana/addr_decode.py`, `src/peakrdl_etana/module_tmpl.sv`
+    - Improved error calculation: `decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req`
+    - Handles cases where registers with overlapping addresses have different read/write permissions
+
+21. **OBI Address Truncation Fixes (#173, #176, ef2a18c, 4201ce9)** - Nov 4-18, 2025
+    - Fixed missing address truncation in OBI interface
+    - Fixed OBI address truncation template for 1-byte datawidth case
+    - Files: `src/peakrdl_etana/cpuif/obi/obi_tmpl.sv`
+    - Added conditional handling: `{%- if cpuif.data_width_bytes == 1 %} cpuif_addr <= ... {%- else %} ... {%- endif %}`
+    - Ensures correct address alignment for all data width configurations
+
+22. **API Cleanup - Remove Non-Public API Usage (7f572e0)** - Nov 15, 2025
+    - Removed dangerous usage of non-public parts of the systemrdl-compiler API
+    - Removed `from systemrdl.component import Reg` and `assert isinstance(node.inst, Reg)` from implementation generators
+    - Updated UDP validation to use `node.component_type_name` instead of `type(node.inst).__name__.lower()`
+    - Updated systemrdl-compiler dependency: `~= 1.29` → `~= 1.31`
+    - Files:
+      - `src/peakrdl_etana/read_buffering/implementation_generator.py`
+      - `src/peakrdl_etana/write_buffering/implementation_generator.py`
+      - `src/peakrdl_etana/udps/rw_buffering.py`
+      - `pyproject.toml`
+
+23. **Buffering Traversal Fix (#167, 61bffb7)** - Nov 16, 2025
+    - Status: ✅ Already handled in etana
+    - Upstream fix prevents traversal into externals for read/write buffered regs
+    - Etana's implementation_generator files already check `if node.external:` and skip traversal
+    - Etana's storage_generator files are empty (struct-based, not used in flattened architecture)
+    - No changes needed
+
+24. **Test Migration - test_cpuif_err_rsp (#178, efbddcc)** - Nov 21, 2025
+    - Updated RDL file to match upstream (overlapped registers, external regfile)
+    - Migrated test_dut.py to match new RDL structure:
+      - Removed external register tests (er_rw, er_r, er_w)
+      - Updated register names: r_r → r_ro, r_w → r_wo
+      - Updated memory names: mem_r → mem_ro, mem_w → mem_wo
+      - Added overlapped register test (readonly/writeonly at 0x1C)
+      - Added external regfile test (external_rf at 0x40)
+    - Files: `tests/test_cpuif_err_rsp/regblock.rdl`, `tests/test_cpuif_err_rsp/test_dut.py`
+    - Status: ✅ Test verified with `make clean regblock sim REGBLOCK=1`
+
+### Applied from Main (November 18, 2025 → December 11, 2025) ✅
+
+25. **Readback Mux Refactor + Streaming Concat Removal (#155, #165, 9fc95b8)** - Jan 7, 2026
+    - Upstream: Replaced readback OR-reduce implementation with mux-based approach and removed illegal streaming concatenation usage
+    - Etana: Full port of refactor + additional compatibility fixes discovered during integration
+    - Files (primary):
+      - `src/peakrdl_etana/readback/*` (new mux-based readback implementation)
+      - `src/peakrdl_etana/module_tmpl.sv` (added `rd_mux_addr` hold logic for external accesses)
+      - `src/peakrdl_etana/field_logic/templates/external_reg.sv` (cast wr_data/biten to avoid Verilator width-fatal warnings)
+      - `tests/tests.mak` (added Verilator warning suppressions needed for large/edge-case address ranges)
+    - Key etana-specific fixes applied while porting:
+      - Icarus compatibility: remove `automatic` variable lifetime in readback templates
+      - Icarus compatibility: avoid streaming concatenation by ensuring `do_bitswap(..., width)` is always used
+      - External readback: multi-field external regs assemble from per-field `rd_data_*` signals (right-aligned) and skip non-readable external blocks
+    - Verification (Cocotb):
+      - ✅ `test_basic`, `test_write_buffer`, `test_external`, `test_cpuif_err_rsp`
+      - ✅ `test_wide_external` passes with `REGBLOCK=1` (regblock reference) after test alignment
+
+26. **Added Cocotb Test: test_only_external_blocks** - Jan 7, 2026
+    - Upstream-only test directory was added to etana tests and migrated to Cocotb
+    - RDL copied byte-for-byte from upstream
+    - Verification:
+      - ✅ `make clean regblock sim REGBLOCK=1` (regblock reference)
+      - ✅ `make clean etana sim REGBLOCK=0` (etana generator)
+
 ### Not Applicable (Struct-Specific)
 
 - Simulation-time Width Assertions (#128) - References `is_interface` attribute
@@ -146,19 +253,19 @@ Add the fix to "Fixes Applied" section below with:
 
 ### Pending Review (Optional for Future)
 
-21. **Port List Generation Refactoring (#125, #153, commit 529c4df)** - Oct 25, 2025
+27. **Port List Generation Refactoring (#125, #153, commit 529c4df)** - Oct 25, 2025
     - Moves port list generation from Jinja template to Python
     - Status: Under review for future sync
     - Benefit: Cleaner code structure
     - Effort: 2-3 hours
 
-22. **OBI Protocol Support (#158, commits aa9a210-bb765e6)** - Oct 2025
+28. **OBI Protocol Support (#158, commits aa9a210-bb765e6)** - Oct 2025
     - New CPU interface: Open Bus Interface
     - Status: Not yet ported (would need flattened variant)
     - Note: User-driven feature (port if requested)
     - Effort: 4-6 hours
 
-23. **AHB Enhancements (commit 29ec121)** - Oct 2025
+29. **AHB Enhancements (commit 29ec121)** - Oct 2025
     - Status: Need to verify etana's AHB is up-to-date
     - Action: Compare implementations
     - Effort: 1 hour
@@ -190,15 +297,15 @@ assert(condition) else $error("message");
 assert_descriptive_name: assert(condition) else $error("message");
 ```
 
-### Pattern 2: NBA Fixes in always_comb
+### Pattern 2: NBA Fixes in combinational logic
 ```systemverilog
 // Before (WRONG)
-always_comb begin
+always @(*) begin
     signal <= value;  // NBA in comb
 end
 
 // After (CORRECT)
-always_comb begin
+always @(*) begin
     signal = value;  // Blocking assignment
 end
 ```
@@ -254,11 +361,13 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 ## Sync Statistics
 
-- **Total Fixes Analyzed:** 23 (across v0.22.0 → current main Oct 2025)
-- **Fixes Applied:** 19 (includes etana-specific fixes)
+- **Total Fixes Analyzed:** 29 (across v0.22.0 → current main Dec 2025)
+- **Fixes Applied:** 26 (includes etana-specific fixes and test migrations)
 - **Fixes Not Applicable:** 3 (struct-specific)
+- **Fixes Already Handled:** 1 (buffering traversal fix)
 - **Documented for Future:** 3 (optional enhancements)
 - **Success Rate:** 100% of applicable fixes implemented
+- **Tests Migrated:** All functional tests complete (plus upstream-only `test_only_external_blocks`)
 
 ---
 
@@ -278,7 +387,7 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 1. **Read this entire document first**
 2. **Understand the architectural difference (structs vs flattened)**
-3. **Check upstream for new commits:** `cd /home/gomez/projects/PeakRDL-regblock && git log --oneline`
+3. **Check upstream for new commits:** `cd $UPSTREAM_REGBLOCK && git log --oneline`
 4. **For each commit, ask:** Is this struct-specific?
 5. **If not:** Apply following file mapping
 6. **Test thoroughly**
@@ -286,7 +395,8 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 ---
 
-**Last Updated:** October 27, 2025
-**Last Sync Commit:** e245178
-**Synced By:** Cursor AI (Session 1)
+**Last Updated:** January 7, 2026
+**Last Sync Commit:** 9fc95b8
+**Synced By:** Cursor AI (Session 3)
 **Status:** Fully current with upstream ✅
+**Test Migration Status:** All functional tests migrated + upstream-only test added ✅

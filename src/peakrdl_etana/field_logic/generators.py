@@ -71,6 +71,12 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.fields: List[FieldNode] = []
         self.intr_fields = []
         self.halt_fields = []
+
+        # For verilog_reg_only registers, declare internal signals for field I/O
+        verilog_reg_only = node.get_property("verilog_reg_only", default=False)
+        if verilog_reg_only and self.declarations_only:
+            self.generate_verilog_reg_only_internal_signals(node)
+
         return WalkerAction.Continue
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
@@ -125,6 +131,12 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         if is_external_for_codegen(node, self.ds):
             self.assign_external_reg_outputs(node)
             return
+
+        # Handle verilog_reg_only: break up register vector into/from individual fields
+        verilog_reg_only = node.get_property("verilog_reg_only", default=False)
+        if verilog_reg_only and not self.declarations_only:
+            self.generate_verilog_reg_only_signal_breakup(node)
+
         # Assign register's intr output
         if self.intr_fields:
             strs = []
@@ -168,6 +180,125 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 f"assign {self.exp.hwif.get_implied_prop_output_identifier(node, 'halt')} ="
             )
             self.add_content("    " + "\n    || ".join(strs) + ";")
+
+    def generate_verilog_reg_only_internal_signals(self, node: "RegNode") -> None:
+        """
+        For registers with verilog_reg_only property, declare internal signals for field I/O
+        that will be connected to/from the register-level vector signals.
+        """
+        declarations = []
+        declarations.append(f"// verilog_reg_only signals for {node.get_path()}")
+
+        for field in node.fields():
+            width = field.width
+            packed_dim = f"[{width-1}:0]" if width > 1 else ""
+
+            # Get the array dimensions for the field
+            p = IndexedPath(self.ds.top_node, field)
+            unpacked_dims = ""
+            if p.array_dimensions:
+                for dim in p.array_dimensions:
+                    unpacked_dims += f" [{dim-1}:0]"
+
+            if field.is_hw_writable:
+                # Declare internal input signal for the field
+                field_input = self.exp.hwif.get_input_identifier(field, index=False)
+                if packed_dim:
+                    declarations.append(
+                        f"logic {packed_dim} {field_input}{unpacked_dims};"
+                    )
+                else:
+                    declarations.append(f"logic {field_input}{unpacked_dims};")
+
+            if field.is_hw_readable:
+                # Declare internal output signal for the field
+                field_output = self.exp.hwif.get_output_identifier(field, index=False)
+                if packed_dim:
+                    declarations.append(
+                        f"logic {packed_dim} {field_output}{unpacked_dims};"
+                    )
+                else:
+                    declarations.append(f"logic {field_output}{unpacked_dims};")
+
+        # Push all declarations to the top section
+        self.push_top("\n".join(declarations))
+
+    def generate_verilog_reg_only_signal_breakup(self, node: "RegNode") -> None:
+        """
+        For registers with verilog_reg_only property, generate assignments that:
+        - Break up the register input vector into individual field signals (for hw_writable)
+        - Combine individual field outputs into the register output vector (for hw_readable)
+        """
+        # Collect hw_writable and hw_readable fields
+        hw_writable_fields = [f for f in node.fields() if f.is_hw_writable]
+        hw_readable_fields = [f for f in node.fields() if f.is_hw_readable]
+
+        if hw_writable_fields:
+            # Break up register input vector into individual field signals
+            # Manually construct the register input identifier
+            p = IndexedPath(self.ds.top_node, node)
+            reg_input = f"{self.exp.hwif.hwif_in_str}_{p.path}"
+
+            for field in hw_writable_fields:
+                field_input = self.exp.hwif.get_input_identifier(field)
+                high = field.high
+                low = field.low
+
+                if field.width > 1:
+                    self.add_content(
+                        f"assign {field_input} = {reg_input}[{high}:{low}];"
+                    )
+                else:
+                    self.add_content(f"assign {field_input} = {reg_input}[{low}];")
+
+        if hw_readable_fields:
+            # Combine field outputs into register output vector
+            # Manually construct the register output identifier
+            p = IndexedPath(self.ds.top_node, node)
+            reg_output = f"{self.exp.hwif.hwif_out_str}_{p.path}"
+
+            # Calculate the actual output width based on highest bit position
+            max_bit = max([f.high for f in hw_readable_fields])
+            output_width = max_bit + 1
+
+            # Sort fields by position (high to low) for proper concatenation
+            sorted_fields = sorted(
+                hw_readable_fields, key=lambda f: f.high, reverse=True
+            )
+
+            # Track which bits are covered
+            covered_bits = set()
+            for field in sorted_fields:
+                for bit in range(field.low, field.high + 1):
+                    covered_bits.add(bit)
+
+            # Build the assignment with proper bit ordering
+            current_bit = max_bit  # Use max_bit instead of regwidth - 1
+            assignment_parts = []
+
+            while current_bit >= 0:
+                # Find if this bit belongs to a field
+                field_for_bit = None
+                for field in sorted_fields:
+                    if field.low <= current_bit <= field.high:
+                        field_for_bit = field
+                        break
+
+                if field_for_bit:
+                    # Add the entire field
+                    field_output = self.exp.hwif.get_output_identifier(field_for_bit)
+                    assignment_parts.append(field_output)
+                    current_bit = field_for_bit.low - 1
+                else:
+                    # This bit is not covered by any field, fill with zero
+                    assignment_parts.append("1'b0")
+                    current_bit -= 1
+
+            if len(assignment_parts) == 1:
+                self.add_content(f"assign {reg_output} = {assignment_parts[0]};")
+            else:
+                concat_expr = "{" + ", ".join(assignment_parts) + "}"
+                self.add_content(f"assign {reg_output} = {concat_expr};")
 
     def generate_field_storage(self, node: "FieldNode") -> None:
         # Check if this is a wide register field that spans multiple subwords
@@ -454,6 +585,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "has_sw_readable": node.has_sw_readable,
             "has_hw_writable": node.has_hw_writable,
             "has_hw_readable": node.has_hw_readable,
+            "cpuif_data_width": self.exp.cpuif.data_width,
             "prefix": prefix,
             "strb": strb,
             "index_str": index_str,

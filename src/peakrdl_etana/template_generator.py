@@ -88,7 +88,7 @@ class TemplateGenerator:
 
         # Add reset signal - get from cpuif or top_node
         reset_name = "arst_n"  # Default
-        cpuif_reset = self.cpuif.reset  # type: ignore[has-type]
+        cpuif_reset = self.cpuif.reset
 
         if cpuif_reset is not None:
             reset_name = cpuif_reset.inst_name

@@ -1,7 +1,7 @@
 
 
 // Request
-always_comb begin
+always @(*) begin
     cpuif_req = {{cpuif.signal("read")}} | {{cpuif.signal("write")}};
     cpuif_req_is_wr = {{cpuif.signal("write")}};
     {%- if cpuif.data_width_bytes == 1 %}
@@ -17,7 +17,7 @@ always_comb begin
 end
 
 // Response
-always_comb begin
+always @(*) begin
     {{cpuif.signal("readdatavalid")}} = cpuif_rd_ack;
     {{cpuif.signal("writeresponsevalid")}} = cpuif_wr_ack;
     {{cpuif.signal("readdata")}} = cpuif_rd_data;

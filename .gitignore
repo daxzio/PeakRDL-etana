@@ -34,3 +34,4 @@ venv*/
 repos/
 *_example.sv
 *_hwif.csv
+vivado_synth.tcl

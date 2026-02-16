@@ -12,8 +12,15 @@ from random import randint
 
 
 def get_index(val, i, width=32):
+    """Get value from unpacked array at index i.
+
+    With unpacked arrays (format: [bits] signal_name [array_size]),
+    we access elements directly: val[i].value
+    """
     mask = 2**width - 1
-    return (int(val.value) >> i * width) & mask
+    # Unpacked arrays: index into array, then get value
+    # In cocotb, unpacked arrays support indexing directly
+    return int(val[i].value) & mask
 
 
 async def check_range(tb, addr, depth=32, width=32, hwr=False):

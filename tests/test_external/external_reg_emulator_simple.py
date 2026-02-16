@@ -232,7 +232,7 @@ class ExtRegArrayEmulator:
             self.wr_biten = dut.hwif_out_ext_reg_array_wr_biten_whatever
             self.rd_data = dut.hwif_in_ext_reg_array_rd_data_whatever
 
-        # Acks (packed)
+        # Acks (now unpacked arrays)
         self.rd_ack = dut.hwif_in_ext_reg_array_rd_ack  # [31:0]
         self.wr_ack = dut.hwif_in_ext_reg_array_wr_ack  # [31:0]
 
@@ -240,39 +240,35 @@ class ExtRegArrayEmulator:
         self.storage = [0] * 32
 
         # Initialize acks and read data to prevent X propagation
-        self.rd_ack.value = 0
-        self.wr_ack.value = 0
-        # Initialize rd_data as packed array (can't index individual elements)
-        # Cocotb will initialize the full packed array
+        # Unpacked arrays need to be initialized element by element
+        for i in range(32):
+            self.rd_ack[i].value = 0
+            self.wr_ack[i].value = 0
+            self.rd_data[i].value = 0
 
     async def run(self):
         """Run the emulator"""
         while True:
             await RisingEdge(self.clk)
 
-            # Default: no acks
-            self.rd_ack.value = 0
-            self.wr_ack.value = 0
-
-            # Handle X values gracefully
-            try:
-                req_val = int(self.req.value)
-            except ValueError:
-                continue
-
-            # Check which array element is being accessed
+            # Default: no acks (unpacked arrays - clear each element)
             for i in range(32):
-                if (req_val >> i) & 1:
-                    # Extract is_wr bit for element i from packed array
-                    is_wr_packed = int(self.req_is_wr.value)
-                    is_wr_bit = (is_wr_packed >> i) & 1
-                    if is_wr_bit == 1:
-                        # Write request - extract data and biten for element i
-                        # wr_data is [31:0][31:0], extract [i]
-                        packed_data = int(self.wr_data.value)
-                        packed_biten = int(self.wr_biten.value)
-                        element_data = (packed_data >> (i * 32)) & 0xFFFFFFFF
-                        element_biten = (packed_biten >> (i * 32)) & 0xFFFFFFFF
+                self.rd_ack[i].value = 0
+                self.wr_ack[i].value = 0
+
+            # Check which array element is being accessed (unpacked arrays - check each element)
+            for i in range(32):
+                try:
+                    req_val = int(self.req[i].value)
+                    if req_val == 0:
+                        continue
+
+                    # Check if write
+                    is_wr = int(self.req_is_wr[i].value)
+                    if is_wr == 1:
+                        # Write request - get data and biten for element i (unpacked arrays)
+                        element_data = int(self.wr_data[i].value)
+                        element_biten = int(self.wr_biten[i].value)
 
                         # Apply bit-enable mask
                         for bit in range(32):
@@ -282,23 +278,17 @@ class ExtRegArrayEmulator:
                                 else:
                                     self.storage[i] &= ~(1 << bit)
 
-                        # Ack for element i
-                        ack_val = 1 << i
-                        self.wr_ack.value = ack_val
+                        # Ack for element i (unpacked array)
+                        self.wr_ack[i].value = 1
                     else:
-                        # Read request - return data for element i
-                        # The rd_data is a packed 2D array [31:0][31:0]
-                        # We need to set just element [i] in the packed format
-                        # Pack all storage into the signal (cocotb will extract element i)
-                        packed_data = 0
-                        for j in range(32):
-                            packed_data |= self.storage[j] << (j * 32)
-                        self.rd_data.value = packed_data
-
-                        # Ack for element i
-                        ack_val = 1 << i
-                        self.rd_ack.value = ack_val
-                    break  # Only one element at a time
+                        # Read request - return data for element i (unpacked array)
+                        self.rd_data[i].value = self.storage[i]
+                        # Ack for element i (unpacked array)
+                        self.rd_ack[i].value = 1
+                    break  # Only one element should be active at a time
+                except (ValueError, AttributeError):
+                    # Skip if value is X or other invalid
+                    continue
 
 
 class ExternalBlockEmulator:

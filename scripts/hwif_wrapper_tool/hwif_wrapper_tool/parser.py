@@ -50,7 +50,9 @@ class HwifSignal:
         return name
 
     def _generate_port_name(self) -> str:
-        """Generate port name with suffix removal ONLY if struct path ends with .next or .value"""
+        """Generate port name with suffix removal ONLY if struct path ends with .next or .value
+        Converts to lowercase to match etana's naming convention
+        """
         name = self.flat_name
 
         # Only remove suffix if the struct path actually ends with .next or .value
@@ -73,24 +75,30 @@ class HwifSignal:
         if len(parts) >= 2 and parts[-1] == parts[-2]:
             name = "_".join(parts[:-1])
 
-        return name
+        # Convert to lowercase to match etana's naming convention
+        return name.lower()
 
     def get_port_declaration(self) -> str:
-        """Generate port declaration string"""
+        """Generate port declaration string with unpacked array format
+
+        Format: <direction> logic [packed] <name> [unpacked...]
+        Example: output logic [31:0] signal_name [7:0]
+        """
         # Build unpacked dimensions (arrays) - in REVERSE order
+        # These go AFTER the signal name
         unpacked_dims = ""
         for first, last in reversed(self.array_dims):
             size = abs(first - last) + 1
-            unpacked_dims += f"[{size-1}:0] "
+            unpacked_dims += f" [{size-1}:0]"
 
-        # Build packed dimension (bit width)
+        # Build packed dimension (bit width) - goes BEFORE signal name
         if self.width == 1 and self.lsb == 0:
             packed_dim = ""
         else:
             packed_dim = f"[{self.lsb + self.width - 1}:{self.lsb}] "
 
-        # Format: <direction> logic [unpacked...] [packed] <name>
-        return f"{self.direction} logic {unpacked_dims}{packed_dim}{self.prefix}_{self.port_name}"
+        # Format: <direction> logic [packed] <name> [unpacked...]
+        return f"{self.direction} logic {packed_dim}{self.prefix}_{self.port_name}{unpacked_dims}"
 
 
 def parse_hwif_report(report_path: str) -> Tuple[List[HwifSignal], List[HwifSignal]]:

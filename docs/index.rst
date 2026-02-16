@@ -124,3 +124,4 @@ Links
     udps/read_buffering
     udps/write_buffering
     udps/extended_swacc
+    udps/verilog_reg_only

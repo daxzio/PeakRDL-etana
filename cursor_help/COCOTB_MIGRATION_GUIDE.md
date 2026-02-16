@@ -15,13 +15,15 @@ This guide documents how to migrate SystemVerilog-based tests to Python/Cocotb t
 
 **📚 For detailed troubleshooting and recent fixes, see**: `MIGRATION_SESSION_OCT_2025.md`
 
+**🔄 Last Updated:** January 7, 2026 - All migrated tests synced with upstream through regblock commit 9fc95b8
+
 ---
 
 ## Prerequisites
 
 ```bash
-# Python virtual environment (use venv-3.12.3/):
-source venv-3.12.3/bin/activate
+# Python virtual environment (example):
+source venv/bin/activate   # or your project venv, e.g. venv.2.0.0
 pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-etana
 
 # Clone PeakRDL-regblock for reference (if not already available):
@@ -103,6 +105,33 @@ include ../tests.mak
 **CRITICAL**: Copy RDL from upstream - NEVER edit:
 ```bash
 cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl .
+```
+
+**When syncing with upstream:** Always check if upstream RDL has changed:
+```bash
+# Check for differences
+diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
+     tests/test_<name>/regblock.rdl
+
+# If different, copy upstream version (upstream wins)
+cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
+   tests/test_<name>/regblock.rdl
+```
+
+**Check for all test RDL updates:**
+```bash
+# Find all RDL files that differ from upstream
+cd /home/gomez/projects/PeakRDL-etana
+for test_dir in tests/test_*/; do
+    test_name=$(basename "$test_dir")
+    if [ -f "$test_dir/regblock.rdl" ] && \
+       [ -f "/home/gomez/projects/PeakRDL-regblock/tests/$test_name/regblock.rdl" ]; then
+        if ! diff -q "/home/gomez/projects/PeakRDL-regblock/tests/$test_name/regblock.rdl" \
+                     "$test_dir/regblock.rdl" > /dev/null 2>&1; then
+            echo "$test_name: RDL differs - needs update"
+        fi
+    fi
+done
 ```
 
 ### Step 2: Read Original Test
@@ -214,8 +243,8 @@ await tb.clk.wait_clkn(5)  # Wait 5 cycles
 ### Step 5: Test with Regblock Reference
 
 ```bash
-source ../../venv-3.12.3/bin/activate
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+source venv/bin/activate   # or your project venv, e.g. venv.2.0.0
+make clean regblock sim SIM=verilator REGBLOCK=1
 ```
 
 **If it passes:** ✅ Test is correct!
@@ -239,7 +268,7 @@ make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
 ### Step 6: Test with Etana (Optional)
 
 ```bash
-make clean etana sim COCOTB_REV=1.9.2 REGBLOCK=0
+make clean etana sim SIM=verilator REGBLOCK=0
 ```
 
 **If it fails:** Bug in PeakRDL-etana (not your test)
@@ -398,6 +427,22 @@ async def run(self):
 - ❌ Use `await Timer()` delays before asserting acks
 - ❌ Use `await ReadOnly()` (causes "write during read-only phase" errors)
 - ❌ Use `await RisingEdge()` delays before responding (causes hangs)
+
+### Lesson 5b (Jan 2026): Multi-field External Register Readback
+
+**Issue**: Etana may generate per-field external `rd_data` ports (eg `*_rd_data_<field>`) rather than a single register-level `*_rd_data`.
+
+**Rule of thumb**:
+- For multi-field external regs, assemble the expected readback value from field `rd_data` ports.
+- Treat each field `rd_data` as **right-aligned** (field bits come from the LSBs of the returned bus) unless the test/RDL explicitly defines otherwise.
+
+### Lesson 5c (Jan 2026): External Blocks Only (No Internal Regs)
+
+**Issue**: If the design contains only `external` components, PeakRDL may warn that it cannot infer CPU data width.
+
+**What to do**:
+- This is typically benign for tests (defaults to 32-bit). Prefer to validate with `REGBLOCK=1` first.
+- Example test added/migrated: `tests/test_only_external_blocks/`.
 
 ### Lesson 6: Identifying Test Enhancements vs New Tests
 
@@ -890,6 +935,15 @@ read_val = await tb.intf.read(0x00)
 verify_only_readable_fields(read_val)
 ```
 
+### 4. Verilator Warnings Treated as Errors (Jan 2026)
+
+**Issue**: Your Verilator setup treats some warnings as fatal (examples encountered: `CMPCONST`, `UNSIGNED`).
+
+**Guidance**:
+- Prefer fixing width/range issues in templates when practical.
+- For benign tool-noise in tests, suppress per-test using `COMPILE_ARGS += -Wno-...` in the test `Makefile`.
+  - Example: `tests/test_wide_external/` (CMPCONST) and `tests/test_only_external_blocks/` (UNSIGNED).
+
 ---
 
 ## Testing Infrastructure
@@ -986,7 +1040,57 @@ make clean etana sim SIM=verilator REGBLOCK=0
 
 **See:** test_simple, test_enum, test_field_types as reference examples
 
-**Status:** All 26 tests migrated successfully using this approach ✅
+**Status:** Migration flow validated end-to-end and kept in sync with upstream regblock through 9fc95b8 ✅
+
+**Last Migration Update:** January 7, 2026
+- ✅ Readback mux refactor integration completed (upstream #155/#165)
+- ✅ `test_wide_external` verified with regblock reference first (per workflow)
+- ✅ Added and migrated upstream-only test: `test_only_external_blocks`
+
+---
+
+## Recent Upstream Changes and Test Updates
+
+### November 2025: Error Response Test Update (commit efbddcc)
+
+The `test_cpuif_err_rsp` test was updated in upstream to:
+1. **Remove external registers** (er_rw, er_r, er_w) - replaced with external regfile
+2. **Rename registers**: r_r → r_ro, r_w → r_wo
+3. **Rename memories**: mem_r → mem_ro, mem_w → mem_wo
+4. **Add overlapped registers** at address 0x1C:
+   - `readonly` (read-only register)
+   - `writeonly` (write-only register)
+5. **Add external regfile** at address 0x40 (`external_rf`)
+
+**Migration completed:** November 21, 2025
+- ✅ RDL file updated to match upstream exactly
+- ✅ test_dut.py migrated to new structure
+- ✅ Test verified with `make clean regblock sim REGBLOCK=1`
+
+**Key Migration Pattern for Overlapped Registers:**
+```python
+# Overlapped registers at same address (0x1C)
+# Read from readonly register (should succeed)
+await tb.intf.read(0x1C, 200)
+
+# Write to writeonly register (should succeed)
+await tb.intf.write(0x1C, 0x8C)
+
+# Read again (should still return readonly value)
+await tb.intf.read(0x1C, 200)
+```
+
+**Key Migration Pattern for External Regfile:**
+```python
+# External regfile uses same protocol as external memories
+external_rf = SimpleExtMemEmulator(dut, tb.clk.clk, "hwif_out_external_rf", num_entries=16)
+start_soon(external_rf.run())
+
+# Access registers in regfile via address offsets
+await tb.intf.read(0x40, 0x0)  # First register in regfile
+await tb.intf.write(0x40, 0xD0)
+await tb.intf.read(0x40, 0xD0)
+```
 
 ---
 

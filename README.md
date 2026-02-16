@@ -31,6 +31,18 @@ This approach eliminates the need for complex struct hierarchies and provides:
 - **Clear naming** - Hierarchical signal names maintain organization
 - **Easy integration** - Simple wire connections in parent modules
 
+### Array Signal Format
+
+PeakRDL-etana generates array signals using **unpacked array format** (dimensions after the signal name):
+
+```systemverilog
+// Unpacked array format (etana output)
+output logic [31:0] hwif_out_data [7:0];  // Array of 8 32-bit values
+input wire [7:0] hwif_in_ack [31:0];      // Array of 32 8-bit values
+```
+
+This format is used instead of packed arrays (`[7:0][31:0]`) due to limitations in Icarus Verilog's handling of packed multi-dimensional arrays. The unpacked format ensures compatibility with all simulation tools including Icarus Verilog, while maintaining the same functionality.
+
 ## Features
 
 - **Flattened signal interface** - Individual ports for clean integration

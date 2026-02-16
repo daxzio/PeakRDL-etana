@@ -61,14 +61,13 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-always_comb begin
+always @(*) begin
     {{cpuif.signal("arready")}} = (!axil_arvalid || axil_ar_accept);
     {{cpuif.signal("awready")}} = (!axil_awvalid || axil_aw_accept);
     {{cpuif.signal("wready")}} = (!axil_wvalid || axil_aw_accept);
 end
 
 // Request dispatch
-// always_comb begin
 always @(*) begin
     cpuif_wr_data = axil_wdata;
     for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
@@ -147,7 +146,7 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-always_comb begin
+always @(*) begin
     axil_resp_acked = '0;
     if({{cpuif.signal("rvalid")}} && {{cpuif.signal("rready")}}) axil_resp_acked = '1;
     if({{cpuif.signal("bvalid")}} && {{cpuif.signal("bready")}}) axil_resp_acked = '1;
@@ -216,7 +215,6 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-// always_comb begin
 always @(*) begin
     axil_resp_acked = '0;
     {{cpuif.signal("bvalid")}} = '0;

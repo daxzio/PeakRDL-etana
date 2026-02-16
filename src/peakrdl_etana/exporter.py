@@ -340,6 +340,17 @@ class DesignState:
                 )
             self.addr_width = user_addr_width
 
+        # If read fanin retiming is enabled, ensure there are enough "relevant"
+        # address bits (excluding low alignment bits) to safely partition the
+        # address space. Otherwise, disable this option to avoid invalid SV
+        # widths in the retimed readback implementation.
+        if self.retime_read_fanin:
+            data_width_bytes = self.cpuif_data_width // 8
+            unused_low_addr_bits = clog2(data_width_bytes)
+            relevant_addr_width = self.addr_width - unused_low_addr_bits
+            if relevant_addr_width < 2:
+                self.retime_read_fanin = False
+
     @property
     def min_read_latency(self) -> int:
         n = 0
