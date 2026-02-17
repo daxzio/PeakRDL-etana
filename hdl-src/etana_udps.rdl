@@ -11,3 +11,8 @@ property verilog_reg_only {
     component = reg;
     type = boolean;
 };
+
+property err_support {
+    component = mem;
+    type = boolean;
+};
