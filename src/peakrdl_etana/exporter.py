@@ -18,7 +18,12 @@ from .cpuif.apb4 import APB4_Cpuif_flattened
 from .hwif import Hwif
 from .write_buffering import WriteBuffering
 from .read_buffering import ReadBuffering
-from .external_acks import ExternalWriteAckGenerator, ExternalReadAckGenerator
+from .external_acks import (
+    ExternalWriteAckGenerator,
+    ExternalReadAckGenerator,
+    ExternalReadErrGenerator,
+    ExternalWriteErrGenerator,
+)
 from .parity import ParityErrorReduceGenerator
 
 
@@ -172,6 +177,8 @@ class RegblockExporter:
         self.dereferencer = Dereferencer(self)
         ext_write_acks = ExternalWriteAckGenerator(self)
         ext_read_acks = ExternalReadAckGenerator(self)
+        ext_read_err = ExternalReadErrGenerator(self)
+        ext_write_err = ExternalWriteErrGenerator(self)
         parity = ParityErrorReduceGenerator(self)
 
         # Validate that there are no unsupported constructs
@@ -196,6 +203,8 @@ class RegblockExporter:
             "readback_implementation": readback_implementation,
             "ext_write_acks": ext_write_acks,
             "ext_read_acks": ext_read_acks,
+            "ext_read_err": ext_read_err,
+            "ext_write_err": ext_write_err,
             "parity": parity,
             "get_always_ff_event": self.dereferencer.get_always_ff_event,
             "ds": self.ds,

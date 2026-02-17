@@ -155,3 +155,91 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         # IMPORTANT: Call parent's exit method to balance the stack
         self.ext_racks = []
         return super().exit_AddressableComponent(node)  # type: ignore[return-value]
+
+
+class ExternalReadErrGenerator(RDLForLoopGenerator):
+    """
+    Collects rd_ack & rd_err from external memories with err_support.
+    Used to propagate memory read errors to cpuif_rd_err.
+    """
+
+    def __init__(self, exp: "RegblockExporter") -> None:
+        super().__init__()
+        self.exp = exp
+        self.ext_rd_errs: List[str] = []
+        self.policy = external_policy(self.exp.ds)
+
+    def has_external_read_err(self) -> bool:
+        if self.get_content(self.exp.ds.top_node) is None:
+            return False
+        return True
+
+    def get_implementation(self) -> str:
+        content = self.get_content(self.exp.ds.top_node)
+        if content is None:
+            return ""
+        return content
+
+    def enter_Mem(self, node: "MemNode") -> WalkerAction:
+        if not node.external:
+            raise ValueError("Unexpected non-external memory")
+        if node.is_sw_readable and node.get_property("err_support", default=False):
+            rd_ack = self.exp.hwif.get_external_rd_ack(node, True)
+            rd_err = self.exp.hwif.get_external_rd_err(node, True)
+            self.ext_rd_errs.append(f"({rd_ack} & {rd_err})")
+        return WalkerAction.Continue
+
+    def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
+        super().enter_AddressableComponent(node)
+        self.ext_rd_errs = []
+        return WalkerAction.Continue
+
+    def exit_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
+        for expr in self.ext_rd_errs:
+            self.add_content(f"rd_err |= {expr};")
+        self.ext_rd_errs = []
+        return super().exit_AddressableComponent(node)  # type: ignore[return-value]
+
+
+class ExternalWriteErrGenerator(RDLForLoopGenerator):
+    """
+    Collects wr_ack & wr_err from external memories with err_support.
+    Used to propagate memory write errors to cpuif_wr_err.
+    """
+
+    def __init__(self, exp: "RegblockExporter") -> None:
+        super().__init__()
+        self.exp = exp
+        self.ext_wr_errs: List[str] = []
+        self.policy = external_policy(self.exp.ds)
+
+    def has_external_write_err(self) -> bool:
+        if self.get_content(self.exp.ds.top_node) is None:
+            return False
+        return True
+
+    def get_implementation(self) -> str:
+        content = self.get_content(self.exp.ds.top_node)
+        if content is None:
+            return ""
+        return content
+
+    def enter_Mem(self, node: "MemNode") -> WalkerAction:
+        if not node.external:
+            raise ValueError("Unexpected non-external memory")
+        if node.is_sw_writable and node.get_property("err_support", default=False):
+            wr_ack = self.exp.hwif.get_external_wr_ack(node, True)
+            wr_err = self.exp.hwif.get_external_wr_err(node, True)
+            self.ext_wr_errs.append(f"({wr_ack} & {wr_err})")
+        return WalkerAction.Continue
+
+    def enter_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
+        super().enter_AddressableComponent(node)
+        self.ext_wr_errs = []
+        return WalkerAction.Continue
+
+    def exit_AddressableComponent(self, node: "AddressableNode") -> WalkerAction:
+        for expr in self.ext_wr_errs:
+            self.add_content(f"wr_err |= {expr};")
+        self.ext_wr_errs = []
+        return super().exit_AddressableComponent(node)  # type: ignore[return-value]
