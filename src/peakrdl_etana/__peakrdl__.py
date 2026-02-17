@@ -18,6 +18,7 @@ from .cpuif import (
     ahblite,
     ahb,
     obi,
+    wishbone,
 )
 from .udps import ALL_UDPS
 from . import entry_points
@@ -71,6 +72,7 @@ class Exporter(ExporterSubcommandPlugin):
             "axi4-lite-flat": axi4lite.AXI4Lite_Cpuif_flattened,
             "avalon-mm-flat": avalon.Avalon_Cpuif_flattened,
             "obi-flat": obi.OBI_Cpuif_flattened,
+            "wishbone-flat": wishbone.Wishbone_Cpuif_flattened,
         }
 
         # Load any cpuifs specified via entry points

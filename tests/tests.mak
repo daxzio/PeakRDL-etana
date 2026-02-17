@@ -11,6 +11,8 @@ ifeq ($(COCOTB_REV),2.0.0)
 endif
 
 PEAKRDL_ARGS+=
+# Supported CPUIFs: apb4-flat, apb3-flat, ahblite-flat, ahb-flat, axi4-lite-flat,
+# avalon-mm-flat, obi-flat, wishbone-flat, passthrough
 CPUIF?=apb4-flat
 #UDPS?=../regblock_udps.rdl
 UDPS?=

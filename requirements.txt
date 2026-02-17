@@ -13,3 +13,4 @@ cocotbext-ahb
 cocotbext-axi
 git+https://github.com/daxzio/cocotbext-obi.git
 git+https://github.com/daxzio/cocotbext-avalon.git
+cocotbext-wishbone

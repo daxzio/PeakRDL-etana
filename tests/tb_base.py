@@ -48,6 +48,20 @@ class testbench:
 
             self.avalon_bus = AvalonBus.from_prefix(dut, "avalon")
             self.intf = AvalonMaster(self.avalon_bus, getattr(dut, "clk"))
+        elif hasattr(dut, "s_wb_cyc"):
+            from interfaces.wishbone_wrapper import WishboneMasterWrapper
+
+            # Data width: try to infer from s_wb_dat_rd, else default 32-bit
+            width = 32
+            try:
+                dat_o = getattr(dut, "s_wb_dat_rd")
+                if hasattr(dat_o, "__len__"):
+                    width = len(dat_o)
+            except Exception:
+                pass
+            self.intf = WishboneMasterWrapper(
+                dut, "s_wb", getattr(dut, "clk"), width=width
+            )
         else:
             raise Exception("Unsupported interface")
 
