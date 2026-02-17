@@ -22,6 +22,7 @@ async def test_dut_hw_access(dut):
     # ---------------------------------
     # set hwenable = F0
     await tb.intf.write(0x0, 0x00F0)
+    await tb.clk.wait_clkn(2)  # Storage updates 1 cycle after pready
 
     # test hwenable + we
     tb.hwif_in_r1_f.value = 0xAB
@@ -45,6 +46,7 @@ async def test_dut_hw_access(dut):
     # ---------------------------------
     # set hwmask = F0
     await tb.intf.write(0x0, 0xF000)
+    await tb.clk.wait_clkn(2)
 
     # test hwmask + we
     tb.hwif_in_r2_f.value = 0xAB
@@ -70,12 +72,14 @@ async def test_dut_hw_access(dut):
     # toggle hwenable = F0, hwclr=1
     await tb.intf.write(0x0, 0x100F0)
     await tb.intf.write(0x0, 0x00000)
+    await tb.clk.wait_clkn(2)
     await tb.intf.read(0xC, 0x03)
 
     # test hwenable + hwset via reference
     # toggle hwenable = 0F, hwset=1
     await tb.intf.write(0x0, 0x2000F)
     await tb.intf.write(0x0, 0x00000)
+    await tb.clk.wait_clkn(2)
     await tb.intf.read(0xC, 0x0F)
 
     # test hwenable + we via reference

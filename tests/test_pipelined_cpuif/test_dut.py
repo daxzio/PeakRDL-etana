@@ -20,7 +20,8 @@ async def test_dut_pipelined_cpuif(dut):
     for i in range(64):
         await tb.intf.write(i * 4, i + 0x12340000)
 
-    # Verify HW values
+    # Verify HW values (storage updates 1 cycle after pready)
+    await RisingEdge(tb.clk.clk)
     await RisingEdge(tb.clk.clk)
     for i in range(64):
         expected = i + 0x12340000
