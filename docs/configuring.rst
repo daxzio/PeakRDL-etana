@@ -62,7 +62,7 @@ CPU Interface Selection
 
     * ``apb3-flat`` - AMBA APB3 interface (flattened signals)
     * ``apb4-flat`` - AMBA APB4 interface (flattened signals) **[default]**
-    * ``ahblite-flat`` - AMBA AHB-Lite interface (flattened signals)
+    * ``ahb-flat`` - AMBA AHB interface (flattened signals, shared bus stall support)
     * ``axi4-lite-flat`` - AMBA AXI4-Lite interface (flattened signals)
     * ``avalon-mm-flat`` - Avalon Memory-Mapped interface (flattened signals)
     * ``passthrough`` - Direct internal protocol passthrough
@@ -180,7 +180,7 @@ Error Response Configuration
 
     * APB4: Asserts ``pslverr``
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
-    * AHBLite: Asserts ``hresp`` (ERROR response)
+    * AHB: Asserts ``hresp`` (ERROR response)
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**
@@ -211,7 +211,7 @@ Error Response Configuration
 
     * APB4: Asserts ``pslverr``
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
-    * AHBLite: Asserts ``hresp`` (ERROR response)
+    * AHB: Asserts ``hresp`` (ERROR response)
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**

@@ -104,9 +104,10 @@ class Exporter(ExporterSubcommandPlugin):
     def add_exporter_arguments(self, arg_group: "argparse._ActionsContainer") -> None:
         cpuifs = self.get_cpuifs()
 
+        _selectable_cpuifs = [k for k in cpuifs.keys() if k != "ahblite-flat"]
         arg_group.add_argument(
             "--cpuif",
-            choices=cpuifs.keys(),
+            choices=_selectable_cpuifs,
             default="apb4-flat",
             help="Select the CPU interface protocol to use (flattened signals only) [apb4-flat]",
         )

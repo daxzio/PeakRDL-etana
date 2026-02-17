@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for APB4, AXI4-Lite, AHB, and Passthrough interfaces
 - **Error Response Validation**: Enhanced bus wrappers with `error_expected` parameter:
   - `AxiWrapper`: Validates `rresp`/`bresp` signals for AXI4-Lite error responses
-  - `AHBLiteMasterDX`: Validates `hresp` signals for AHB error responses
+  - `AHBMasterDX`: Validates `hresp` signals for AHB error responses
   - `PassthroughMaster`: Validates `rd_err`/`wr_err` signals
 - **Version-Agnostic Wrapper Generator**: Dynamic CPU interface detection in `generate_wrapper.py`
   - Gracefully handles missing interfaces in different peakrdl-regblock versions

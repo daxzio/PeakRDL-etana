@@ -189,7 +189,7 @@ Comparison with Other Interfaces
 ---------------------------------
 
 ========================  =======  =======  ===========  =======  ============
-Feature                   APB4     AHBLite  AXI4-Lite    OBI      Avalon-MM
+Feature                   APB4     AHB      AXI4-Lite    OBI      Avalon-MM
 ========================  =======  =======  ===========  =======  ============
 Addressing Mode           Byte     Byte     Byte         Byte     **Word**
 Pipelined                 No       Limited  Yes          Yes      Yes

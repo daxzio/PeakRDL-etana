@@ -259,7 +259,7 @@ make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
 make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
 
 # AHB
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahblite-flat
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
 
 # Passthrough (for bit-level strobes)
 make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
@@ -299,7 +299,7 @@ vim tests/test_<name>/regblock.rdl
 **Issue**: Wrapper generator had incomplete CPU interface support
 
 **Symptoms**:
-- `generate_wrapper.py: error: invalid choice: 'ahblite-flat'`
+- `generate_wrapper.py: error: invalid choice: 'ahb-flat'`
 - Generated wrapper uses wrong interface (e.g., APB3 when AHB requested)
 
 **Root Causes**:
@@ -312,12 +312,12 @@ vim tests/test_<name>/regblock.rdl
 **Required Changes**:
 ```python
 # Add to imports
-from peakrdl_regblock.cpuif import ahblite, obi
+from peakrdl_regblock.cpuif import ahb, obi
 
 # Add to cpuif_map
 cpuif_map = {
-    "ahblite": ahblite.AHBLite_Cpuif,
-    "ahblite-flat": ahblite.AHBLite_Cpuif_flattened,
+    "ahb": ahb.AHB_Cpuif,
+    "ahb-flat": ahb.AHB_Cpuif_flattened,
     "obi": obi.OBI_Cpuif,
     "obi-flat": obi.OBI_Cpuif_flattened,
     # ... existing entries
@@ -328,8 +328,8 @@ cpuif_map = {
 
 **Verification**:
 ```bash
-../../scripts/hwif_wrapper_tool/generate_wrapper.py --help | grep ahblite
-# Should show ahblite and ahblite-flat in choices
+../../scripts/hwif_wrapper_tool/generate_wrapper.py --help | grep ahb
+# Should show ahb and ahb-flat in choices
 ```
 
 ### Lesson 3: Wrapper Generator Port Name Parsing Bug
@@ -367,7 +367,7 @@ else:
 
 **Files to Update**:
 1. `tests/interfaces/axi_wrapper.py` (AxiWrapper class)
-2. `tests/interfaces/ahblite_wrapper.py` (AHBLiteMasterDX class)
+2. `tests/interfaces/ahb_wrapper.py` (AHBMasterDX class)
 3. `tests/interfaces/passthrough.py` (PTMaster class) - if needed
 
 **Pattern for AXI/AHB**:
@@ -477,7 +477,7 @@ diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
 **Supported Interfaces**:
 - APB4 (apb4-flat) - Default, widest support
 - AXI4-Lite (axi4-lite-flat) - Requires proper AxiLiteBus usage
-- AHB (ahblite-flat) - Recently added
+- AHB (ahb-flat) - Shared bus with stall support
 - Passthrough - For bit-level strobes, complex with external emulators
 
 **Test Matrix**:
@@ -485,7 +485,7 @@ diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
 # Test with each interface
 make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=apb4-flat
 make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahblite-flat
+make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
 make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
 ```
 
@@ -1117,11 +1117,11 @@ The local `tests-regblock/` directory is considered **legacy** and should only b
 
 **Symptom**:
 ```
-generate_wrapper.py: error: argument --cpuif: invalid choice: 'ahblite-flat'
+generate_wrapper.py: error: argument --cpuif: invalid choice: 'ahb-flat'
 ```
 
 **Solution**: Add missing interface to `generate_wrapper.py`:
-1. Add to import: `from peakrdl_regblock.cpuif import ahblite, obi`
+1. Add to import: `from peakrdl_etana.cpuif import ahb, obi`
 2. Add to `cpuif_map` dictionary
 3. Add to `choices` list in argument parser
 
@@ -1179,7 +1179,7 @@ self.rd_data.value = value  # Works!
 
 **Symptom**:
 ```
-TypeError: AHBLiteMaster.write() got an unexpected keyword argument 'error_expected'
+TypeError: AHBMaster.write() got an unexpected keyword argument 'error_expected'
 ```
 
 **Cause**: Interface wrapper doesn't support `error_expected` parameter
@@ -1188,7 +1188,7 @@ TypeError: AHBLiteMaster.write() got an unexpected keyword argument 'error_expec
 
 **Files That Need It**:
 - `tests/interfaces/axi_wrapper.py` ✅ Already added
-- `tests/interfaces/ahblite_wrapper.py` ✅ Already added
+- `tests/interfaces/ahb_wrapper.py` ✅ Already added
 - `tests/interfaces/passthrough.py` - May need in future
 
 ### Issue: AttributeError: contains no object named hwif_out_X

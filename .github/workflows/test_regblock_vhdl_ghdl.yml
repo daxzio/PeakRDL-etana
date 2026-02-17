@@ -45,7 +45,7 @@ jobs:
           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=${{ matrix.cpuif }} COCOTB_REV=1.9.2
 #           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
 #           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=ahblite-flat       COCOTB_REV=1.9.2
+#           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=ahb-flat          COCOTB_REV=1.9.2
 #           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
 #           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
 #           ./test_all.sh GHDL=1 SIM=ghdl GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
