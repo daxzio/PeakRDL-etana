@@ -276,9 +276,8 @@ class SimpleExtMemReadOnly:
         self.clk = clk
         self.prefix = prefix
 
-        # Protocol signals
+        # Protocol signals - no req_is_wr for read-only memory (always reads)
         self.req = getattr(dut, f"{prefix}_req")
-        self.req_is_wr = getattr(dut, f"{prefix}_req_is_wr")
         self.addr = getattr(dut, f"{prefix}_addr")
 
         # Response signals - read-only memories don't have wr_ack
@@ -304,13 +303,12 @@ class SimpleExtMemReadOnly:
 
             try:
                 req_val = int(self.req.value)
-                req_is_wr_val = int(self.req_is_wr.value)
                 addr_val = int(self.addr.value)
             except ValueError:
                 continue
 
-            if req_val == 1 and req_is_wr_val == 0:
-                # Read request only (ignore write attempts on read-only memory)
+            if req_val == 1:
+                # Read-only memory: only reads reach here
                 # Address is in bytes, divide by 4 for word index
                 idx = (addr_val >> 2) % len(self.mem)
                 self.rd_data.value = self.mem[idx]
