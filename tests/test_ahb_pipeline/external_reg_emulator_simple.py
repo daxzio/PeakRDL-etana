@@ -4,6 +4,8 @@ This module is copied from tests/test_external/external_reg_emulator_simple.py
 with a small tweak so packed-array emulators can target different prefixes.
 """
 
+import random
+
 from cocotb.triggers import RisingEdge
 
 
@@ -208,13 +210,21 @@ class ExtRegArrayEmulator:
     """Emulates an external register array (32 entries by default).
 
     Supports etana's unpacked arrays (hwif_in_r2_rd_ack[31:0] etc).
+
+    ack_delay: 0 for immediate ack; int for fixed delay; (min, max) for random delay per request.
     """
 
-    def __init__(self, dut, clk, prefix="ext_reg_array", num_entries=32):
+    def __init__(self, dut, clk, prefix="ext_reg_array", num_entries=32, ack_delay=0):
         self.dut = dut
         self.clk = clk
         self.prefix = prefix
         self.num_entries = num_entries
+        if isinstance(ack_delay, (list, tuple)) and len(ack_delay) == 2:
+            self._delay_min, self._delay_max = ack_delay
+            self._delay_fixed = None
+        else:
+            self._delay_fixed = max(0, int(ack_delay))
+            self._delay_min = self._delay_max = None
 
         out_prefix = f"hwif_out_{prefix}"
         in_prefix = f"hwif_in_{prefix}"
@@ -247,6 +257,23 @@ class ExtRegArrayEmulator:
             self.wr_ack[i].value = 0
             self.rd_data[i].value = 0
 
+        # For delayed ack
+        self._delay_count = 0
+        self._delay_target = 0
+        self._pending_idx = -1
+        self._pending_rd = False
+        self._pending_wr = False
+
+    def _uses_delay(self):
+        return (self._delay_fixed is not None and self._delay_fixed > 0) or (
+            self._delay_min is not None and self._delay_max is not None
+        )
+
+    def _get_delay_for_request(self):
+        if self._delay_fixed is not None and self._delay_fixed > 0:
+            return self._delay_fixed
+        return random.randint(self._delay_min, self._delay_max)
+
     async def run(self):
         """Run the emulator"""
         while True:
@@ -256,6 +283,22 @@ class ExtRegArrayEmulator:
             for i in range(self.num_entries):
                 self.rd_ack[i].value = 0
                 self.wr_ack[i].value = 0
+
+            # Delayed-ack path: count down and ack when done
+            if self._uses_delay() and self._pending_idx >= 0:
+                self._delay_count += 1
+                if self._delay_count >= self._delay_target:
+                    i = self._pending_idx
+                    if self._pending_rd:
+                        self.rd_data[i].value = self._pending_rd_data
+                        self.rd_ack[i].value = 1
+                    else:
+                        self.wr_ack[i].value = 1
+                    self._pending_idx = -1
+                    self._pending_rd = False
+                    self._pending_wr = False
+                    self._delay_count = 0
+                continue
 
             # Check which array element is being accessed (unpacked arrays)
             for i in range(self.num_entries):
@@ -277,11 +320,24 @@ class ExtRegArrayEmulator:
                                 else:
                                     self.storage[i] &= ~(1 << bit)
 
-                        self.wr_ack[i].value = 1
+                        if self._uses_delay():
+                            self._pending_idx = i
+                            self._pending_wr = True
+                            self._delay_count = 0
+                            self._delay_target = self._get_delay_for_request()
+                        else:
+                            self.wr_ack[i].value = 1
                     else:
                         # Read request
-                        self.rd_data[i].value = self.storage[i]
-                        self.rd_ack[i].value = 1
+                        if self._uses_delay():
+                            self._pending_idx = i
+                            self._pending_rd = True
+                            self._pending_rd_data = self.storage[i]
+                            self._delay_count = 0
+                            self._delay_target = self._get_delay_for_request()
+                        else:
+                            self.rd_data[i].value = self.storage[i]
+                            self.rd_ack[i].value = 1
                     break
                 except (ValueError, AttributeError):
                     continue
@@ -378,13 +434,25 @@ class ExternalBlockEmulator:
 
 
 class ExternalMemEmulator:
-    """Emulates a simple external memory window with byte addressing."""
+    """Emulates a simple external memory window with byte addressing.
 
-    def __init__(self, dut, clk, prefix="r3", num_entries=128):
+    ack_delay_cycles: int or (min, max) tuple.
+      - 0: no delay (immediate ack)
+      - int > 0: fixed delay in cycles
+      - (min, max): random delay from min to max cycles per request
+    """
+
+    def __init__(self, dut, clk, prefix="r3", num_entries=128, ack_delay_cycles=0):
         self.dut = dut
         self.clk = clk
         self.prefix = prefix
         self.num_entries = num_entries
+        if isinstance(ack_delay_cycles, (list, tuple)) and len(ack_delay_cycles) == 2:
+            self._delay_min, self._delay_max = ack_delay_cycles
+            self._delay_fixed = None
+        else:
+            self._delay_fixed = max(0, int(ack_delay_cycles))
+            self._delay_min = self._delay_max = None
 
         out_prefix = f"hwif_out_{prefix}"
         in_prefix = f"hwif_in_{prefix}"
@@ -405,6 +473,26 @@ class ExternalMemEmulator:
         self.wr_ack.value = 0
         self.rd_data.value = 0
 
+        # For delayed ack
+        self._delay_count = 0
+        self._delay_target = 0
+        self._pending_rd = False
+        self._pending_wr = False
+        self._pending_idx = 0
+        self._pending_rd_data = 0
+
+    def _uses_delay(self):
+        return (
+            self._delay_fixed is not None
+            and self._delay_fixed > 0
+            or (self._delay_min is not None and self._delay_max is not None)
+        )
+
+    def _get_delay_for_request(self):
+        if self._delay_fixed is not None and self._delay_fixed > 0:
+            return self._delay_fixed
+        return random.randint(self._delay_min, self._delay_max)
+
     async def run(self):
         while True:
             await RisingEdge(self.clk)
@@ -418,10 +506,42 @@ class ExternalMemEmulator:
             except ValueError:
                 continue
 
-            if req_val == 0:
+            idx = addr_val & (self.num_entries - 1)
+
+            if not self._uses_delay():
+                if req_val == 0:
+                    continue
+                if req_is_wr_val == 1:
+                    wr_val = int(self.wr_data.value)
+                    wr_biten_val = int(self.wr_biten.value)
+                    for bit in range(32):
+                        if (wr_biten_val >> bit) & 1:
+                            if (wr_val >> bit) & 1:
+                                self.mem[idx] |= 1 << bit
+                            else:
+                                self.mem[idx] &= ~(1 << bit)
+                    self.wr_ack.value = 1
+                else:
+                    self.rd_data.value = self.mem[idx]
+                    self.rd_ack.value = 1
                 continue
 
-            idx = addr_val & (self.num_entries - 1)
+            # Delayed ack path
+            if self._pending_rd or self._pending_wr:
+                self._delay_count += 1
+                if self._delay_count >= self._delay_target:
+                    if self._pending_rd:
+                        self.rd_data.value = self._pending_rd_data
+                        self.rd_ack.value = 1
+                    else:
+                        self.wr_ack.value = 1
+                    self._pending_rd = False
+                    self._pending_wr = False
+                    self._delay_count = 0
+                continue
+
+            if req_val == 0:
+                continue
 
             if req_is_wr_val == 1:
                 wr_val = int(self.wr_data.value)
@@ -432,10 +552,21 @@ class ExternalMemEmulator:
                             self.mem[idx] |= 1 << bit
                         else:
                             self.mem[idx] &= ~(1 << bit)
-                self.wr_ack.value = 1
+                if self._uses_delay():
+                    self._pending_wr = True
+                    self._delay_count = 0
+                    self._delay_target = self._get_delay_for_request()
+                else:
+                    self.wr_ack.value = 1
             else:
-                self.rd_data.value = self.mem[idx]
-                self.rd_ack.value = 1
+                if self._uses_delay():
+                    self._pending_rd = True
+                    self._pending_rd_data = self.mem[idx]
+                    self._delay_count = 0
+                    self._delay_target = self._get_delay_for_request()
+                else:
+                    self.rd_data.value = self.mem[idx]
+                    self.rd_ack.value = 1
 
 
 class RoRegEmulator:

@@ -94,6 +94,7 @@ Links
     cpuif/introduction
     cpuif/apb
    cpuif/ahblite
+    cpuif/ahb
     cpuif/axi4lite
     cpuif/avalon
     cpuif/passthrough

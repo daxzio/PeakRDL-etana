@@ -22,6 +22,7 @@ etana-apb4/
 regblock-apbx/
 results.xml
 sim_build/
+sim_build*/
 *.vcd
 synth_yosys.v
 cocotbext

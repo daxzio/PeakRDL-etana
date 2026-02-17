@@ -16,15 +16,24 @@ from tb_base import testbench  # noqa: E402
 
 
 class testbench_ahb(testbench):
-    def __init__(self, dut, reset_sense=1, reset_length=2):
+    def __init__(
+        self,
+        dut,
+        reset_sense=1,
+        reset_length=2,
+        r2_ack_delay=(1, 5),
+        r3_ack_delay=(1, 5),
+    ):
         super().__init__(dut, reset_sense, reset_length)
         from cocotbext.ahb import AHBMonitor
 
-        #         self.mon = AHBMonitor(self.ahb_bus, self.clk.clk, "rst")
-
-        # External array emulator copied from test_external (single external block here).
-        self.ext_r2_emulator = ExtRegArrayEmulator(dut, self.clk.clk, prefix="r2")
-        self.ext_r3_emulator = ExternalMemEmulator(dut, self.clk.clk, prefix="r3")
+        # External emulators with randomised ack delay (1-5 cycles) to stress pipeline
+        self.ext_r2_emulator = ExtRegArrayEmulator(
+            dut, self.clk.clk, prefix="r2", ack_delay=r2_ack_delay
+        )
+        self.ext_r3_emulator = ExternalMemEmulator(
+            dut, self.clk.clk, prefix="r3", ack_delay_cycles=r3_ack_delay
+        )
         start_soon(self.ext_r2_emulator.run())
         start_soon(self.ext_r3_emulator.run())
 
