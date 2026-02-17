@@ -223,6 +223,13 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     {{field_logic.get_implementation()|indent}}
 
+{%- if ext_mem_req_value.has_req_value_mems() %}
+    //--------------------------------------------------------------------------
+    // External mem inflight_value (err_support): flopped request-pending per mem
+    //--------------------------------------------------------------------------
+{{ext_mem_req_value.get_implementation()|indent}}
+{%- endif %}
+
 {%- if ds.has_paritycheck %}
 
     //--------------------------------------------------------------------------

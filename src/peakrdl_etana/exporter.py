@@ -23,6 +23,7 @@ from .external_acks import (
     ExternalReadAckGenerator,
     ExternalReadErrGenerator,
     ExternalWriteErrGenerator,
+    ExternalMemReqValueGenerator,
 )
 from .parity import ParityErrorReduceGenerator
 
@@ -179,6 +180,7 @@ class RegblockExporter:
         ext_read_acks = ExternalReadAckGenerator(self)
         ext_read_err = ExternalReadErrGenerator(self)
         ext_write_err = ExternalWriteErrGenerator(self)
+        ext_mem_req_value = ExternalMemReqValueGenerator(self)
         parity = ParityErrorReduceGenerator(self)
 
         # Validate that there are no unsupported constructs
@@ -205,6 +207,7 @@ class RegblockExporter:
             "ext_read_acks": ext_read_acks,
             "ext_read_err": ext_read_err,
             "ext_write_err": ext_write_err,
+            "ext_mem_req_value": ext_mem_req_value,
             "parity": parity,
             "get_always_ff_event": self.dereferencer.get_always_ff_event,
             "ds": self.ds,
