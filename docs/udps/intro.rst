@@ -9,7 +9,7 @@ PeakRDL-etana tool understands several UDPs that are described in this
 section.
 
 To enable these UDPs, compile this RDL file prior to the rest of your design:
-:download:`regblock_udps.rdl <../../hdl-src/regblock_udps.rdl>`.
+:download:`etana_udps.rdl <../../hdl-src/etana_udps.rdl>`.
 
 .. list-table:: Summary of UDPs
     :header-rows: 1
@@ -69,3 +69,10 @@ To enable these UDPs, compile this RDL file prior to the rest of your design:
           the vector is automatically broken up into the individual fields.
 
           See: :ref:`verilog_reg_only`.
+
+    *   - err_support
+        - mem
+        - boolean
+        - If set on an external memory, adds rd_err and wr_err input ports and
+          propagates errors to the CPU interface (e.g., APB pslverr, AHB hresp).
+          See: :ref:`err_support`.

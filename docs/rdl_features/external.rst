@@ -176,3 +176,12 @@ Write Response
 ^^^^^^^^^^^^^^
 hwif_in..wr_ack
     Single-cycle strobe indicating a write transfer has completed.
+
+Error Response (External Memory with err_support)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+External memories can optionally support error reporting via the
+:ref:`err_support` UDP. When enabled, the block adds ``hwif_in_<name>_rd_err``
+and ``hwif_in_<name>_wr_err`` input ports. The external block asserts these
+(along with the corresponding ack) to signal errors such as ECC uncorrectable
+or access failures. Errors propagate to the CPU interface bus error responses
+(e.g., APB pslverr, AHB hresp). See :ref:`err_support` for full details.
