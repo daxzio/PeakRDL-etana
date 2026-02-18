@@ -96,6 +96,8 @@ Links
     cpuif/ahb
     cpuif/axi4lite
     cpuif/avalon
+    cpuif/obi
+    cpuif/wishbone
     cpuif/passthrough
     cpuif/internal_protocol
     cpuif/customizing

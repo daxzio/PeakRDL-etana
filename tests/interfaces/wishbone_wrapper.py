@@ -8,25 +8,30 @@ write(addr, data, error_expected) matching the interface expected by tb_base.
 import logging
 from typing import Union
 
-# Import cocotbext-wishbone; local cocotbext-ahb can shadow the cocotbext namespace
-try:
-    from cocotbext.wishbone.driver import WishboneMaster, WBOp
-except ImportError:
-    # Fallback: merge site-packages cocotbext into namespace before re-trying
-    try:
-        import cocotbext as _ce
-        import os
-        import site
+from cocotbext.wishbone.driver import WishboneMaster, WBOp
 
-        for _p in site.getsitepackages():
-            _wb = os.path.join(_p, "cocotbext", "wishbone")
-            if os.path.isdir(_wb):
-                _ce.__path__ = [_p + "/cocotbext"] + list(getattr(_ce, "__path__", []))
-                break
-        from cocotbext.wishbone.driver import WishboneMaster, WBOp
-    except Exception:
-        WishboneMaster = None  # type: ignore
-        WBOp = None  # type: ignore
+# from cocotbext import wishbone.driver.WishboneMaster as WishboneMaster
+# from cocotbext import wishbone.driver.WBOp as WBOp
+
+# # from cocotbext.wishbone.driver import WishboneMaster, WBOp
+# # Import cocotbext-wishbone; local cocotbext-ahb can shadow the cocotbext namespace
+# try:
+#     from cocotbext.wishbone.driver import WishboneMaster, WBOp
+# except ImportError:
+#     # Fallback: merge site-packages cocotbext into namespace before re-trying
+#     try:
+#         import cocotbext as _ce
+#         import os
+#         import site
+#         for _p in site.getsitepackages():
+#             _wb = os.path.join(_p, "cocotbext", "wishbone")
+#             if os.path.isdir(_wb):
+#                 _ce.__path__ = [_p + "/cocotbext"] + list(getattr(_ce, "__path__", []))
+#                 break
+#         from cocotbext.wishbone.driver import WishboneMaster, WBOp
+#     except Exception:
+#         WishboneMaster = None  # type: ignore
+#         WBOp = None  # type: ignore
 
 
 def _to_int(val) -> int:
@@ -45,8 +50,6 @@ class WishboneMasterWrapper:
     ApbMaster, PTMaster, etc. used by PeakRDL-etana tests.
     """
 
-    # Signal mapping: our RTL uses s_wb_cyc, s_wb_stb, etc. (no _i/_o suffixes)
-    # dat_wr=write data (input), dat_rd=read data (output)
     WB_SIGNALS = {
         "cyc": "cyc",
         "stb": "stb",
@@ -68,8 +71,8 @@ class WishboneMasterWrapper:
         timeout: int = 100,
         **kwargs,
     ):
-        if WishboneMaster is None or WBOp is None:
-            raise ImportError("cocotbext-wishbone is required for Wishbone tests")
+        #         if WishboneMaster is None or WBOp is None:
+        #             raise ImportError("cocotbext-wishbone is required for Wishbone tests")
 
         self.dut = dut
         self.clock = clock

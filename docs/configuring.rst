@@ -65,6 +65,8 @@ CPU Interface Selection
     * ``ahb-flat`` - AMBA AHB interface (flattened signals, shared bus stall support)
     * ``axi4-lite-flat`` - AMBA AXI4-Lite interface (flattened signals)
     * ``avalon-mm-flat`` - Avalon Memory-Mapped interface (flattened signals)
+    * ``obi-flat`` - Open Bus Interface (flattened signals)
+    * ``wishbone-flat`` - Wishbone B4 Classic interface (flattened signals)
     * ``passthrough`` - Direct internal protocol passthrough
 
     .. note::
@@ -181,6 +183,8 @@ Error Response Configuration
     * APB4: Asserts ``pslverr``
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
     * AHB: Asserts ``hresp`` (ERROR response)
+    * OBI: Asserts ``err``
+    * Wishbone: Asserts ``s_wb_err``
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**
@@ -212,6 +216,8 @@ Error Response Configuration
     * APB4: Asserts ``pslverr``
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
     * AHB: Asserts ``hresp`` (ERROR response)
+    * OBI: Asserts ``err``
+    * Wishbone: Asserts ``s_wb_err``
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**
