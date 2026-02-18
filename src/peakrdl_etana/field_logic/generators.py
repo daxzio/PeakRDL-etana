@@ -259,7 +259,6 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
             # Calculate the actual output width based on highest bit position
             max_bit = max([f.high for f in hw_readable_fields])
-            output_width = max_bit + 1
 
             # Sort fields by position (high to low) for proper concatenation
             sorted_fields = sorted(
