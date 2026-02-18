@@ -27,6 +27,7 @@ async def test_dut_wide_regs(dut):
     await tb.intf.write(0x4, 0x9ABC)
     await tb.intf.write(0x6, 0xDEF1)
     await RisingEdge(tb.clk.clk)
+    await RisingEdge(tb.clk.clk)  # Storage updates 1 cycle after pready
 
     # Check field values
     assert tb.hwif_out_rw_reg1_f1.value == 0x34
@@ -46,6 +47,7 @@ async def test_dut_wide_regs(dut):
     await tb.intf.write(0xA, 0x5678)
     await tb.intf.write(0xC, 0x9ABC)
     await tb.intf.write(0xE, 0xDEF1)
+    await RisingEdge(tb.clk.clk)
     await RisingEdge(tb.clk.clk)
 
     assert tb.hwif_out_rw_reg2_f1.value == 0x8

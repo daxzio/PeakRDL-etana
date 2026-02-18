@@ -35,6 +35,7 @@ async def test_dut_fixedpoint(dut):
     await tb.intf.write(0x0, 0xFFFF_FFFF_FFFF_FFFF)
     await tb.intf.write(0x8, 0xFFFF_FFFF_FFFF_FFFF)
     await RisingEdge(tb.clk.clk)
+    await RisingEdge(tb.clk.clk)  # Storage updates 1 cycle after pready
 
     # --------------------------------------------------------------------------
     # Q8.8 (sw=rw, hw=r)

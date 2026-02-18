@@ -128,6 +128,8 @@ class InputLogicGenerator(RDLListener):
             else:
                 self.hwif_port.append(f"input logic {ext_in}_rd_data")
             self.hwif_port.append(f"input logic {ext_in}_rd_ack")
+            if node.get_property("err_support", default=False):
+                self.hwif_port.append(f"input logic {ext_in}_rd_err")
         if node.is_sw_writable:
             self.hwif_port.append(f"input logic {ext_in}_wr_ack")
             self.hwif_port.append(f"output logic {ext_out}_req_is_wr")
@@ -141,9 +143,8 @@ class InputLogicGenerator(RDLListener):
             else:
                 self.hwif_port.append(f"output logic {ext_out}_wr_data")
                 self.hwif_port.append(f"output logic {ext_out}_wr_biten")
-        # Match regblock: Always generate req_is_wr (even for read-only memories)
-        if node.is_sw_readable and not node.is_sw_writable:
-            self.hwif_port.append(f"output logic {ext_out}_req_is_wr")
+            if node.get_property("err_support", default=False):
+                self.hwif_port.append(f"input logic {ext_in}_wr_err")
 
     def enter_Regfile(self, node: "RegfileNode") -> None:
         from ..utils import IndexedPath, clog2

@@ -223,6 +223,13 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     {{field_logic.get_implementation()|indent}}
 
+{%- if ext_mem_req_value.has_req_value_mems() %}
+    //--------------------------------------------------------------------------
+    // External mem inflight_value (err_support): flopped request-pending per mem
+    //--------------------------------------------------------------------------
+{{ext_mem_req_value.get_implementation()|indent}}
+{%- endif %}
+
 {%- if ds.has_paritycheck %}
 
     //--------------------------------------------------------------------------
@@ -266,8 +273,21 @@ module {{ds.module_name}}
 {%- endif %}
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
 {%- endif %}
-    // Writes are always granted with no error response
-{%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
+    // Write error: decoded (bad addr/rw) or external mem wr_err from err_support
+{%- if ext_write_err.has_external_write_err() %}
+    logic external_wr_err;
+    always @(*) begin
+        logic wr_err;
+        wr_err = '0;
+        {{ext_write_err.get_implementation()|indent(8)}}
+        external_wr_err = wr_err;
+    end
+    {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
+    assign cpuif_wr_err = decoded_err | external_wr_err;
+    {%- else %}
+    assign cpuif_wr_err = external_wr_err;
+    {%- endif %}
+{%- elif ds.err_if_bad_addr or ds.err_if_bad_rw %}
     assign cpuif_wr_err = decoded_err;
 {%- else %}
     assign cpuif_wr_err = '0;
@@ -301,6 +321,18 @@ module {{ds.module_name}}
     {%- endif %}
 {%- else %}
     assign readback_external_rd_ack = 0;
+{%- endif %}
+
+    logic readback_external_rd_err;
+{%- if ext_read_err.has_external_read_err() %}
+    always @(*) begin
+        logic rd_err;
+        rd_err = '0;
+        {{ext_read_err.get_implementation()|indent(8)}}
+        readback_external_rd_err = rd_err;
+    end
+{%- else %}
+    assign readback_external_rd_err = '0;
 {%- endif %}
 
     // Readback mux address
@@ -342,7 +374,7 @@ module {{ds.module_name}}
             cpuif_rd_ack <= readback_done;
         {%- endif %}
             cpuif_rd_data <= readback_data;
-            cpuif_rd_err <= readback_err;
+            cpuif_rd_err <= readback_err | readback_external_rd_err;
         end
     end
 {% else %}
@@ -353,7 +385,7 @@ module {{ds.module_name}}
     assign cpuif_rd_ack = readback_done;
     {%- endif %}
     assign cpuif_rd_data = readback_data;
-    assign cpuif_rd_err = readback_err;
+    assign cpuif_rd_err = readback_err | readback_external_rd_err;
 {%- endif %}
 endmodule
 {# (eof newline anchor) #}

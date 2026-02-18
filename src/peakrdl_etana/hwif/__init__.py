@@ -229,6 +229,28 @@ class Hwif:
             s += f"{p.index_str}"
         return s
 
+    def get_external_rd_err(self, node: AddressableNode, index: bool = False) -> str:
+        """
+        Returns the identifier string for an external memory's rd_err signal.
+        Valid only for MemNode with err_support.
+        """
+        p = IndexedPath(self.top_node, node)
+        s = f"{self.hwif_in_str}_{p.path}_rd_err"
+        if index:
+            s += p.index_str
+        return s
+
+    def get_external_wr_err(self, node: AddressableNode, index: bool = False) -> str:
+        """
+        Returns the identifier string for an external memory's wr_err signal.
+        Valid only for MemNode with err_support.
+        """
+        p = IndexedPath(self.top_node, node)
+        s = f"{self.hwif_in_str}_{p.path}_wr_err"
+        if index:
+            s += p.index_str
+        return s
+
     def get_implied_prop_input_identifier(
         self, field: FieldNode, prop: str, index: bool = True
     ) -> str:

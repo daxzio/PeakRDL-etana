@@ -70,7 +70,7 @@ SKIP_TESTS=()
 SKIP_TESTS+=("test_user_cpuif" "test_pkg_params")
 SKIP_TESTS+=("test_template_report")
 SKIP_TESTS+=("test_ahblite")
-SKIP_TESTS+=("test_ahb_pipeline")
+# SKIP_TESTS+=("test_ahb_pipeline")
 SKIP_TESTS+=("test_loops")
 SKIP_TESTS+=("test_index")
 SKIP_TESTS+=("test_wide_external")
@@ -79,6 +79,7 @@ SKIP_TESTS+=("test_wide_external")
 if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
     SKIP_TESTS+=("test_cpuif_err_rsp")
+    SKIP_TESTS+=("test_ahb_pipeline")
 fi
 # Skip certain tests when REGBLOCK=1
 if [ "$REGBLOCK" -eq 1 ]; then
@@ -89,11 +90,10 @@ fi
 #     SKIP_TESTS+=("test_example")
 # fi
 
-# Skip certain tests when using specific CPU interfaces
-# if [ "$CPUIF" = "axi4-lite" ]; then
-#     SKIP_TESTS+=("test_example")
-# fi
-
+if [ "$CPUIF" != "ahb-flat" ]; then
+    # SKIP_TESTS+=("test_ahblite")
+    SKIP_TESTS+=("test_ahb_pipeline")
+fi
 
 PASS_COUNT=0
 FAIL_COUNT=0
