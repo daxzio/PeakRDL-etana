@@ -81,10 +81,6 @@ class DesignScanner(RDLListener):
                 else:
                     self.ds.in_hier_signal_paths.add(path)
 
-            if prop_name == "encode":
-                if value not in self.ds.user_enums:
-                    self.ds.user_enums.append(value)
-
         return WalkerAction.Continue
 
     def enter_AddressableComponent(self, node: "AddressableNode") -> None:
@@ -128,3 +124,7 @@ class DesignScanner(RDLListener):
                         "paritycheck", self.top_node.inst.inst_src_ref
                     ),
                 )
+
+        encode = node.get_property("encode")
+        if encode and encode not in self.ds.user_enums:
+            self.ds.user_enums.append(encode)
