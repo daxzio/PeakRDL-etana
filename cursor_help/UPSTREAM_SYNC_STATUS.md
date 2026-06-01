@@ -55,7 +55,7 @@ assign my_signal = hwif_in_my_reg_my_field;
 ```bash
 cd $UPSTREAM_REGBLOCK
 git fetch origin
-git log --oneline origin/main --since="2025-12-11"
+git log --oneline ed07496..origin/main
 ```
 
 ### Step 1b: Check for RDL File Updates
@@ -204,7 +204,7 @@ Add the fix to "Fixes Applied" section below with:
 
 23. **Buffering Traversal Fix (#167, 61bffb7)** - Nov 16, 2025
     - Status: ✅ Partially handled in etana at the time (per-reg external skip)
-    - Superseded by fix #32 below (ff19423) for full upstream alignment
+    - Superseded by fix #28 below (ff19423) for full upstream alignment
 
 24. **Test Migration - test_cpuif_err_rsp (#178, efbddcc)** - Nov 21, 2025
     - Updated RDL file to match upstream (overlapped registers, external regfile)
@@ -279,13 +279,19 @@ Add the fix to "Fixes Applied" section below with:
 - Bit-order Fix (#111) - Struct packing specific
 - xsim Fixedpoint Test Fix - Uses struct syntax
 
-### Pending Review (Optional for Future)
+### Deferred Work (TODO — Not Blocking Sync)
 
 32. **Port List Generation Refactoring (#125, #153, commit 529c4df)** - Oct 25, 2025
-    - Moves port list generation from Jinja template to Python
-    - Status: Under review for future sync
-    - Benefit: Cleaner code structure
-    - Effort: 2-3 hours
+    - **Decision:** Deferred May 2026 — not required for upstream sync through `ed07496`
+    - **What:** Move module port list assembly from `module_tmpl.sv` Jinja into Python on
+      `RegblockExporter` (`get_module_port_list()`, `get_module_parameter_list()`,
+      `module_has_parameters()`)
+    - **Upstream files:** `exporter.py`, `module_tmpl.sv`, `hwif/__init__.py`
+    - **Etana files to touch:** `src/peakrdl_etana/exporter.py`, `module_tmpl.sv`
+    - **Etana adaptation:** Use `hwif.has_hwif_ports` instead of regblock struct checks
+    - **Benefit:** Cleaner template; no RTL behavior change
+    - **Effort:** ~2-3 hours
+    - **When to pick up:** Next maintenance pass or if `module_tmpl.sv` port header needs edits
 
 33. **AHB Enhancements (commit 29ec121)** - Oct 2025
     - Status: Need to verify etana's AHB is up-to-date
@@ -308,6 +314,8 @@ Add the fix to "Fixes Applied" section below with:
       accepts ack+err together for Cocotb testing only; RTL matches regblock for now.
     - **Suggested regblock fix:** Suppress `wb_ack` when `wb_err` is asserted (or drive ERR-only).
     - **Status:** Tracked locally; feedback to PeakRDL-regblock pending.
+
+**Cross-reference:** Cocotb migration status — see `COCOTB_MIGRATION_GUIDE.md` (complete through ed07496, May 2026).
 
 ---
 
@@ -404,10 +412,10 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 - **Fixes Applied:** 31 (includes etana-specific fixes and test migrations)
 - **Fixes Not Applicable:** 3 (struct-specific)
 - **Fixes Already Handled:** 2 (counter overflow width, AXI4-lite buffer flattening)
-- **Documented for Future:** 3 (port list refactor, AHB verify, validation_errors tests)
+- **Documented for Future:** 3 (port list refactor **deferred**, AHB verify, validation_errors tests)
 - **Upstream Feedback Tracked:** 1 (wishbone ack+err)
 - **Success Rate:** 100% of applicable fixes implemented
-- **Tests Migrated:** All functional Cocotb tests complete (plus upstream-only `test_only_external_blocks`)
+- **Tests Migrated:** All functional Cocotb tests complete; see `COCOTB_MIGRATION_GUIDE.md`
 
 ---
 

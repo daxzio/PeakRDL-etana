@@ -13,18 +13,18 @@ This guide documents how to migrate SystemVerilog-based tests to Python/Cocotb t
 
 **CRITICAL RULE**: **NEVER EDIT RDL FILES** - Always copy them directly from PeakRDL-regblock. RDL files should be byte-for-byte identical to upstream.
 
-**📚 For detailed troubleshooting and recent fixes, see**: `MIGRATION_SESSION_OCT_2025.md`
+**📚 For sync status and upstream fix history, see**: `UPSTREAM_SYNC_STATUS.md`
 
-**🔄 Last Updated:** January 7, 2026 - All migrated tests synced with upstream through regblock commit 9fc95b8
+**🔄 Last Updated:** May 31, 2026 — Cocotb test suite synced with upstream regblock through **ed07496 (v1.3.1)**. No open migration tasks; see [Current Migration Status](#current-migration-status-may-2026) below.
 
 ---
 
 ## Prerequisites
 
 ```bash
-# Python virtual environment (example):
-source venv/bin/activate   # or your project venv, e.g. venv.2.0.0
-pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-etana
+# Python virtual environment (recommended):
+source venv.2.0.0/bin/activate
+pip install cocotb cocotbext-apb cocotbext-wishbone systemrdl-compiler peakrdl-regblock peakrdl-etana
 
 # Clone PeakRDL-regblock for reference (if not already available):
 # git clone https://github.com/SystemRDL/PeakRDL-regblock.git /path/to/PeakRDL-regblock
@@ -38,11 +38,19 @@ pip install cocotb cocotbext-apb systemrdl-compiler peakrdl-regblock peakrdl-eta
 **Required setup:**
 - Local checkout of PeakRDL-regblock repository (PRIMARY source for tests)
 - Access to tests-regblock directory (optional, legacy implementations only)
-- Use venv-3.12.3/ virtual environment for consistency
+- Use `venv.2.0.0/` virtual environment for consistency (Cocotb 2.0.x)
 
 **Standard test command:**
 ```bash
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 SIM=icarus
+```
+
+**Full test matrix (all runnable Cocotb tests):**
+```bash
+cd tests
+source ../venv.2.0.0/bin/activate
+bash test_all.sh SIM=icarus CPUIF=apb4-flat COCOTB_REV=2.0.0
+# Repeat with CPUIF=wishbone-flat, axi4-lite-flat, ahb-flat, etc.
 ```
 
 ---
@@ -253,16 +261,19 @@ make clean regblock sim SIM=verilator REGBLOCK=1
 **Testing with different interfaces:**
 ```bash
 # APB4 (default)
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 SIM=icarus
 
 # AXI4-Lite
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 SIM=icarus CPUIF=axi4-lite-flat
 
 # AHB
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 SIM=icarus CPUIF=ahb-flat
 
 # Passthrough (for bit-level strobes)
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 CPUIF=passthrough
+
+# Wishbone (etana-only flattened CPUIF; requires cocotbext-wishbone)
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 CPUIF=wishbone-flat SIM=icarus
 ```
 
 ### Step 6: Test with Etana (Optional)
@@ -478,21 +489,30 @@ diff /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl \
 - APB4 (apb4-flat) - Default, widest support
 - AXI4-Lite (axi4-lite-flat) - Requires proper AxiLiteBus usage
 - AHB (ahb-flat) - Shared bus with stall support
+- OBI (obi-flat) - Outstanding transaction support
+- Avalon-MM (avalon-mm-flat)
+- Wishbone (wishbone-flat) - Etana flattened CPUIF; requires `cocotbext-wishbone`
 - Passthrough - For bit-level strobes, complex with external emulators
 
 **Test Matrix**:
 ```bash
-# Test with each interface
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=apb4-flat
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=axi4-lite-flat
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=ahb-flat
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
+# Etana generator — repeat per CPUIF
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=apb4-flat
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=wishbone-flat
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=axi4-lite-flat
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=ahb-flat
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=obi-flat
+make clean etana sim COCOTB_REV=2.0.0 REGBLOCK=0 SIM=icarus CPUIF=passthrough
+
+# Or run all runnable tests at once:
+cd tests && bash test_all.sh SIM=icarus CPUIF=wishbone-flat COCOTB_REV=2.0.0
 ```
 
 **Interface-Specific Issues**:
 - **APB4**: Native `error_expected` support via `pslverr`
 - **AXI4-Lite**: Need to use `AxiLiteBus`/`AxiLiteMaster`, not full AXI4 classes
 - **AHB**: Response codes in returned dict: `x.get("resp", 0)`
+- **Wishbone**: Signals are `wb_*` (`odat`/`idat`/`stall`); error tests use `RegblockWishboneMaster` in `wishbone_wrapper.py` (regblock asserts ack+err together — see `UPSTREAM_SYNC_STATUS.md` item 35)
 - **Passthrough**: Bit-level strobes, `req_stall` signals, complex timing with external emulators
 
 ### Lesson 8: Checking Installed vs Local PeakRDL-regblock
@@ -503,7 +523,7 @@ make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1 CPUIF=passthrough
 
 **Check Command**:
 ```bash
-source venv-3.12.3/bin/activate
+source venv.2.0.0/bin/activate
 peakrdl regblock --help | grep -A3 "err"
 pip show peakrdl-regblock | grep Version
 ```
@@ -520,9 +540,13 @@ pip show peakrdl-regblock | grep Version
 ### Pattern 1: CPU Interface Detection
 
 **tb_base.py auto-detects:**
-- APB4: checks for `s_apb_penable`
 - Passthrough: checks for `s_cpuif_req`
+- APB4: checks for `s_apb_penable`
+- AHB: checks for `s_ahb_hsel`
 - AXI4-Lite: checks for `s_axil_awvalid`
+- OBI: checks for `s_obi_req`
+- Avalon-MM: checks for `avalon_read`
+- Wishbone: checks for `wb_cyc` (prefix `wb`, signals `wb_odat`/`wb_idat`/`wb_stall`)
 
 **You don't need to specify - it just works!**
 
@@ -952,7 +976,7 @@ verify_only_readable_fields(read_val)
 
 **Provides:**
 - `tb.clk` - Clock object with `wait_clkn(n)` method
-- `tb.intf` - Auto-detected CPU interface (APB4/Passthrough/AXI)
+- `tb.intf` - Auto-detected CPU interface (APB4/Passthrough/AXI/AHB/OBI/Avalon/Wishbone)
 - `tb.hwif_in_*` - All input signals (auto-populated)
 - `tb.hwif_out_*` - All output signals (auto-populated)
 - `tb.rst` - Reset signal
@@ -989,7 +1013,7 @@ cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl tests/test_<name>/
 
 # 3. Test with regblock (reference implementation)
 cd tests/test_<name>
-source ../../venv-3.12.3/bin/activate
+source ../../venv.2.0.0/bin/activate
 make clean regblock sim SIM=verilator REGBLOCK=1
 
 # 4. If passes with REGBLOCK=1, test with etana
@@ -1040,12 +1064,43 @@ make clean etana sim SIM=verilator REGBLOCK=0
 
 **See:** test_simple, test_enum, test_field_types as reference examples
 
-**Status:** Migration flow validated end-to-end and kept in sync with upstream regblock through 9fc95b8 ✅
+**Status:** ✅ Cocotb migration **complete** for all applicable upstream tests through regblock **ed07496 (v1.3.1)**. No open migration tasks as of May 2026.
 
-**Last Migration Update:** January 7, 2026
-- ✅ Readback mux refactor integration completed (upstream #155/#165)
-- ✅ `test_wide_external` verified with regblock reference first (per workflow)
-- ✅ Added and migrated upstream-only test: `test_only_external_blocks`
+**Last Migration Update:** May 31, 2026
+- ✅ Upstream sync through `ed07496` (enum fix, buffering skip, wishbone CPUIF)
+- ✅ Readback mux refactor (upstream #155/#165) — Jan 2026
+- ✅ `test_only_external_blocks` migrated
+- ✅ Wishbone: `wishbone-flat` + `RegblockWishboneMaster` wrapper; 32/32 tests pass (`test_all.sh SIM=icarus CPUIF=wishbone-flat`)
+- ✅ All shared test RDL files match upstream
+
+---
+
+## Current Migration Status (May 2026)
+
+**Upstream sync point:** regblock `ed07496` (v1.3.1) — see `UPSTREAM_SYNC_STATUS.md`
+
+### Cocotb tests — complete ✅
+
+All upstream functional test directories with `regblock.rdl` + simulation intent are migrated. Runnable via `tests/test_all.sh` (32 tests; 4 skipped by design).
+
+**Etana-only tests** (not in upstream): `test_simple`, `test_basic`, `test_addrmap`, `test_loops`, `test_wide_external`, `test_ahblite`, `test_ahb_pipeline`, `test_counter_basics_apb4`, `test_template_report`
+
+### Not migrated — optional / N/A
+
+| Upstream test | Reason |
+|---------------|--------|
+| `test_validation_errors` | Pytest compile-time validation only (no Cocotb sim); low priority |
+| `test_simple_fanin` | Upstream directory has no source files (legacy `run.out` only) |
+
+### When to migrate again
+
+Run after each upstream sync (see `UPSTREAM_SYNC_STATUS.md` Step 1):
+
+```bash
+cd $UPSTREAM_REGBLOCK && git fetch origin && git log --oneline ed07496..origin/main -- tests/
+comm -23 <(ls tests \| grep '^test_') <(ls $UPSTREAM_REGBLOCK/tests \| grep '^test_')
+# Diff any shared RDL files; copy upstream if changed; update test_dut.py if RDL structure changed
+```
 
 ---
 
@@ -1091,6 +1146,24 @@ await tb.intf.read(0x40, 0x0)  # First register in regfile
 await tb.intf.write(0x40, 0xD0)
 await tb.intf.read(0x40, 0xD0)
 ```
+
+### May 2026: Wishbone CPUIF (#196, deadbf7)
+
+Upstream added Wishbone; etana ported as `wishbone-flat` (flattened `wb_*` signals).
+
+**Test infrastructure:**
+- `tests/interfaces/wishbone_wrapper.py` — `RegblockWishboneMaster` (workaround for ack+err signaling)
+- `tests/tb_base.py` — detects `wb_cyc`, prefix `wb`
+- Requires `pip install cocotbext-wishbone`
+
+**Verification:**
+```bash
+source venv.2.0.0/bin/activate
+cd tests && bash test_all.sh SIM=icarus CPUIF=wishbone-flat COCOTB_REV=2.0.0
+# PASS: 32, FAIL: 0, SKIP: 4
+```
+
+**Note:** Regblock drives `wb_ack` and `wb_err` together on SLVERR (likely B4 spec violation). Tracked as item 35 in `UPSTREAM_SYNC_STATUS.md`; RTL matches regblock, Cocotb uses wrapper workaround.
 
 ---
 
@@ -1242,9 +1315,9 @@ ls -1 tests/ | grep "^test_" | sort
 comm -13 <(ls -1 tests/ | grep "^test_" | sort) \
          <(ls -1 /path/to/PeakRDL-regblock/tests/ | grep "^test_" | sort)
 
-# Find recently changed tests
+# Find recently changed tests (since last sync)
 cd /path/to/PeakRDL-regblock
-git log --oneline --since="6 months ago" -- tests/ | head -50
+git log --oneline ed07496..origin/main -- tests/
 ```
 
 ### Checking for Test Enhancements
@@ -1260,6 +1333,6 @@ cp /path/to/PeakRDL-regblock/tests/test_<name>/regblock.rdl tests/test_<name>/
 
 # Test to verify enhancement doesn't break existing test
 cd tests/test_<name>
-source ../../venv-3.12.3/bin/activate
-make clean regblock sim COCOTB_REV=1.9.2 REGBLOCK=1
+source ../../venv.2.0.0/bin/activate
+make clean regblock sim COCOTB_REV=2.0.0 REGBLOCK=1 SIM=icarus
 ```
