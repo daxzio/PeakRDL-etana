@@ -270,6 +270,19 @@ Add the fix to "Fixes Applied" section below with:
     - Action: Compare implementations
     - Effort: 1 hour
 
+### Upstream Feedback (Tracked, Not Yet Filed)
+
+30. **Wishbone simultaneous ACK+ERR on error responses (deadbf7)** - May 2026
+    - **Issue:** `wishbone_tmpl.sv` drives `wb_ack = cpuif_rd_ack | cpuif_wr_ack` and
+      `wb_err = cpuif_rd_err | cpuif_wr_err` independently, so both assert on SLVERR.
+    - **Spec:** Wishbone B4 requires ACK and ERR to be mutually exclusive.
+    - **Evidence:** `cocotbext-wishbone` `_get_reply()` asserts on simultaneous ack+err;
+      `test_cpuif_err_rsp` fails with stock driver under `wishbone-flat`.
+    - **Etana workaround:** `RegblockWishboneMaster` in `tests/interfaces/wishbone_wrapper.py`
+      accepts ack+err together for Cocotb testing only; RTL matches regblock for now.
+    - **Suggested regblock fix:** Suppress `wb_ack` when `wb_err` is asserted (or drive ERR-only).
+    - **Status:** Tracked locally; feedback to PeakRDL-regblock pending.
+
 ---
 
 ## File Mapping Reference

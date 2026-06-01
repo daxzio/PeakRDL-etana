@@ -102,7 +102,7 @@ CPU interface error response validation (NEW).
 * AXI4-Lite (validates ``rresp``/``bresp`` signals)
 * AHB (validates ``hresp`` signal)
 * OBI (validates ``err`` signal)
-* Wishbone (validates ``s_wb_err`` signal)
+* Wishbone (validates ``wb_err`` signal)
 * Passthrough (validates ``rd_err``/``wr_err`` signals)
 
 **Usage:**

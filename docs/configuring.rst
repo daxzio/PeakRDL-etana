@@ -184,7 +184,7 @@ Error Response Configuration
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
     * AHB: Asserts ``hresp`` (ERROR response)
     * OBI: Asserts ``err``
-    * Wishbone: Asserts ``s_wb_err``
+    * Wishbone: Asserts ``wb_err``
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**
@@ -217,7 +217,7 @@ Error Response Configuration
     * AXI4-Lite: Returns ``SLVERR`` on ``rresp``/``bresp``
     * AHB: Asserts ``hresp`` (ERROR response)
     * OBI: Asserts ``err``
-    * Wishbone: Asserts ``s_wb_err``
+    * Wishbone: Asserts ``wb_err``
     * Passthrough: Asserts ``rd_err``/``wr_err``
 
     **Example:**

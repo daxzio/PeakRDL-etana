@@ -1,102 +1,70 @@
-Wishbone B4 Classic
-===================
+Wishbone Bus
+============
 
-Wishbone B4 is an open, flexible interconnect bus protocol. This implementation
-provides a single-cycle, non-pipelined Classic slave interface suitable for
-register block connectivity.
+Implements the register block using a
+`Wishbone B4 <https://cdn.opencores.org/downloads/wbspec_b4.pdf>`_
+CPU interface.
 
-Wishbone Protocol Overview
---------------------------
+PeakRDL-etana uses flattened signals exclusively (no SystemVerilog interface
+port option).
 
-Wishbone B4 Classic uses a simple handshake:
+Flattened inputs/outputs
+    Flattens the interface into discrete input and output ports.
 
-**Request Phase:**
-  - Master asserts ``cyc`` (cycle) and ``stb`` (strobe) to indicate a valid transaction
-  - ``we`` indicates write (1) or read (0)
-  - ``adr`` carries the address
-  - ``dat_wr`` and ``sel`` provide write data and byte strobes
-
-**Response Phase:**
-  - Slave asserts ``ack`` on successful completion
-  - Slave asserts ``err`` on error (optional, mutually exclusive with ``ack``)
-  - ``dat_rd`` provides read data
-
-Wishbone-Flat
--------------
-
-Implements the register block using a Wishbone B4 Classic CPU interface with
-**flattened signal interface** (individual input/output ports).
-
-* Command line: ``--cpuif wishbone-flat``
-* Class: :class:`peakrdl_etana.cpuif.wishbone.Wishbone_Cpuif_flattened`
+    * Command line: ``--cpuif wishbone-flat``
+    * Class: :class:`peakrdl_etana.cpuif.wishbone.Wishbone_Cpuif_flattened`
 
 Signal Interface
-~~~~~~~~~~~~~~~~
+----------------
 
 **Inputs:**
 
-* ``s_wb_cyc`` - Cycle valid (input)
-* ``s_wb_stb`` - Strobe (input)
-* ``s_wb_we`` - Write enable (input)
-* ``s_wb_adr`` - Address (input)
-* ``s_wb_dat_wr`` - Write data (input)
-* ``s_wb_sel`` - Byte strobes (input)
+* ``wb_cyc`` - Cycle (input, not connected; placeholder per B4 Classic)
+* ``wb_stb`` - Strobe (input)
+* ``wb_we`` - Write enable (input)
+* ``wb_adr`` - Address (input)
+* ``wb_odat`` - Write data (input)
+* ``wb_sel`` - Byte strobes (input)
 
 **Outputs:**
 
-* ``s_wb_ack`` - Acknowledge (output)
-* ``s_wb_err`` - Error response (output)
-* ``s_wb_dat_rd`` - Read data (output)
+* ``wb_stall`` - Stall (output)
+* ``wb_ack`` - Acknowledge (output)
+* ``wb_err`` - Error response (output)
+* ``wb_idat`` - Read data (output)
 
-Features
---------
+Implementation Details
+----------------------
+This implementation of the Wishbone protocol has the following features:
 
-**Single-Cycle Transactions:**
-  Non-pipelined B4 Classic mode; each transaction completes in one cycle after
-  the request is captured.
+* Classic Wishbone operations (SINGLE_READ and SINGLE_WRITE)
+* Stall and error optional output signals
 
-**Byte Strobes:**
-  Per-byte write enables through the ``sel`` signal enable partial word writes.
-
-**Optional Error Signaling:**
-  When ``--err-if-bad-addr`` or ``--err-if-bad-rw`` is enabled, ``err`` is
-  asserted for error conditions per Wishbone B4 spec (ACK and ERR mutually exclusive).
+Note that the ``cyc`` signal is not connected and it is a placeholder, since it
+is redundant in wishbone classic operations. Commands are captured based on
+``stb``.
 
 Error Response Support
 ----------------------
 
-The Wishbone interface supports error signaling via the ``s_wb_err`` signal. When
-error response options are enabled:
-
-**--err-if-bad-addr**
-    Asserts ``s_wb_err`` when software accesses an unmapped address
-
-**--err-if-bad-rw**
-    Asserts ``s_wb_err`` when:
-
-    - Writing to a read-only register
-    - Reading from a write-only register
+When ``--err-if-bad-addr`` or ``--err-if-bad-rw`` is enabled, ``wb_err`` is
+asserted for error conditions.
 
 Usage Example
 -------------
 
 .. code-block:: bash
 
-   # Generate register block with Wishbone interface
    peakrdl etana my_registers.rdl --cpuif wishbone-flat -o output_dir/
 
-   # Enable error responses
    peakrdl etana my_registers.rdl --cpuif wishbone-flat \
        --err-if-bad-addr --err-if-bad-rw -o output_dir/
 
 Integration Notes
 -----------------
 
-* The interface follows Wishbone B4 (Classic) specification
-* Address is byte-addressed and aligned to the data width
-* ACK and ERR are mutually exclusive per B4 spec
 * Requires ``cocotbext-wishbone`` for Cocotb-based testing
-
-.. note::
-    PeakRDL-etana uses flattened signals exclusively. There are no SystemVerilog
-    struct-based interface options.
+* **Known issue (tracked):** On error responses, generated RTL currently asserts both
+  ``wb_ack`` and ``wb_err``, which violates Wishbone B4 mutual-exclusion rules.
+  Etana Cocotb tests use a wrapper workaround; see ``UPSTREAM_SYNC_STATUS.md`` item 30
+  for upstream feedback details.

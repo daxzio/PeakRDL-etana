@@ -10,28 +10,32 @@ from typing import Union
 
 from cocotbext.wishbone.driver import WishboneMaster, WBOp
 
-# from cocotbext import wishbone.driver.WishboneMaster as WishboneMaster
-# from cocotbext import wishbone.driver.WBOp as WBOp
 
-# # from cocotbext.wishbone.driver import WishboneMaster, WBOp
-# # Import cocotbext-wishbone; local cocotbext-ahb can shadow the cocotbext namespace
-# try:
-#     from cocotbext.wishbone.driver import WishboneMaster, WBOp
-# except ImportError:
-#     # Fallback: merge site-packages cocotbext into namespace before re-trying
-#     try:
-#         import cocotbext as _ce
-#         import os
-#         import site
-#         for _p in site.getsitepackages():
-#             _wb = os.path.join(_p, "cocotbext", "wishbone")
-#             if os.path.isdir(_wb):
-#                 _ce.__path__ = [_p + "/cocotbext"] + list(getattr(_ce, "__path__", []))
-#                 break
-#         from cocotbext.wishbone.driver import WishboneMaster, WBOp
-#     except Exception:
-#         WishboneMaster = None  # type: ignore
-#         WBOp = None  # type: ignore
+class RegblockWishboneMaster(WishboneMaster):
+    """
+    Wishbone master workaround for PeakRDL-regblock response signaling.
+
+    Wishbone B4 requires ACK and ERR to be mutually exclusive. PeakRDL-regblock
+    (deadbf7, wishbone_tmpl.sv) drives both wb_ack and wb_err on error responses.
+    cocotbext-wishbone correctly flags that as a protocol violation.
+
+    Etana tracks this as potential upstream feedback; see UPSTREAM_SYNC_STATUS.md
+    item 30. Until regblock is fixed, this subclass accepts ack+err together so
+    Cocotb tests can run against the current RTL.
+    """
+
+    def _get_reply(self):
+        ack = self.bus.ack.value == 1
+        has_err = hasattr(self.bus, "err") and self.bus.err.value == 1
+        if ack and has_err:
+            return True, 2
+        if ack:
+            return True, 1
+        if has_err:
+            return True, 2
+        if hasattr(self.bus, "rty") and self.bus.rty.value == 1:
+            return True, 3
+        return False, 0
 
 
 def _to_int(val) -> int:
@@ -55,11 +59,12 @@ class WishboneMasterWrapper:
         "stb": "stb",
         "we": "we",
         "adr": "adr",
-        "datwr": "dat_wr",
-        "datrd": "dat_rd",
+        "datwr": "odat",
+        "datrd": "idat",
         "ack": "ack",
         "err": "err",
         "sel": "sel",
+        "stall": "stall",
     }
 
     def __init__(
@@ -81,7 +86,7 @@ class WishboneMasterWrapper:
         self.data_mask = (1 << width) - 1
         self.sel_full = (1 << self.data_bytes) - 1
 
-        self._wb = WishboneMaster(
+        self._wb = RegblockWishboneMaster(
             dut,
             prefix,
             clock,

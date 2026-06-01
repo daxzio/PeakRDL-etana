@@ -99,6 +99,8 @@ def main():
         register_interface("ahb", "AHBPipeline_Cpuif_flattened", "ahb-flat")
         register_interface("obi", "OBI_Cpuif", "obi")
         register_interface("obi", "OBI_Cpuif_flattened", "obi-flat")
+        register_interface("wishbone", "Wishbone_Cpuif", "wishbone")
+        register_interface("wishbone", "Wishbone_Cpuif_flattened", "wishbone-flat")
 
         # Ensure at least APB3 is available (should always be present)
         if "apb3" not in cpuif_map:
