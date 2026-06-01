@@ -20,7 +20,7 @@ class RegblockWishboneMaster(WishboneMaster):
     cocotbext-wishbone correctly flags that as a protocol violation.
 
     Etana tracks this as potential upstream feedback; see UPSTREAM_SYNC_STATUS.md
-    item 30. Until regblock is fixed, this subclass accepts ack+err together so
+    item 35. Until regblock is fixed, this subclass accepts ack+err together so
     Cocotb tests can run against the current RTL.
     """
 

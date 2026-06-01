@@ -66,5 +66,5 @@ Integration Notes
 * Requires ``cocotbext-wishbone`` for Cocotb-based testing
 * **Known issue (tracked):** On error responses, generated RTL currently asserts both
   ``wb_ack`` and ``wb_err``, which violates Wishbone B4 mutual-exclusion rules.
-  Etana Cocotb tests use a wrapper workaround; see ``UPSTREAM_SYNC_STATUS.md`` item 30
+  Etana Cocotb tests use a wrapper workaround; see ``UPSTREAM_SYNC_STATUS.md`` item 35
   for upstream feedback details.

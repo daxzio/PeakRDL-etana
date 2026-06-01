@@ -1,23 +1,23 @@
 # PeakRDL-etana Upstream Sync Status
 
-## Current Status (Last Updated: January 7, 2026)
+## Current Status (Last Updated: May 31, 2026)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
 **Upstream Location:** Set `UPSTREAM_REGBLOCK` to your PeakRDL-regblock checkout path (e.g. `export UPSTREAM_REGBLOCK=/path/to/PeakRDL-regblock`).
-**Upstream Version:** Latest main (commit 9fc95b8 - December 11, 2025)
-**This Fork Version:** 0.22.0
+**Upstream Version:** Latest main (commit ed07496 - v1.3.1, March 2026)
+**This Fork Version:** 0.7.0
 **Fork Point:** v0.22.0 (December 2024)
-**Last Official Sync:** v1.1.1 (January 2025)
+**Last Official Sync:** v1.3.1 / ed07496 (May 2026)
 **Architecture:** Flattened signals only (no SystemVerilog structs)
 
-**Status:** ✅ **FULLY SYNCED** - All applicable upstream fixes through 9fc95b8 applied
-**Last Sync:** January 7, 2026
-**Next Sync Review:** April 2026 (quarterly schedule)
+**Status:** ✅ **FULLY SYNCED** - All applicable upstream fixes through ed07496 applied
+**Last Sync:** May 31, 2026
+**Next Sync Review:** August 2026 (quarterly schedule)
 
 **Path variables (set for sync commands):** `UPSTREAM_REGBLOCK` = path to PeakRDL-regblock repo; `ETANA_TESTS` = path to this repo's `tests/` directory (e.g. `$(pwd)/tests` when run from repo root).
 
-**Etana Branch:** `rb_cpu_index`
-**Etana Commit:** d6ae417 (Jan 7, 2026)
+**Etana Branch:** `may26-sync`
+**Etana Commit:** e168727 (May 2026)
 
 ---
 
@@ -203,11 +203,8 @@ Add the fix to "Fixes Applied" section below with:
       - `pyproject.toml`
 
 23. **Buffering Traversal Fix (#167, 61bffb7)** - Nov 16, 2025
-    - Status: ✅ Already handled in etana
-    - Upstream fix prevents traversal into externals for read/write buffered regs
-    - Etana's implementation_generator files already check `if node.external:` and skip traversal
-    - Etana's storage_generator files are empty (struct-based, not used in flattened architecture)
-    - No changes needed
+    - Status: ✅ Partially handled in etana at the time (per-reg external skip)
+    - Superseded by fix #32 below (ff19423) for full upstream alignment
 
 24. **Test Migration - test_cpuif_err_rsp (#178, efbddcc)** - Nov 21, 2025
     - Updated RDL file to match upstream (overlapped registers, external regfile)
@@ -245,6 +242,37 @@ Add the fix to "Fixes Applied" section below with:
       - ✅ `make clean regblock sim REGBLOCK=1` (regblock reference)
       - ✅ `make clean etana sim REGBLOCK=0` (etana generator)
 
+### Applied from Main (December 11, 2025 → March 2026 / ed07496) ✅
+
+27. **Enum Extraction Fix (dc9ab37)** - May 2026
+    - Moved `encode` enum collection from `enter_Component` property loop to `enter_Field`
+    - File: `src/peakrdl_etana/scan_design.py`
+    - Fixes incorrect enum registration when `encode` appears on non-field nodes
+
+28. **Skip Read/Write Buffering for External Nodes (#192, ff19423)** - May 2026
+    - Added `enter_AddressableComponent` with `SkipDescendants` for external nodes
+    - Files:
+      - `src/peakrdl_etana/read_buffering/implementation_generator.py`
+      - `src/peakrdl_etana/write_buffering/implementation_generator.py`
+    - Etana retains additional per-reg `is_inside_external_block()` guards
+
+29. **Wishbone CPU Interface (#196, deadbf7)** - May 2026
+    - Ported flattened Wishbone CPUIF aligned with upstream regblock
+    - Files:
+      - `src/peakrdl_etana/cpuif/wishbone/__init__.py`
+      - `src/peakrdl_etana/cpuif/wishbone/wishbone_tmpl.sv`
+      - `tests/interfaces/wishbone_wrapper.py`
+      - `tests/tb_base.py`
+      - `docs/cpuif/wishbone.rst`
+    - Verification: ✅ All 32 runnable Cocotb tests pass with `CPUIF=wishbone-flat SIM=icarus`
+    - See item 35 for tracked upstream feedback on ack+err signaling
+
+30. **Counter Overflow Width (2109d02)** - May 2026
+    - Status: ✅ Already present in etana (with additional width+1 casts on incrvalue)
+
+31. **AXI4-Lite Response Buffer Flattening (#193, ffca21c)** - May 2026
+    - Status: ✅ Already present in etana (`axil_resp_buffer_is_wr/err/rdata` arrays)
+
 ### Not Applicable (Struct-Specific)
 
 - Simulation-time Width Assertions (#128) - References `is_interface` attribute
@@ -253,26 +281,24 @@ Add the fix to "Fixes Applied" section below with:
 
 ### Pending Review (Optional for Future)
 
-27. **Port List Generation Refactoring (#125, #153, commit 529c4df)** - Oct 25, 2025
+32. **Port List Generation Refactoring (#125, #153, commit 529c4df)** - Oct 25, 2025
     - Moves port list generation from Jinja template to Python
     - Status: Under review for future sync
     - Benefit: Cleaner code structure
     - Effort: 2-3 hours
 
-28. **OBI Protocol Support (#158, commits aa9a210-bb765e6)** - Oct 2025
-    - New CPU interface: Open Bus Interface
-    - Status: Not yet ported (would need flattened variant)
-    - Note: User-driven feature (port if requested)
-    - Effort: 4-6 hours
-
-29. **AHB Enhancements (commit 29ec121)** - Oct 2025
+33. **AHB Enhancements (commit 29ec121)** - Oct 2025
     - Status: Need to verify etana's AHB is up-to-date
     - Action: Compare implementations
     - Effort: 1 hour
 
+34. **Test Migration: test_validation_errors** - Optional
+    - Upstream pytest compile-time validation tests not yet ported to etana
+    - Low priority (no Cocotb simulation involved)
+
 ### Upstream Feedback (Tracked, Not Yet Filed)
 
-30. **Wishbone simultaneous ACK+ERR on error responses (deadbf7)** - May 2026
+35. **Wishbone simultaneous ACK+ERR on error responses (deadbf7)** - May 2026
     - **Issue:** `wishbone_tmpl.sv` drives `wb_ack = cpuif_rd_ack | cpuif_wr_ack` and
       `wb_err = cpuif_rd_err | cpuif_wr_err` independently, so both assert on SLVERR.
     - **Spec:** Wishbone B4 requires ACK and ERR to be mutually exclusive.
@@ -374,13 +400,14 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 ## Sync Statistics
 
-- **Total Fixes Analyzed:** 29 (across v0.22.0 → current main Dec 2025)
-- **Fixes Applied:** 26 (includes etana-specific fixes and test migrations)
+- **Total Fixes Analyzed:** 35 (across v0.22.0 → current main ed07496)
+- **Fixes Applied:** 31 (includes etana-specific fixes and test migrations)
 - **Fixes Not Applicable:** 3 (struct-specific)
-- **Fixes Already Handled:** 1 (buffering traversal fix)
-- **Documented for Future:** 3 (optional enhancements)
+- **Fixes Already Handled:** 2 (counter overflow width, AXI4-lite buffer flattening)
+- **Documented for Future:** 3 (port list refactor, AHB verify, validation_errors tests)
+- **Upstream Feedback Tracked:** 1 (wishbone ack+err)
 - **Success Rate:** 100% of applicable fixes implemented
-- **Tests Migrated:** All functional tests complete (plus upstream-only `test_only_external_blocks`)
+- **Tests Migrated:** All functional Cocotb tests complete (plus upstream-only `test_only_external_blocks`)
 
 ---
 
@@ -408,8 +435,9 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 ---
 
-**Last Updated:** January 7, 2026
-**Last Sync Commit:** 9fc95b8
-**Synced By:** Cursor AI (Session 3)
+**Last Updated:** May 31, 2026
+**Last Sync Commit:** ed07496
+**Synced By:** Cursor AI (May 2026 sync session)
 **Status:** Fully current with upstream ✅
 **Test Migration Status:** All functional tests migrated + upstream-only test added ✅
+**Wishbone Status:** Ported and verified (32/32 Cocotb tests with `wishbone-flat`); ack+err issue tracked as item 35
