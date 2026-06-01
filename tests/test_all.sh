@@ -134,7 +134,7 @@ for dir in test_*/; do
         fi
 
         # Build make command
-        make_cmd="timeout 60 make clean $target sim"
+        make_cmd="timeout 60 make clean $target sim WAVES=0"
         if [ -n "$SIM" ]; then
             make_cmd="$make_cmd SIM=$SIM"
         fi
