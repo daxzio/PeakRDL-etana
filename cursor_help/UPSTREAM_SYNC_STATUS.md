@@ -1,6 +1,6 @@
 # PeakRDL-etana Upstream Sync Status
 
-## Current Status (Last Updated: May 31, 2026)
+## Current Status (Last Updated: June 01, 2026)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
 **Upstream Location:** Set `UPSTREAM_REGBLOCK` to your PeakRDL-regblock checkout path (e.g. `export UPSTREAM_REGBLOCK=/path/to/PeakRDL-regblock`).
