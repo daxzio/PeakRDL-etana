@@ -237,7 +237,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             # Break up register input vector into individual field signals
             # Manually construct the register input identifier
             p = IndexedPath(self.ds.top_node, node)
-            reg_input = f"{self.exp.hwif.hwif_in_str}_{p.path}"
+            reg_input = f"{self.exp.hwif.hwif_in_str}_{p.path}{p.index_str}"
 
             for field in hw_writable_fields:
                 field_input = self.exp.hwif.get_input_identifier(field)
@@ -255,7 +255,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             # Combine field outputs into register output vector
             # Manually construct the register output identifier
             p = IndexedPath(self.ds.top_node, node)
-            reg_output = f"{self.exp.hwif.hwif_out_str}_{p.path}"
+            reg_output = f"{self.exp.hwif.hwif_out_str}_{p.path}{p.index_str}"
 
             # Calculate the actual output width based on highest bit position
             max_bit = max([f.high for f in hw_readable_fields])

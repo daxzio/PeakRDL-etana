@@ -28,6 +28,7 @@ synth_yosys.v
 cocotbext
 top_edit.sv
 etana-rtl/
+hybrid-rtl/
 regblock-rtl/
 regblock-vhdl-rtl/
 cursor_work/
