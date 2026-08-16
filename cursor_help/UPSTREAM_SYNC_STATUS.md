@@ -1,6 +1,6 @@
 # PeakRDL-etana Upstream Sync Status
 
-## Current Status (Last Updated: June 01, 2026)
+## Current Status (Last Updated: August 16, 2026)
 
 **Upstream Repository:** [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock)
 **Upstream Location:** Set `UPSTREAM_REGBLOCK` to your PeakRDL-regblock checkout path (e.g. `export UPSTREAM_REGBLOCK=/path/to/PeakRDL-regblock`).
@@ -12,7 +12,9 @@
 
 **Status:** ✅ **FULLY SYNCED** - All applicable upstream fixes through ed07496 applied
 **Last Sync:** May 31, 2026
-**Next Sync Review:** August 2026 (quarterly schedule)
+**Last Sync Review:** August 16, 2026 — no upstream changes; `SystemRDL/PeakRDL-regblock` main
+is still `ed07496` and v1.3.1 remains the newest tag. No porting work performed.
+**Next Sync Review:** November 2026 (quarterly schedule)
 
 **Path variables (set for sync commands):** `UPSTREAM_REGBLOCK` = path to PeakRDL-regblock repo; `ETANA_TESTS` = path to this repo's `tests/` directory (e.g. `$(pwd)/tests` when run from repo root).
 
@@ -52,10 +54,24 @@ assign my_signal = hwif_in_my_reg_my_field;
 ## How to Sync with Upstream
 
 ### Step 1: Check for New Upstream Changes
+
+**First confirm `origin` actually points at SystemRDL.** Local checkouts of
+PeakRDL-regblock often have `origin` set to a personal fork (e.g.
+`git@github.com:daxzio/PeakRDL-regblock.git`), whose `main` can lag behind. Fetching
+such a remote reports "no new commits" even when upstream has moved on.
+
 ```bash
 cd $UPSTREAM_REGBLOCK
+git remote -v   # must be github.com/SystemRDL/PeakRDL-regblock for the check below
+
 git fetch origin
 git log --oneline ed07496..origin/main
+```
+
+If `origin` is a fork, query SystemRDL directly instead (read-only, no repo changes):
+
+```bash
+git ls-remote https://github.com/SystemRDL/PeakRDL-regblock.git refs/heads/main 'refs/tags/*'
 ```
 
 ### Step 1b: Check for RDL File Updates
@@ -294,13 +310,17 @@ Add the fix to "Fixes Applied" section below with:
     - **When to pick up:** Next maintenance pass or if `module_tmpl.sv` port header needs edits
 
 33. **AHB Enhancements (commit 29ec121)** - Oct 2025
-    - Status: Need to verify etana's AHB is up-to-date
-    - Action: Compare implementations
-    - Effort: 1 hour
+    - **Status:** ❌ **Closed Aug 16, 2026 — not an upstream sync item**
+    - `29ec121` is not in `SystemRDL/PeakRDL-regblock` main; it exists only on the daxzio
+      fork branches `ahb-support` and `cpuif_index`. Upstream main has no `cpuif/ahb/`.
+    - Etana already ships four AHB variants (`ahb`, `ahb5`, `ahblite`, `ahbpipeline`),
+      which are etana-specific work tracked outside this document.
 
 34. **Test Migration: test_validation_errors** - Optional
     - Upstream pytest compile-time validation tests not yet ported to etana
     - Low priority (no Cocotb simulation involved)
+    - Also missing: `tests/test_simple_fanin` (upstream-only; etana has `test_read_fanin`).
+      Both gaps predate the ed07496 sync — neither is a regression.
 
 ### Upstream Feedback (Tracked, Not Yet Filed)
 
@@ -412,7 +432,8 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 - **Fixes Applied:** 31 (includes etana-specific fixes and test migrations)
 - **Fixes Not Applicable:** 3 (struct-specific)
 - **Fixes Already Handled:** 2 (counter overflow width, AXI4-lite buffer flattening)
-- **Documented for Future:** 3 (port list refactor **deferred**, AHB verify, validation_errors tests)
+- **Documented for Future:** 2 (port list refactor **deferred**, validation_errors tests)
+- **Closed as Not Applicable:** 1 (AHB `29ec121` — fork-branch only, never in upstream main)
 - **Upstream Feedback Tracked:** 1 (wishbone ack+err)
 - **Success Rate:** 100% of applicable fixes implemented
 - **Tests Migrated:** All functional Cocotb tests complete; see `COCOTB_MIGRATION_GUIDE.md`
@@ -435,7 +456,8 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 1. **Read this entire document first**
 2. **Understand the architectural difference (structs vs flattened)**
-3. **Check upstream for new commits:** `cd $UPSTREAM_REGBLOCK && git log --oneline`
+3. **Check upstream for new commits** using Step 1 above — verify `origin` is SystemRDL,
+   not a personal fork, before trusting a "no new commits" result
 4. **For each commit, ask:** Is this struct-specific?
 5. **If not:** Apply following file mapping
 6. **Test thoroughly**
@@ -443,9 +465,9 @@ cd ../test_simple && make clean regblock sim REGBLOCK=1
 
 ---
 
-**Last Updated:** May 31, 2026
+**Last Updated:** August 16, 2026
 **Last Sync Commit:** ed07496
-**Synced By:** Cursor AI (May 2026 sync session)
+**Synced By:** Cursor AI (May 2026 sync session; reviewed August 2026 — no upstream changes)
 **Status:** Fully current with upstream ✅
 **Test Migration Status:** All functional tests migrated + upstream-only test added ✅
 **Wishbone Status:** Ported and verified (32/32 Cocotb tests with `wishbone-flat`); ack+err issue tracked as item 35
