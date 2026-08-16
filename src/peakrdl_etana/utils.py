@@ -119,6 +119,40 @@ def clog2(n: int) -> int:
     return (n - 1).bit_length()
 
 
+def addr_range_match_expr(
+    signal: str,
+    addr_lo: str,
+    addr_lo_int: int,
+    addr_hi: str,
+    addr_hi_int: int,
+    addr_width: int,
+    *,
+    has_array_index: bool = False,
+    and_op: str = "&",
+) -> Optional[str]:
+    """
+    Build an unsigned address range match, omitting bounds that are always true.
+
+    Returns None if every representable address is in range. Omitting those
+    comparisons avoids Verilator UNSIGNED (``addr >= 0``) and CMPCONST
+    (``addr <= max``) warnings when warnings are treated as errors.
+    """
+    if has_array_index:
+        return f"({signal} >= {addr_lo}) {and_op} ({signal} <= {addr_hi})"
+
+    max_addr = (1 << addr_width) - 1
+    omit_lo = addr_lo_int <= 0
+    omit_hi = addr_hi_int >= max_addr
+
+    if omit_lo and omit_hi:
+        return None
+    if omit_lo:
+        return f"({signal} <= {addr_hi})"
+    if omit_hi:
+        return f"({signal} >= {addr_lo})"
+    return f"({signal} >= {addr_lo}) {and_op} ({signal} <= {addr_hi})"
+
+
 def is_pow2(x: int) -> bool:
     return (x > 0) and ((x & (x - 1)) == 0)
 

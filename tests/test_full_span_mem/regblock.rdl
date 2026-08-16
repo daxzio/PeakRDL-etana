@@ -1,0 +1,29 @@
+// Full-span external memories: each addrmap is exactly one mem whose size
+// fills the inferred CPUIF address width. That used to emit always-true
+// compares (Verilator CMPCONST) and an unused rd_mux_addr.
+//
+// 16 x 32-bit words = 64 bytes → addr_width = 6, max address 0x3f.
+
+addrmap top {
+    external mem {
+        memwidth = 32;
+        mementries = 16;
+        sw = rw;
+    } ram;
+};
+
+addrmap full_span_r {
+    external mem {
+        memwidth = 32;
+        mementries = 16;
+        sw = r;
+    } ram;
+};
+
+addrmap full_span_w {
+    external mem {
+        memwidth = 32;
+        mementries = 16;
+        sw = w;
+    } ram;
+};

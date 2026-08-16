@@ -335,6 +335,7 @@ module {{ds.module_name}}
     assign readback_external_rd_err = '0;
 {%- endif %}
 
+{%- if readback_uses_mux_addr %}
     // Readback mux address
     // When external accesses are present, hold address stable so readback mux can
     // continue selecting the correct external data while waiting for rd_ack.
@@ -351,6 +352,7 @@ module {{ds.module_name}}
     assign rd_mux_addr = decoded_req ? cpuif_addr : pending_rd_addr;
 {%- else %}
     assign rd_mux_addr = cpuif_addr;
+{%- endif %}
 {%- endif %}
 
     logic readback_err;

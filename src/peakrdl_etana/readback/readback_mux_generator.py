@@ -12,7 +12,12 @@ from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator
 from ..sv_int import SVInt
-from ..utils import do_bitswap, do_slice, has_sw_readable_descendants
+from ..utils import (
+    addr_range_match_expr,
+    do_bitswap,
+    do_slice,
+    has_sw_readable_descendants,
+)
 
 if TYPE_CHECKING:
     from ..exporter import DesignState, RegblockExporter
@@ -61,20 +66,36 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
 
         return WalkerAction.Continue
 
-    def process_external_block(self, node: AddressableNode) -> None:
+    def _external_block_range_cond(self, node: AddressableNode) -> Optional[str]:
+        """
+        Address-range condition for muxing an external block's read data.
+
+        Returns None when the block occupies the entire CPUIF address space,
+        so the caller can assign unconditionally instead of emitting a
+        comparison Verilator would flag as CMPCONST.
+        """
         addr_lo = self._get_address_str(node)
         addr_lo_int = node.raw_absolute_address - self.ds.top_node.raw_absolute_address
         addr_hi = f"{addr_lo} + {SVInt(node.size - 1, self.exp.ds.addr_width)}"
+        addr_hi_int = addr_lo_int + node.size - 1
+        return addr_range_match_expr(
+            "rd_mux_addr",
+            addr_lo,
+            addr_lo_int,
+            addr_hi,
+            addr_hi_int,
+            self.exp.ds.addr_width,
+            has_array_index=bool(self._array_stride_stack),
+            and_op="&&",
+        )
 
-        # Avoid emitting redundant comparisons like (rd_mux_addr >= 0) which can
-        # trigger Verilator UNSIGNED warnings when warnings are treated as errors.
-        if not self._array_stride_stack and addr_lo_int == 0:
-            cond = f"(rd_mux_addr <= {addr_hi})"
-        else:
-            cond = f"(rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})"
-
-        self.add_content(f"if({cond}) begin")
+    def process_external_block(self, node: AddressableNode) -> None:
+        cond = self._external_block_range_cond(node)
         data = self.exp.hwif.get_external_rd_data(node, True)
+        if cond is None:
+            self.add_content(f"readback_data_var = {data};")
+            return
+        self.add_content(f"if({cond}) begin")
         self.add_content(f"    readback_data_var = {data};")
         self.add_content("end")
 
@@ -456,17 +477,13 @@ class RetimedExtBlockReadbackMuxGenerator(ReadbackMuxGenerator):
         return WalkerAction.SkipDescendants
 
     def process_external_block(self, node: AddressableNode) -> None:
-        addr_lo = self._get_address_str(node)
-        addr_lo_int = node.raw_absolute_address - self.ds.top_node.raw_absolute_address
-        addr_hi = f"{addr_lo} + {SVInt(node.size - 1, self.exp.ds.addr_width)}"
-
-        if not self._array_stride_stack and addr_lo_int == 0:
-            cond = f"(rd_mux_addr <= {addr_hi})"
-        else:
-            cond = f"(rd_mux_addr >= {addr_lo}) && (rd_mux_addr <= {addr_hi})"
-
-        self.add_content(f"if({cond}) begin")
+        cond = self._external_block_range_cond(node)
         data = self.exp.hwif.get_external_rd_data(node, True)
+        if cond is None:
+            self.add_content(f"readback_data_var = {data};")
+            self.add_content("is_external_block_var = 1'b1;")
+            return
+        self.add_content(f"if({cond}) begin")
         self.add_content(f"    readback_data_var = {data};")
         self.add_content("    is_external_block_var = 1'b1;")
         self.add_content("end")

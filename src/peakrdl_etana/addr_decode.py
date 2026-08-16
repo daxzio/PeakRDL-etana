@@ -6,6 +6,7 @@ from systemrdl.walker import RDLWalker
 
 from .utils import (
     IndexedPath,
+    addr_range_match_expr,
     is_inside_external_block,
     external_policy,
 )
@@ -230,20 +231,34 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             )
         return a
 
-    def _get_addr_match_range_expr(
-        self, *, addr_lo: str, addr_lo_int: int, addr_hi: str
-    ) -> str:
+    def _cpuif_req_in_range(self, node: "AddressableNode") -> str:
         """
-        Build an address range match expression for unsigned CPU addresses.
+        Request qualified by an address range match.
 
-        Verilator can warn if we emit redundant comparisons like (addr >= 0)
-        since they are always true for unsigned vectors. When the lower bound is
-        a constant 0 and there is no array-index arithmetic, omit the lower
-        bound to avoid UNSIGNED warnings.
+        Omits always-true bounds (unsigned ``>= 0``, or ``<=`` the maximum
+        representable address) so Verilator UNSIGNED/CMPCONST stay quiet when
+        a block occupies the entire CPUIF address space.
         """
-        if not self._array_stride_stack and addr_lo_int == 0:
-            return f"(cpuif_addr <= {addr_hi})"
-        return f"(cpuif_addr >= {addr_lo}) & (cpuif_addr <= {addr_hi})"
+        addr_str = self._get_address_str(node)
+        addr_lo_int = (
+            node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address
+        )
+        addr_width = self.addr_decode.exp.ds.addr_width
+        addr_hi = f"{addr_str} + {SVInt(node.size - 1, addr_width)}"
+        addr_hi_int = addr_lo_int + node.size - 1
+        expr = addr_range_match_expr(
+            "cpuif_addr",
+            addr_str,
+            addr_lo_int,
+            addr_hi,
+            addr_hi_int,
+            addr_width,
+            has_array_index=bool(self._array_stride_stack),
+            and_op="&",
+        )
+        if expr is None:
+            return "cpuif_req_masked"
+        return f"cpuif_req_masked & {expr}"
 
     #     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
     #         expr_width = self.addr_decode.exp.ds.addr_width
@@ -257,14 +272,8 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
     def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
         if self.policy.is_external(node):
-            addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            addr_lo_int = (
-                node.raw_absolute_address
-                - self.addr_decode.top_node.raw_absolute_address
-            )
-            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
-            rhs = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
+            rhs = self._cpuif_req_in_range(node)
             self.add_content(f"{strb.path} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
@@ -288,14 +297,8 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             return WalkerAction.Continue
 
         if self.policy.is_external(node):
-            addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            addr_lo_int = (
-                node.raw_absolute_address
-                - self.addr_decode.top_node.raw_absolute_address
-            )
-            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
-            rhs = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
+            rhs = self._cpuif_req_in_range(node)
             self.add_content(f"{strb.path} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
@@ -317,14 +320,8 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if not node.external:
             raise
         if node.external:
-            addr_str = self._get_address_str(node)
             strb = self.addr_decode.get_external_block_access_strobe(node)
-            addr_lo_int = (
-                node.raw_absolute_address
-                - self.addr_decode.top_node.raw_absolute_address
-            )
-            addr_hi = f"{addr_str} + {SVInt(node.size - 1, self.addr_decode.exp.ds.addr_width)}"
-            addr_match = f"cpuif_req_masked & {self._get_addr_match_range_expr(addr_lo=addr_str, addr_lo_int=addr_lo_int, addr_hi=addr_hi)}"
+            addr_match = self._cpuif_req_in_range(node)
 
             # Determine strobe condition based on read/write access
             readable = node.is_sw_readable

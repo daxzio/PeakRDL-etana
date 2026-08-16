@@ -203,6 +203,9 @@ class RegblockExporter:
             "address_decode": self.address_decode,
             "field_logic": self.field_logic,
             "readback_implementation": readback_implementation,
+            # Full-span external blocks omit address compares; don't declare
+            # rd_mux_addr unless the mux (or retimed readback) actually uses it.
+            "readback_uses_mux_addr": "rd_mux_addr" in readback_implementation,
             "ext_write_acks": ext_write_acks,
             "ext_read_acks": ext_read_acks,
             "ext_read_err": ext_read_err,
