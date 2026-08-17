@@ -341,9 +341,13 @@ class InputLogicGenerator(RDLListener):
                 )
 
     def enter_Field(self, node: "FieldNode") -> None:
-        # Skip fields if parent register has verilog_reg_only property
-        if self.current_verilog_reg_only:
-            return
+        # NOTE: for verilog_reg_only registers we do NOT return early here.
+        # The register's field *value* in/out is folded into a single register
+        # vector (handled in enter_Reg), so the per-field value ports below are
+        # skipped. However, implied control strobes (hwclr/hwset/we/wel/incr/...)
+        # and implied outputs (swmod/swacc/counter events/...) are NOT part of
+        # that vector and must still be emitted as individual ports, otherwise
+        # the field logic references undeclared signals (e.g. *_hwclr).
 
         # Skip fields inside external blocks - parent block has bus interface
         parent = node.parent
@@ -483,7 +487,10 @@ class InputLogicGenerator(RDLListener):
                             f"output logic {x}_wr_biten_{field_suffix}{self.unpacked_dims}"
                         )
         else:
-            if self.hwif.has_value_input(node):
+            # For verilog_reg_only registers, the field value in/out is provided
+            # by the register-level vector, so skip the per-field value ports
+            # (the implied strobe ports below are still generated).
+            if self.hwif.has_value_input(node) and not self.current_verilog_reg_only:
                 # Check if field has 'next' property - if so, the signal provides the input
                 if node.get_property("next") is None:
                     input_identifier = self.hwif.get_input_identifier(node, index=False)
@@ -495,7 +502,7 @@ class InputLogicGenerator(RDLListener):
                         self.hwif_port.append(
                             f"input wire {input_identifier}{self.unpacked_dims}"
                         )
-            if self.hwif.has_value_output(node):
+            if self.hwif.has_value_output(node) and not self.current_verilog_reg_only:
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
                 if packed_dim:
                     self.hwif_port.append(

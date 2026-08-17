@@ -440,9 +440,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "ds": self.ds,
         }
 
-        # Use the same pattern as standard field storage
-        self.push_top(self.field_storage_sig_template.render(context))
-        self.add_content(self.field_storage_template.render(context))
+        if self.declarations_only:
+            self.push_top(self.field_storage_sig_template.render(context))
+        else:
+            self.add_content(self.field_storage_template.render(context))
 
     def assign_field_outputs(self, node: "FieldNode") -> None:
         # Field value output
