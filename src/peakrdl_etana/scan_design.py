@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
-from systemrdl.node import SignalNode, RegNode
+from systemrdl.node import SignalNode, RegNode, MemNode
 
 if TYPE_CHECKING:
     from systemrdl.node import Node, FieldNode, AddressableNode, AddrmapNode
@@ -91,6 +91,10 @@ class DesignScanner(RDLListener):
             self.ds.has_external_addressable = True
             if not isinstance(node, RegNode):
                 self.ds.has_external_block = True
+            if isinstance(node, MemNode) and node.get_property(
+                "early_external_read", default=False
+            ):
+                self.ds.has_early_external_read = True
 
     def enter_Reg(self, node: "RegNode") -> None:
         # The CPUIF's bus width is sized according to the largest accesswidth in the design

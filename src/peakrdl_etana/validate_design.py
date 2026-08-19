@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, List
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 from systemrdl.rdltypes import PropertyReference
 from systemrdl.node import Node, RegNode, FieldNode, SignalNode, AddressableNode
-from systemrdl.node import RegfileNode, AddrmapNode
+from systemrdl.node import RegfileNode, AddrmapNode, MemNode
 
 from .utils import roundup_pow2, is_pow2
 
@@ -31,6 +31,19 @@ class DesignValidator(RDLListener):
         return self.exp.ds.top_node
 
     def do_validate(self) -> None:
+        if self.exp.ds.has_early_external_read:
+            if not self.exp.cpuif.supports_early_req:
+                self.msg.error(
+                    f"The selected CPU interface ({self.exp.cpuif.__class__.__name__}) "
+                    "does not support early_external_read",
+                    self.top_node.inst.def_src_ref,
+                )
+            if self.exp.ds.retime_read_response or self.exp.ds.retime_read_fanin:
+                self.msg.warning(
+                    "early_external_read is enabled but read-path retiming is also "
+                    "enabled; the saved cycle may be lost",
+                    self.top_node.inst.def_src_ref,
+                )
         RDLWalker().walk(self.top_node, self)
         if self.msg.had_error:
             self.msg.fatal("Unable to export due to previous errors")
@@ -147,6 +160,17 @@ class DesignValidator(RDLListener):
             self.msg.error(
                 "This exporter does not support enabling the 'sharedextbus' property yet.",
                 node.inst.property_src_ref.get("sharedextbus", node.inst.inst_src_ref),
+            )
+
+    def enter_Mem(self, node: MemNode) -> None:
+        if not node.get_property("early_external_read", default=False):
+            return
+        if self.exp.ds.retime_external_mem:
+            self.msg.error(
+                "'early_external_read' cannot be combined with --rt-external mem",
+                node.inst.property_src_ref.get(
+                    "early_external_read", node.inst.inst_src_ref
+                ),
             )
 
     def enter_Reg(self, node: "RegNode") -> None:

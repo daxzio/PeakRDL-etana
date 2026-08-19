@@ -16,3 +16,8 @@ property err_support {
     component = mem;
     type = boolean;
 };
+
+property early_external_read {
+    component = mem;
+    type = boolean;
+};

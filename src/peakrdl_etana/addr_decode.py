@@ -90,6 +90,12 @@ class AddressDecode:
         p.path = f"decoded_reg_strb_{p.path}"
         return p
 
+    def get_external_block_early_strobe(self, node: MemNode) -> IndexedPath:
+        assert node.external
+        p = IndexedPath(self.top_node, node)
+        p.path = f"decoded_early_strb_{p.path}"
+        return p
+
 
 class DecodeStrbGenerator(RDLForLoopGenerator):
     def __init__(self, addr_decode: AddressDecode) -> None:
@@ -163,6 +169,9 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         p = self.addr_decode.get_external_block_access_strobe(node)
         s = f"logic {p.path};"
         self._logic_stack.append(s)
+        if node.get_property("early_external_read", default=False):
+            ep = self.addr_decode.get_external_block_early_strobe(node)
+            self._logic_stack.append(f"logic {ep.path};")
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Skip registers inside external blocks
@@ -260,7 +269,40 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             return "cpuif_req_masked"
         return f"cpuif_req_masked & {expr}"
 
-    #     def _get_address_str(self, node: 'AddressableNode', subword_offset: int=0) -> str:
+    def _cpuif_early_req_in_range(self, node: "AddressableNode") -> str:
+        """
+        Early request qualified by an address range match.
+        """
+        addr_str = self._get_address_str(node)
+        addr_lo_int = (
+            node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address
+        )
+        addr_width = self.addr_decode.exp.ds.addr_width
+        addr_hi = f"{addr_str} + {SVInt(node.size - 1, addr_width)}"
+        addr_hi_int = addr_lo_int + node.size - 1
+        expr = addr_range_match_expr(
+            "cpuif_early_addr",
+            addr_str,
+            addr_lo_int,
+            addr_hi,
+            addr_hi_int,
+            addr_width,
+            has_array_index=bool(self._array_stride_stack),
+            and_op="&",
+        )
+        if expr is None:
+            return "cpuif_early_req"
+        return f"cpuif_early_req & {expr}"
+
+    def _emit_early_external_strobe(
+        self, node: "AddressableNode", early_strb: IndexedPath
+    ) -> None:
+        """Emit decoded_early_strb and fold into is_early_external."""
+        addr_match = self._cpuif_early_req_in_range(node)
+        rhs = f"{addr_match} & ~cpuif_early_req_is_wr"
+        self.add_content(f"{early_strb.path} = {rhs};")
+        self.add_content(f"is_early_external |= {rhs};")
+
     #         expr_width = self.addr_decode.exp.ds.addr_width
     #         a = str(SVInt(
     #             node.raw_absolute_address - self.addr_decode.top_node.raw_absolute_address + subword_offset,
@@ -349,6 +391,10 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 self.add_content(f"is_valid_addr |= {addr_match};")
             if self.addr_decode.exp.ds.err_if_bad_rw:
                 self.add_content(f"is_valid_rw |= {rhs};")
+            if node.get_property("early_external_read", default=False):
+                if readable:
+                    early_strb = self.addr_decode.get_external_block_early_strobe(node)
+                    self._emit_early_external_strobe(node, early_strb)
         # return WalkerAction.SkipDescendants
 
     def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:

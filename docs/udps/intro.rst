@@ -76,3 +76,10 @@ To enable these UDPs, compile this RDL file prior to the rest of your design:
         - If set on an external memory, adds rd_err and wr_err input ports and
           propagates errors to the CPU interface (e.g., APB pslverr, AHB hresp).
           See: :ref:`err_support`.
+
+    *   - early_external_read
+        - mem
+        - boolean
+        - If set on an external memory, read requests are issued during the
+          CPUIF address/SETUP phase for one-cycle-latency external slaves.
+          See: :ref:`early_external_read`.

@@ -1,0 +1,14 @@
+addrmap top #(
+    longint N_REGS = 64,
+    longint REGWIDTH = 32
+) {
+    default regwidth = REGWIDTH;
+    default accesswidth = REGWIDTH;
+
+    external mem {
+//         early_external_read = true;
+        memwidth = REGWIDTH;
+        mementries = N_REGS;
+        sw = rw;
+    } ext_mem;
+};

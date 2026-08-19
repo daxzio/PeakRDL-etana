@@ -66,7 +66,12 @@ Features
 --------
 
 **Multiple Outstanding Transactions:**
-  OBI supports pipelining of transactions through separate request and response channels.
+  The adapter can accept a new A-channel beat while the previous beat's
+  response is still on R (when ``rready`` is high). ``cpuif_req`` remains a
+  one-cycle pulse so register strobes and external memory requests are not
+  re-issued. Combo-ack registers grant every clock and return ``rvalid`` on
+  the cycle after accept. A registered external read still takes two cycles
+  per grant because the hwif is single-outstanding.
 
 **Transaction IDs:**
   The ``aid`` (address ID) and ``rid`` (response ID) signals allow tracking of multiple

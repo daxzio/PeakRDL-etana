@@ -623,6 +623,14 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             writable = has_sw_writable_descendants(node)
             readable = has_sw_readable_descendants(node)
 
+        early = False
+        early_strb = None
+        if isinstance(node, MemNode) and node.get_property(
+            "early_external_read", default=False
+        ):
+            early = True
+            early_strb = self.exp.dereferencer.get_external_block_early_strobe(node)
+
         context = {
             "is_sw_writable": writable,
             "is_sw_readable": readable,
@@ -632,6 +640,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             "index_str": index_str,
             "addr_width": addr_width,
             "retime": retime,
+            "early": early,
+            "early_strb": early_strb,
             "get_always_ff_event": self.exp.dereferencer.get_always_ff_event,
             "get_resetsignal": self.exp.dereferencer.get_resetsignal,
             "resetsignal": self.exp.ds.top_node.cpuif_reset,

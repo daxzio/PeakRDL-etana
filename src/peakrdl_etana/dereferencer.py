@@ -5,6 +5,7 @@ from systemrdl.rdltypes import PropertyReference
 from .sv_int import SVInt
 
 if TYPE_CHECKING:
+    from systemrdl.node import MemNode
     from .exporter import RegblockExporter, DesignState
     from .hwif import Hwif
     from .field_logic import FieldLogic
@@ -291,6 +292,13 @@ class Dereferencer:
         Returns the IndexedPath that represents the external block's access strobe
         """
         return self.address_decode.get_external_block_access_strobe(obj)
+
+    def get_external_block_early_strobe(self, obj: "MemNode") -> "IndexedPath":
+        """
+        Returns the IndexedPath for the early (SETUP-phase) read strobe of an
+        external mem with early_external_read enabled.
+        """
+        return self.address_decode.get_external_block_early_strobe(obj)
 
     @property
     def default_resetsignal_name(self) -> str:

@@ -1,0 +1,57 @@
+addrmap top {
+    default accesswidth = 32;
+//     external reg {
+//         regwidth = 32;
+// //         accesswidth = 32;
+//         field {
+//             sw=rw;
+//             hw=r;
+//         } mram0 = 0;
+//     } mram0 @ 0x00;
+//
+    external reg {
+        regwidth = 64;
+//         accesswidth = 32;
+        field {
+            sw=rw;
+            hw=r;
+        } mram1 = 0;
+    } mram1 @ 0x10;
+//
+//     external reg {
+//         regwidth = 128;
+// //         accesswidth = 32;
+//         field {
+//             sw=rw;
+//             hw=r;
+//         } mram2 = 0;
+//     } mram2 @ 0x20;
+//
+//     external regfile {
+//         reg {
+//             regwidth = 32;
+//             field {
+//                 sw=rw;
+//                 hw=r;
+//             } mram3 = 0;
+//         } mram3;
+//     } rf_mram3 @ 0x1000;
+//     external regfile {
+//         reg {
+//             regwidth = 64;
+//             field {
+//                 sw=rw;
+//                 hw=r;
+//             } mram4 = 0;
+//         } mram4;
+//     } rf_mram4 @ 0x2000;
+//     external mem {
+//         memwidth = 32;
+//         mementries = 8;
+//     } mm0 @ 0x3000;
+    external mem {
+        memwidth = 64;
+        mementries = 32768;
+        err_support;
+    } mm1 @ 0x40000;
+};

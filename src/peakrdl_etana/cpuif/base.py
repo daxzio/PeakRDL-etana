@@ -15,6 +15,10 @@ class CpuifBase:
     # Path is relative to the location of the class that assigns this variable
     template_path = ""
 
+    # When True, the CPUIF exposes a combinational early request channel during
+    # the address/SETUP phase (before cpuif_req is registered).
+    supports_early_req = False
+
     def __init__(self, exp: "RegblockExporter"):
         self.exp = exp
         self.reset = exp.ds.top_node.cpuif_reset
@@ -43,6 +47,24 @@ class CpuifBase:
         """
         return []
 
+    @property
+    def early_req_expr(self) -> str:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support early external read"
+        )
+
+    @property
+    def early_req_is_wr_expr(self) -> str:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support early external read"
+        )
+
+    @property
+    def early_addr_expr(self) -> str:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support early external read"
+        )
+
     def _get_template_path_class_dir(self) -> str:
         """
         Traverse up the MRO and find the first class that explicitly assigns
@@ -64,6 +86,7 @@ class CpuifBase:
 
         context = {
             "cpuif": self,
+            "ds": self.exp.ds,
             "get_always_ff_event": self.exp.dereferencer.get_always_ff_event,
             "get_resetsignal": self.exp.dereferencer.get_resetsignal,
             "clog2": clog2,

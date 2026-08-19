@@ -127,3 +127,5 @@ Links
     udps/write_buffering
     udps/extended_swacc
     udps/verilog_reg_only
+    udps/err_support
+    udps/early_external_read

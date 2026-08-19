@@ -49,6 +49,19 @@ module {{ds.module_name}}
 
     {{cpuif.get_implementation()|indent}}
 
+{%- if ds.has_early_external_read %}
+    // Early (SETUP-phase) request channel.  Un-registered view of the CPUIF
+    // request, so external blocks with a registered read port can start one
+    // cycle earlier.  Valid only while the CPUIF is idle.
+    logic cpuif_early_req;
+    logic cpuif_early_req_is_wr;
+    logic [{{cpuif.addr_width-1}}:0] cpuif_early_addr;
+
+    assign cpuif_early_req = {{cpuif.early_req_expr}};
+    assign cpuif_early_req_is_wr = {{cpuif.early_req_is_wr_expr}};
+    assign cpuif_early_addr = {{cpuif.early_addr_expr}};
+{%- endif %}
+
     logic cpuif_req_masked;
 {%- if ds.has_external_addressable %}
     logic external_req;
@@ -152,6 +165,9 @@ module {{ds.module_name}}
         {%- if ds.has_external_addressable %}
         logic is_external;
         {%- endif %}
+        {%- if ds.has_early_external_read %}
+        logic is_early_external;
+        {%- endif %}
         {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         logic is_valid_addr;
         {%- endif %}
@@ -160,6 +176,9 @@ module {{ds.module_name}}
         {%- endif %}
         {%- if ds.has_external_addressable %}
         is_external = '0;
+        {%- endif %}
+        {%- if ds.has_early_external_read %}
+        is_early_external = '0;
         {%- endif %}
         {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         is_valid_addr = '0;
@@ -171,7 +190,11 @@ module {{ds.module_name}}
         {{address_decode.get_implementation()|indent(8)}}
     {%- if ds.has_external_addressable %}
         decoded_strb_is_external = is_external;
+        {%- if ds.has_early_external_read %}
+        external_req = is_external | is_early_external;
+        {%- else %}
         external_req = is_external;
+        {%- endif %}
     {%- endif %}
     {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         {%- if ds.err_if_bad_addr and ds.err_if_bad_rw %}
@@ -347,6 +370,9 @@ module {{ds.module_name}}
             pending_rd_addr <= '0;
         end else begin
             if(decoded_req) pending_rd_addr <= cpuif_addr;
+            {%- if ds.has_early_external_read %}
+            else if(cpuif_early_req & ~cpuif_early_req_is_wr) pending_rd_addr <= cpuif_early_addr;
+            {%- endif %}
         end
     end
     assign rd_mux_addr = decoded_req ? cpuif_addr : pending_rd_addr;
