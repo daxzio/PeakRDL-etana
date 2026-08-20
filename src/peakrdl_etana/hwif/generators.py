@@ -408,13 +408,29 @@ class InputLogicGenerator(RDLListener):
                 if node.get_property("decrwidth"):
                     implied_props.append("decrvalue")
 
+        # Implied output strobes/events also require hwif ports (see below).
+        has_implied_outputs = (
+            bool(implied_props)
+            or node.get_property("rd_swacc", default=False)
+            or node.get_property("wr_swacc", default=False)
+            or node.get_property("swacc", default=False)
+            or node.get_property("swmod", default=False)
+            or node.get_property("anded", default=False)
+            or node.get_property("ored", default=False)
+            or node.get_property("xored", default=False)
+            or node.get_property("overflow", default=False)
+            or node.get_property("underflow", default=False)
+            or node.get_property("incrthreshold", default=False) is not False
+            or node.get_property("decrthreshold", default=False) is not False
+        )
+
         # Skip if no ports needed, unless it's an external field which needs rd_data/wr_data ports
         is_external_field = self.policy.is_external(node)
         if (
             not is_external_field
             and not self.hwif.has_value_input(node)
             and not self.hwif.has_value_output(node)
-            and not implied_props
+            and not has_implied_outputs
         ):
             return
 
