@@ -50,12 +50,12 @@ always_ff @(posedge clk) begin
 {%- endif %}
     {% if reset is not none -%}
     if({{get_resetsignal(resetsignal)}}) begin
-        {{field_logic.get_storage_identifier(node)}} <= {{reset}};
+        {{field_logic.get_storage_identifier(node)}} <= {{field_logic.get_reset_identifier(node)}};
         {%- if node.get_property('paritycheck') %}
-        {{field_logic.get_parity_identifier(node)}} <= ^{{reset}};
+        {{field_logic.get_parity_identifier(node)}} <= ^{{field_logic.get_reset_identifier(node)}};
         {%- endif %}
         {%- if field_logic.has_next_q(node) %}
-        {{field_logic.get_next_q_identifier(node)}} <= {{reset}};
+        {{field_logic.get_next_q_identifier(node)}} <= {{field_logic.get_reset_identifier(node)}};
         {%- endif %}
     end else {% endif %}if({{field_logic.get_field_combo_identifier(node, "load_next")}}) begin
         {{field_logic.get_storage_identifier(node)}} <= {{field_logic.get_field_combo_identifier(node, "next")}};

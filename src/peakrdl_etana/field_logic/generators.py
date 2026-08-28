@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, Optional, Dict, Any, List
 
 from collections import OrderedDict
 
-from systemrdl.walker import WalkerAction
-from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode
+from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
+from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode, FieldNode
 
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import (
@@ -14,13 +14,54 @@ from ..utils import (
     is_external_for_codegen,
     has_sw_writable_descendants,
     has_sw_readable_descendants,
+    resolve_inst_int,
+    get_concrete_index_str,
 )
 from .bases import NextStateUnconditional
 from .wide_field import WideFieldSubwordWrite
 
 if TYPE_CHECKING:
     from . import FieldLogic
-    from systemrdl.node import FieldNode, AddressableNode, Node
+    from systemrdl.node import AddressableNode, Node
+
+
+class FieldResetGenerator(RDLListener):
+    def __init__(self, field_logic: "FieldLogic") -> None:
+        self.field_logic = field_logic
+        self.exp = field_logic.exp
+        self.assigns: List[str] = []
+
+    def enter_AddressableComponent(
+        self, node: "AddressableNode"
+    ) -> Optional[WalkerAction]:
+        # inst.external can be None for array element override subtrees
+        if node.inst.external:
+            return WalkerAction.SkipDescendants
+        return WalkerAction.Continue
+
+    def enter_Field(self, node: "FieldNode") -> None:
+        if not node.implements_storage:
+            return
+
+        reset_value = node.get_property("reset")
+        if reset_value is None:
+            return
+
+        width = resolve_inst_int(node.inst.width)
+        reset_value_str = self.exp.dereferencer.get_value(reset_value, width)
+        p = IndexedPath(self.exp.ds.top_node, node)
+        index_str = get_concrete_index_str(self.exp.ds.top_node, node)
+        self.assigns.append(
+            f"assign field_reset_{p.path}_value{index_str} = {reset_value_str};"
+        )
+
+    def get_content(self, node: "AddrmapNode") -> Optional[str]:
+        self.assigns = []
+        walker = RDLWalker(unroll=True)
+        walker.walk(node, self, skip_top=True)
+        if not self.assigns:
+            return None
+        return "\n".join(self.assigns)
 
 
 class FieldLogicGenerator(RDLForLoopGenerator):

@@ -234,6 +234,8 @@ module {{ds.module_name}}
     //--------------------------------------------------------------------------
     {{field_logic.get_declarations()|indent}}
 
+    {{field_logic.get_field_reset()|indent}}
+
 {%- if ds.has_buffered_write_regs %}
 
     //--------------------------------------------------------------------------

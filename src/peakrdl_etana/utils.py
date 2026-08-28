@@ -1,8 +1,15 @@
 import re
-from typing import Match, Union, Optional, List, TYPE_CHECKING
+from typing import Any, Match, Union, Optional, List, TYPE_CHECKING
 
 from systemrdl.rdltypes.references import PropertyReference
-from systemrdl.node import Node, AddrmapNode, RegNode, FieldNode, RegfileNode
+from systemrdl.node import (
+    Node,
+    AddrmapNode,
+    RegNode,
+    FieldNode,
+    RegfileNode,
+    AddressableNode,
+)
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
@@ -54,7 +61,10 @@ class IndexedPath:
             self.width = None
 
         self.path = self.target_node.get_rel_path(
-            self.top_node, empty_array_suffix="[!]", hier_separator=":"
+            self.top_node,
+            array_suffix="[!]",
+            empty_array_suffix="[!]",
+            hier_separator=":",
         )
 
         def kw_filter_repl(m: Match) -> str:
@@ -117,6 +127,41 @@ class IndexedPath:
 
 def clog2(n: int) -> int:
     return (n - 1).bit_length()
+
+
+def resolve_inst_int(value: Any) -> int:
+    """
+    Resolve an integer component property that may still be an AST expression.
+    Unrolled array element nodes can expose unevaluated AssignmentCast values.
+    """
+    if isinstance(value, int):
+        return value
+    if hasattr(value, "get_value"):
+        return int(value.get_value())
+    return int(value)
+
+
+def get_concrete_index_str(top_node: Node, target_node: Node) -> str:
+    """
+    Returns concrete array index suffixes for an unrolled node, e.g. ``[0][2]``.
+    Walks addressable ancestors from target up to (but not including) top.
+    """
+    indices: List[int] = []
+    current: Optional[Node] = target_node
+    if isinstance(target_node, FieldNode):
+        current = target_node.parent
+
+    while current is not None and current != top_node:
+        # Per-element override clones may have array_dimensions cleared, but the
+        # unrolled walker still sets current_idx on the node.
+        if isinstance(current, AddressableNode) and current.current_idx is not None:
+            indices = list(current.current_idx) + indices
+        if hasattr(current, "parent"):
+            current = current.parent  # type: ignore[assignment]
+        else:
+            break
+
+    return "".join(f"[{idx}]" for idx in indices)
 
 
 def addr_range_match_expr(

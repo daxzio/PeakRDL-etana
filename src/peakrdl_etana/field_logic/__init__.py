@@ -14,7 +14,7 @@ from . import hw_interrupts_with_write
 from ..utils import IndexedPath
 from ..sv_int import SVInt
 
-from .generators import FieldLogicGenerator
+from .generators import FieldLogicGenerator, FieldResetGenerator
 
 if TYPE_CHECKING:
     from systemrdl.node import AddrmapNode, FieldNode
@@ -53,6 +53,13 @@ class FieldLogic:
             return ""
         return s
 
+    def get_field_reset(self) -> str:
+        gen = FieldResetGenerator(self)
+        assigns = gen.get_content(self.top_node)
+        if assigns is None:
+            return ""
+        return assigns
+
     # ---------------------------------------------------------------------------
     # Field utility functions
     # ---------------------------------------------------------------------------
@@ -64,6 +71,19 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_value"
+        if declare and not 0 == len(p.index):
+            s += f" {p.array_instances} "
+        else:
+            s += f"{p.index_str}"
+        return s
+
+    def get_reset_identifier(self, field: "FieldNode", declare: bool = False) -> str:
+        """
+        Returns the Verilog string that represents the reset value for the
+        referenced field.
+        """
+        p = IndexedPath(self.top_node, field)
+        s = f"field_reset_{p.path}_value"
         if declare and not 0 == len(p.index):
             s += f" {p.array_instances} "
         else:

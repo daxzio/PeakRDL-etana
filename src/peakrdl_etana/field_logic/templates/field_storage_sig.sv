@@ -1,5 +1,8 @@
 // Field: {{node.get_path()}}
 logic{% if node.width > 1 %} [{{node.width-1}}:0]{% endif %} {{field_logic.get_storage_identifier(node, True)}};
+{%- if node.get_property('reset', default=None) is not none %}
+logic{% if node.width > 1 %} [{{node.width-1}}:0]{% endif %} {{field_logic.get_reset_identifier(node, True)}};
+{%- endif %}
 {%- if node.get_property('paritycheck') %}
 logic {{field_logic.get_parity_identifier(node, True)}};
 {%- endif %}

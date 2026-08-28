@@ -1,0 +1,20 @@
+regfile FOO_INSTANCE #(
+    longint CFG_DEFAULT = 0
+) {
+    default regwidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    reg {
+        field {
+        } CFG[4] = CFG_DEFAULT;
+    } CFG;
+};
+
+addrmap regblock {
+    FOO_INSTANCE FOO[4];
+    FOO[0].CFG.CFG->reset = 0;
+    FOO[1].CFG.CFG->reset = 0;
+    FOO[2].CFG.CFG->reset = 0xa;
+    FOO[3].CFG.CFG->reset = 0xb;
+};
