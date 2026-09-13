@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "peakrdl-etana"
 dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "peakrdl",
     "systemrdl-compiler ~= 1.31",
@@ -28,8 +28,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -60,7 +58,7 @@ version = {attr = "peakrdl_etana.__about__.__version__"}
 etana = "peakrdl_etana.__peakrdl__:Exporter"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false

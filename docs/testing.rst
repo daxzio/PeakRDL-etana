@@ -341,7 +341,7 @@ Continuous Integration
 
 GitHub Actions workflows validate all tests across:
 
-* **Python versions:** 3.8, 3.9, 3.10, 3.11, 3.12, 3.13
+* **Python versions:** 3.10, 3.11, 3.12, 3.13
 * **Simulators:** Icarus Verilog, Verilator
 * **Cocotb version:** 1.9.2
 * **Test modes:** Etana, Regblock reference

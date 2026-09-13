@@ -137,7 +137,7 @@ make clean regblock sim REGBLOCK=1
 - **Documentation**: 6 files, ~800 lines
 - **Test Coverage**: 26/26 cocotb tests pass
 - **Dependencies**: systemrdl-compiler, peakrdl-regblock, Jinja2
-- **Python Version**: >=3.8
+- **Python Version**: >=3.10
 - **Development Time**: Complete and tested
 
 ## 🎯 Quick Reference

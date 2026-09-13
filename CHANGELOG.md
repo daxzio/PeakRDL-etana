@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD**: Fixed PyPI release workflow to properly build packages with `pyproject.toml`
 
 ### Changed
+- **Python minimum**: Raised required Python version from 3.8 to 3.10
 - **Workflow Triggers**: Test workflows now skip execution on tag pushes (run on branches/PRs only)
   - Prevents redundant test runs when creating release tags
   - Maintains weekly scheduled runs and pull request testing

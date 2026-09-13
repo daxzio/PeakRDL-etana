@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "peakrdl-hwif-wrapper"
 version = "0.1.0"
 description = "Standalone tool to generate hwif wrapper for PeakRDL-regblock"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "systemrdl-compiler>=1.27",
     "peakrdl-regblock>=1.0",
