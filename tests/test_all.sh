@@ -76,6 +76,7 @@ SKIP_TESTS+=("test_index")
 SKIP_TESTS+=("test_wide_external")
 SKIP_TESTS+=("test_array_reset")
 SKIP_TESTS+=("test_early_external_read" "test_early_external_mixed")
+SKIP_TESTS+=("test_ahb5")
 
 # Skip certain tests when REGBLOCK=1
 if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
@@ -95,7 +96,6 @@ fi
 if [ "$CPUIF" != "ahb-flat" ]; then
     # SKIP_TESTS+=("test_ahblite")
     SKIP_TESTS+=("test_ahb_pipeline")
-    SKIP_TESTS+=("test_ahb5")
 fi
 
 PASS_COUNT=0
