@@ -6,7 +6,13 @@ Hardcoded for specific register types in test_external:
 - ext_reg_array[32]: Array of my_reg registers with full 32-bit field
 """
 
+from pathlib import Path
+import sys
+
 from cocotb.triggers import RisingEdge
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from hwif_array import HwifArray  # noqa: E402
 
 
 class ExtRegEmulator:
@@ -217,60 +223,53 @@ class ExtRegArrayEmulator:
         self.dut = dut
         self.clk = clk
 
-        # Protocol signals (packed arrays)
-        self.req = dut.hwif_out_ext_reg_array_req  # [31:0]
-        self.req_is_wr = dut.hwif_out_ext_reg_array_req_is_wr  # scalar
+        # Protocol / data / acks: unpacked arrays in Verilog, packed
+        # std_logic_vector in the VHDL wrapper. HwifArray hides that.
+        self.req = HwifArray(dut.hwif_out_ext_reg_array_req, 32, 1)
+        self.req_is_wr = HwifArray(dut.hwif_out_ext_reg_array_req_is_wr, 32, 1)
 
         # Try register-level signals first (etana), then field-level (regblock wrapper)
-        self.wr_data = getattr(dut, "hwif_out_ext_reg_array_wr_data", None)
-        self.wr_biten = getattr(dut, "hwif_out_ext_reg_array_wr_biten", None)
-        self.rd_data = getattr(dut, "hwif_in_ext_reg_array_rd_data", None)
+        wr_data = getattr(dut, "hwif_out_ext_reg_array_wr_data", None)
+        wr_biten = getattr(dut, "hwif_out_ext_reg_array_wr_biten", None)
+        rd_data = getattr(dut, "hwif_in_ext_reg_array_rd_data", None)
 
         # Field-level signals (regblock wrapper - single field 'whatever')
-        if self.wr_data is None:
-            self.wr_data = dut.hwif_out_ext_reg_array_wr_data_whatever
-            self.wr_biten = dut.hwif_out_ext_reg_array_wr_biten_whatever
-            self.rd_data = dut.hwif_in_ext_reg_array_rd_data_whatever
+        if wr_data is None:
+            wr_data = dut.hwif_out_ext_reg_array_wr_data_whatever
+            wr_biten = dut.hwif_out_ext_reg_array_wr_biten_whatever
+            rd_data = dut.hwif_in_ext_reg_array_rd_data_whatever
 
-        # Acks (now unpacked arrays)
-        self.rd_ack = dut.hwif_in_ext_reg_array_rd_ack  # [31:0]
-        self.wr_ack = dut.hwif_in_ext_reg_array_wr_ack  # [31:0]
+        self.wr_data = HwifArray(wr_data, 32, 32)
+        self.wr_biten = HwifArray(wr_biten, 32, 32)
+        self.rd_data = HwifArray(rd_data, 32, 32)
+        self.rd_ack = HwifArray(dut.hwif_in_ext_reg_array_rd_ack, 32, 1)
+        self.wr_ack = HwifArray(dut.hwif_in_ext_reg_array_wr_ack, 32, 1)
 
         # Storage for 32 registers
         self.storage = [0] * 32
 
         # Initialize acks and read data to prevent X propagation
-        # Unpacked arrays need to be initialized element by element
-        for i in range(32):
-            self.rd_ack[i].value = 0
-            self.wr_ack[i].value = 0
-            self.rd_data[i].value = 0
+        self.rd_ack.fill(0)
+        self.wr_ack.fill(0)
+        self.rd_data.fill(0)
 
     async def run(self):
         """Run the emulator"""
         while True:
             await RisingEdge(self.clk)
 
-            # Default: no acks (unpacked arrays - clear each element)
-            for i in range(32):
-                self.rd_ack[i].value = 0
-                self.wr_ack[i].value = 0
+            self.rd_ack.fill(0)
+            self.wr_ack.fill(0)
 
-            # Check which array element is being accessed (unpacked arrays - check each element)
             for i in range(32):
                 try:
-                    req_val = int(self.req[i].value)
-                    if req_val == 0:
+                    if self.req.get(i) == 0:
                         continue
 
-                    # Check if write
-                    is_wr = int(self.req_is_wr[i].value)
-                    if is_wr == 1:
-                        # Write request - get data and biten for element i (unpacked arrays)
-                        element_data = int(self.wr_data[i].value)
-                        element_biten = int(self.wr_biten[i].value)
+                    if self.req_is_wr.get(i) == 1:
+                        element_data = self.wr_data.get(i)
+                        element_biten = self.wr_biten.get(i)
 
-                        # Apply bit-enable mask
                         for bit in range(32):
                             if (element_biten >> bit) & 1:
                                 if (element_data >> bit) & 1:
@@ -278,16 +277,12 @@ class ExtRegArrayEmulator:
                                 else:
                                     self.storage[i] &= ~(1 << bit)
 
-                        # Ack for element i (unpacked array)
-                        self.wr_ack[i].value = 1
+                        self.wr_ack.set(i, 1)
                     else:
-                        # Read request - return data for element i (unpacked array)
-                        self.rd_data[i].value = self.storage[i]
-                        # Ack for element i (unpacked array)
-                        self.rd_ack[i].value = 1
-                    break  # Only one element should be active at a time
+                        self.rd_data.set(i, self.storage[i])
+                        self.rd_ack.set(i, 1)
+                    break
                 except (ValueError, AttributeError):
-                    # Skip if value is X or other invalid
                     continue
 
 

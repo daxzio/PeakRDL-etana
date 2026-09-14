@@ -265,19 +265,14 @@ class VhdlWrapperBuilder:
                 items = mapping["items"]
                 elem_width = mapping["elem_width"]
 
-                # Generate assignments for each array element
-                # Need to slice the concatenated signal in reverse order (highest index first)
+                # Index 0 is at the LSB so this matches output concat
+                # (e(N-1) & ... & e(0)).
                 for idx, orig_sig_name, _, _, orig_record_path in items:
-                    # Reverse the index for slicing (highest index is MSB)
-                    rev_idx = len(items) - 1 - idx
                     if elem_width == 1:
-                        # Single bit - use direct indexing, not slice
-                        lines.append(
-                            f"    {orig_record_path} <= {signal_name}({rev_idx});"
-                        )
+                        lines.append(f"    {orig_record_path} <= {signal_name}({idx});")
                     else:
-                        slice_high = (rev_idx + 1) * elem_width - 1
-                        slice_low = rev_idx * elem_width
+                        slice_high = (idx + 1) * elem_width - 1
+                        slice_low = idx * elem_width
                         lines.append(
                             f"    {orig_record_path} <= {signal_name}({slice_high} downto {slice_low});"
                         )

@@ -8,6 +8,7 @@ test_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(test_dir))
 from cocotb import test
 from cocotb.triggers import RisingEdge
+from hwif_array import HwifArray
 from tb_base import testbench
 
 
@@ -23,10 +24,10 @@ async def test_dut_pipelined_cpuif(dut):
     # Verify HW values (storage updates 1 cycle after pready)
     await RisingEdge(tb.clk.clk)
     await RisingEdge(tb.clk.clk)
+    hwif_out_x = HwifArray(tb.hwif_out_x, 64, 32)
     for i in range(64):
         expected = i + 0x12340000
-        # hwif_out_x is now an unpacked array - access element directly
-        actual = int(tb.hwif_out_x[i].value) & 0xFFFFFFFF
+        actual = hwif_out_x.get(i)
         assert (
             actual == expected
         ), f"hwif_out.x[{i}] = 0x{actual:08x}, expected 0x{expected:08x}"
