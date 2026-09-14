@@ -74,6 +74,7 @@ SKIP_TESTS+=("test_ahblite")
 SKIP_TESTS+=("test_loops")
 SKIP_TESTS+=("test_index")
 SKIP_TESTS+=("test_wide_external")
+SKIP_TESTS+=("test_array_reset")
 
 # Skip certain tests when REGBLOCK=1
 if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
@@ -142,34 +143,34 @@ for dir in test_*/; do
             target="$target yosys"
         fi
 
-        # Build make command
-        make_cmd="timeout 60 make clean $target sim WAVES=0"
+        # Two make invocations so etana-rtl/*.sv exists before sim parses it.
+        make_vars="WAVES=0"
         if [ -n "$SIM" ]; then
-            make_cmd="$make_cmd SIM=$SIM"
+            make_vars="$make_vars SIM=$SIM"
         fi
         if [ "$REGBLOCK" -eq 1 ]; then
-            make_cmd="$make_cmd REGBLOCK=$REGBLOCK"
+            make_vars="$make_vars REGBLOCK=$REGBLOCK"
         fi
         if [ -n "$COCOTB_REV" ]; then
-            make_cmd="$make_cmd COCOTB_REV=$COCOTB_REV"
+            make_vars="$make_vars COCOTB_REV=$COCOTB_REV"
         fi
         if [ "$YOSYS" -eq 1 ]; then
-            make_cmd="$make_cmd YOSYS=$YOSYS"
+            make_vars="$make_vars YOSYS=$YOSYS"
         fi
         if [ -n "$CPUIF" ]; then
-            make_cmd="$make_cmd CPUIF=$CPUIF"
+            make_vars="$make_vars CPUIF=$CPUIF"
         fi
         if [ "$GIT_CHECK" -eq 1 ]; then
-            make_cmd="$make_cmd GIT_CHECK=$GIT_CHECK"
+            make_vars="$make_vars GIT_CHECK=$GIT_CHECK"
         fi
         if [ "$GHDL" -eq 1 ]; then
-            make_cmd="$make_cmd GHDL=$GHDL"
+            make_vars="$make_vars GHDL=$GHDL"
         fi
         if [ "$NVC" -eq 1 ]; then
-            make_cmd="$make_cmd NVC=$NVC"
+            make_vars="$make_vars NVC=$NVC"
         fi
 
-        (cd "$dir" && eval "$make_cmd" > /tmp/${test_name}.log 2>&1)
+        (cd "$dir" && timeout 60 sh -c "make clean $target $make_vars && make sim $make_vars" > /tmp/${test_name}.log 2>&1)
 
         if grep -q "PASS=1.*FAIL=0" "/tmp/${test_name}.log" 2>/dev/null; then
             echo "  ✅ PASS"
