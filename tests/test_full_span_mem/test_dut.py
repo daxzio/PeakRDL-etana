@@ -5,6 +5,7 @@ The sim top is sw=rw. Read-only and write-only variants are generated
 alongside and checked so always-true address compares stay omitted.
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -119,11 +120,27 @@ def _assert_full_span_rtl(sv: str, access: str) -> None:
         raise ValueError(access)
 
 
+def _running_vhdl() -> bool:
+    lang = os.getenv("TOPLEVEL_LANG", "verilog").lower()
+    sim = os.getenv("SIM", "").lower()
+    return lang == "vhdl" or sim in ("ghdl", "nvc")
+
+
+def _running_regblock() -> bool:
+    if os.getenv("REGBLOCK", "0") == "1":
+        return True
+    top = os.getenv("COCOTB_TOPLEVEL") or os.getenv("TOPLEVEL", "")
+    return top == "regblock_wrapper"
+
+
 @test()
 async def test_dut_full_span_mem(dut):
-    _assert_full_span_rtl(_sv("regblock.sv"), "rw")
-    _assert_full_span_rtl(_sv("regblock_r.sv"), "r")
-    _assert_full_span_rtl(_sv("regblock_w.sv"), "w")
+    # Full-span decode elision is an etana SystemVerilog check. VHDL
+    # and upstream regblock still run the in-memory functional test below.
+    if not _running_vhdl() and not _running_regblock():
+        _assert_full_span_rtl(_sv("regblock.sv"), "rw")
+        _assert_full_span_rtl(_sv("regblock_r.sv"), "r")
+        _assert_full_span_rtl(_sv("regblock_w.sv"), "w")
 
     tb = testbench(dut)
     await tb.clk.wait_clkn(200)
