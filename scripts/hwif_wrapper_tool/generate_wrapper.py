@@ -57,6 +57,11 @@ def main():
         "--rename", help="Override the top-component's instantiated name"
     )
 
+    parser.add_argument(
+        "--top",
+        help="Explicitly choose the top-level addrmap to elaborate",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -118,11 +123,13 @@ def main():
         for rdl_file in args.rdl_files:
             rdlc.compile_file(rdl_file)
 
-        # Elaborate with optional rename
+        # Elaborate with optional top addrmap and rename
+        elaborate_kwargs = {}
+        if args.top:
+            elaborate_kwargs["top_def_name"] = args.top
         if args.rename:
-            root = rdlc.elaborate(top_def_name=None, inst_name=args.rename)
-        else:
-            root = rdlc.elaborate()
+            elaborate_kwargs["inst_name"] = args.rename
+        root = rdlc.elaborate(**elaborate_kwargs)
 
         # Get CPU interface class
         if args.cpuif not in cpuif_map:
