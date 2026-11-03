@@ -1,0 +1,44 @@
+name: Test PeakRDL Etana xezim
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 1 * * 0'
+jobs:
+  build_code_linux:
+    strategy:
+      fail-fast: false # So that one fail doesn't stop remaining tests
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
+        target: [xezim]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup xezim
+        uses: daxzio/setup-xezim@v1
+        with:
+          version: "0.11.4"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade -r requirements.txt
+          python -m pip install .
+      - name: Patch cocotb with the xezim simulator makefile
+        run: |
+          # Upstream cocotb has no SIM=xezim. Install the makefile beside the others.
+          dest="$(cocotb-config --makefiles)/simulators"
+          cp .github/xezim/Makefile.xezim "${dest}/Makefile.xezim"
+          test -f "${dest}/Makefile.xezim"
+      - name: Run Tests
+        run: |
+          unset PYTHONHOME
+          xezim -V
+          cd tests
+          ./test_all.sh SIM=xezim GIT_CHECK=0 CPUIF=${{ matrix.cpuif }}

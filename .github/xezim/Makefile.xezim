@@ -1,0 +1,74 @@
+# Copyright cocotb contributors
+# Licensed under the Revised BSD License, see LICENSE for details.
+# SPDX-License-Identifier: BSD-3-Clause
+
+# xezim elaborates at run time, so there is no compile step. The file list is
+# the only build artefact.
+#
+# Use the icarus VPI library, not vcs. The vcs build calls vpi_release_handle
+# from inside the callback (VpiCbHdl::run), and xezim 0.11.0 segfaults in
+# vpi_free_object while it is still dispatching that callback. The icarus
+# build lets the simulator free one-shot callback handles.
+
+# .vhd/.vhdl on the file list go to xezim's VHDL front end (--std / --work).
+# Cocotb still attaches through the VPI library: a VHDL design is lowered
+# onto the same engine as Verilog.
+XEZIM_SOURCES := $(VERILOG_SOURCES) $(VHDL_SOURCES)
+
+ifeq ($(strip $(XEZIM_SOURCES)),)
+
+$(COCOTB_RESULTS_FILE):
+	@echo "Skipping simulation as no sources were given for simulator=$(SIM)"
+
+else
+
+# Full path or a name on PATH. Override with XEZIM_BIN / XEZIM_BIN_DIR.
+XEZIM_BIN ?= xezim
+ifdef XEZIM_BIN_DIR
+    CMD := $(call find_command,$(XEZIM_BIN_DIR)/$(XEZIM_BIN))
+else
+    CMD := $(call find_command,$(XEZIM_BIN))
+endif
+
+# xezim's default --max-time is 100ms, which cuts off longer cocotb tests.
+XEZIM_MAX_TIME ?= 10s
+
+ifdef VERILOG_INCLUDE_DIRS
+    COMPILE_ARGS += $(addprefix +incdir+, $(VERILOG_INCLUDE_DIRS))
+endif
+
+ifeq ($(WAVES),1)
+    SIM_ARGS += --fst $(SIM_BUILD)/$(call deprecate,TOPLEVEL,COCOTB_TOPLEVEL).fst
+endif
+
+XEZIM_VPI_LIB := $(shell $(PYTHON_BIN) -m cocotb_tools.config --lib-name-path vpi icarus)
+XEZIM_LIBS_DIR := $(shell $(PYTHON_BIN) -m cocotb_tools.config --lib-dir)
+
+# Write the list in the shell. $(file) expands before any recipe line runs, so a
+# preceding $(RM) would delete the list it just created.
+# Prerequisites use $(wildcard) so a glob that matches nothing at parse time
+# (make clean && make etana && make sim in one invocation) is not a missing
+# target. The recipe still expands $(XEZIM_SOURCES) after earlier goals have
+# written the files.
+$(SIM_BUILD)/xezim_sources.f: $(wildcard $(XEZIM_SOURCES)) $(CUSTOM_COMPILE_DEPS) | $(SIM_BUILD)
+	@set -e; : > $@; \
+	for s in $(XEZIM_SOURCES); do realpath "$$s" >> $@; done; \
+	test -s $@
+
+$(COCOTB_RESULTS_FILE): $(SIM_BUILD)/xezim_sources.f $(CUSTOM_SIM_DEPS)
+	$(RM) $(COCOTB_RESULTS_FILE)
+
+	LD_LIBRARY_PATH=$(XEZIM_LIBS_DIR):$${LD_LIBRARY_PATH} \
+	$(COCOTB_ENV) \
+	$(SIM_CMD_PREFIX) $(CMD) --sv2017 \
+		--vpi-lib $(XEZIM_VPI_LIB) \
+		--module-timescale $(COCOTB_HDL_TIMEUNIT)/$(COCOTB_HDL_TIMEPRECISION) \
+		--max-time $(XEZIM_MAX_TIME) \
+		-s $(call deprecate,TOPLEVEL,COCOTB_TOPLEVEL) \
+		-f $(SIM_BUILD)/xezim_sources.f \
+		$(COMPILE_ARGS) $(SIM_ARGS) $(EXTRA_ARGS) $(call deprecate,PLUSARGS,COCOTB_PLUSARGS) \
+		$(SIM_CMD_SUFFIX)
+
+	$(call check_results)
+
+endif
