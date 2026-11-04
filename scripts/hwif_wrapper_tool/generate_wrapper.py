@@ -12,6 +12,7 @@ Requires: peakrdl-regblock to be installed
 import sys
 import os
 import argparse
+import shutil
 import tempfile
 
 # Add the package directory to Python path so we can import modules
@@ -20,7 +21,10 @@ sys.path.insert(0, script_dir)
 
 # Import our modules
 from hwif_wrapper_tool.parser import parse_hwif_report  # noqa: E402
-from hwif_wrapper_tool.wrapper_builder import WrapperBuilder  # noqa: E402
+from hwif_wrapper_tool.wrapper_builder import (  # noqa: E402
+    WrapperBuilder,
+    build_cpuif_flat,
+)
 
 
 def main():
@@ -188,6 +192,15 @@ def main():
             with open(module_path, "r", encoding="utf-8") as f:
                 module_content = f.read()
 
+            # Interface CPU ports (apb4, not apb4-flat) stay on the inner
+            # module. The wrapper top exposes the flattened signal list.
+            cpuif_flat = build_cpuif_flat(exp.cpuif)
+            if cpuif_flat is not None:
+                shutil.copy2(
+                    cpuif_flat.sv_path,
+                    os.path.join(args.output, os.path.basename(cpuif_flat.sv_path)),
+                )
+
             # Build wrapper
             builder = WrapperBuilder(
                 module_name=actual_module_name,
@@ -196,6 +209,7 @@ def main():
                 module_content=module_content,
                 input_signals=input_signals,
                 output_signals=output_signals,
+                cpuif_flat=cpuif_flat,
             )
 
             wrapper_content = builder.generate()

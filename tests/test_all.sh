@@ -43,12 +43,25 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator|xezim] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1] [NVC=0|1] [XEZIM=0|1]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator|xezim] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|apb4|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1] [NVC=0|1] [XEZIM=0|1]"
             echo "xezim modes: REGBLOCK=1 SIM=xezim (regblock SV) | SIM=xezim (etana SV) | XEZIM=1 (VHDL, like GHDL=1)"
+            echo "regblock interface CPUIF (wrapper flattens it): $0 REGBLOCK=1 CPUIF=apb4 SIM=xezim"
             exit 1
             ;;
     esac
 done
+
+# Interface CPUIFs are regblock-only. The wrapper flattens apb4_intf / axi4lite_intf
+# onto the cocotb top. REGBLOCK=0 keeps the etana run and does not accept these.
+INTERFACE_CPUIFS="apb3 apb4 axi4-lite avalon-mm obi wishbone"
+case " ${INTERFACE_CPUIFS} " in
+    *" ${CPUIF} "*)
+        if [ "$REGBLOCK" -ne 1 ]; then
+            echo "CPUIF=${CPUIF} is only for regblock testing. Pass REGBLOCK=1."
+            exit 1
+        fi
+        ;;
+esac
 
 # Determine target name for display
 if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then

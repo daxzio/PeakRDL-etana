@@ -2,12 +2,13 @@
 Main Wrapper Generator
 """
 import os
+import shutil
 import tempfile
 from typing import Optional
 from systemrdl import RDLCompiler
 from peakrdl_regblock import RegblockExporter
 from .parser import parse_hwif_report
-from .wrapper_builder import WrapperBuilder
+from .wrapper_builder import WrapperBuilder, build_cpuif_flat
 
 
 def generate_wrapper(
@@ -120,6 +121,13 @@ def generate_wrapper(
         with open(module_path, "r", encoding="utf-8") as f:
             module_content = f.read()
 
+        cpuif_flat = build_cpuif_flat(exp.cpuif)
+        if cpuif_flat is not None:
+            shutil.copy2(
+                cpuif_flat.sv_path,
+                os.path.join(output_dir, os.path.basename(cpuif_flat.sv_path)),
+            )
+
         # Build and write wrapper
         builder = WrapperBuilder(
             module_name=actual_module_name,
@@ -128,6 +136,7 @@ def generate_wrapper(
             module_content=module_content,
             input_signals=input_signals,
             output_signals=output_signals,
+            cpuif_flat=cpuif_flat,
         )
 
         wrapper_content = builder.generate()
