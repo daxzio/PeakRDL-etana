@@ -137,7 +137,12 @@ Testing
 
 The ``test_ahb5`` test validates the AHB5 interface including split-HREADY,
 read/write to internal and external registers, multi-cycle external latency,
-and exclusive access (``HEXCL``/``HEXOKAY``).
+exclusive access (``HEXCL``/``HEXOKAY``), and AMBA-placed sub-word writes
+(byte/halfword ``HSIZE`` with data on the active ``HWDATA`` lane).
+
+Write data lane placement matches ``ahb-flat``: the slave captures the full
+``HWDATA`` bus and strobes the active lanes from ``HSIZE`` and the address
+offset. See :doc:`ahb`.
 
 References
 ----------

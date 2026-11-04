@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for read-write, read-only, and write-only memories
 
 ### Fixed
+- **AHB/AHB5/AHB-Lite sub-word writes**: Capture full ``HWDATA`` and strobe the
+  active AMBA byte lane(s) from ``HSIZE`` + address offset. Previously the
+  interface replicated ``HWDATA[7:0]`` (or the low halfword/word) across all
+  lanes, which dropped data that compliant masters place on the active lane
+  (e.g. byte at address ``+1`` on ``HWDATA[15:8]``).
 - **Passthrough Interface with External Components**: Resolved timeout issues when using Passthrough interface with external registers/memories
   - Root cause: Driver incorrectly waited for both `ack` and `req_stall` to clear
   - Fix: Only wait for `ack` signal (req_stall prevents NEW requests, not completion of current request)

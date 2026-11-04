@@ -86,6 +86,14 @@ async def test_dut_simple(dut):
     await tb.intf.read(0x110, 0xFEEDFACE)
     await tb.intf.read(0x114, 0xC001D00D)
 
+    # AMBA-placed sub-word writes: data on the active HWDATA lane, not [7:0]
+    await tb.intf.write(0x118, 0xAABBCCDD)
+    await tb.intf.write(0x118, 0x78, size=[1], format_amba=True)
+    await tb.intf.write(0x119, 0x56, size=[1], format_amba=True)
+    await tb.intf.read(0x118, 0xAABB5678)
+    await tb.intf.write(0x11A, 0x1234, size=[2], format_amba=True)
+    await tb.intf.read(0x118, 0x12345678)
+
     await tb.clk.end_test()
 
 

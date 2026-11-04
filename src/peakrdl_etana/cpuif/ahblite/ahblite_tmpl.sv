@@ -1,12 +1,12 @@
 // AHB Transfer Types
-//localparam [1:0] HTRANS_IDLE   = 2'b00;
-//localparam [1:0] HTRANS_BUSY   = 2'b01;
-localparam [1:0] HTRANS_NONSEQ = 2'b10;
-localparam [1:0] HTRANS_SEQ    = 2'b11;
+//localparam logic [1:0] HTRANS_IDLE   = 2'b00;
+//localparam logic [1:0] HTRANS_BUSY   = 2'b01;
+localparam logic [1:0] HTRANS_NONSEQ = 2'b10;
+localparam logic [1:0] HTRANS_SEQ    = 2'b11;
 
 // AHB Response Types
-localparam HRESP_OKAY  = 1'b0;
-localparam HRESP_ERROR = 1'b1;
+localparam logic HRESP_OKAY  = 1'b0;
+localparam logic HRESP_ERROR = 1'b1;
 
 // Request
 logic is_active;
@@ -53,82 +53,9 @@ always {{get_always_ff_event(cpuif.reset)}} begin
             cpuif_req_is_wr <= write_captured;
             cpuif_addr <= addr_captured;
 
-            // Replicate data based on captured HSIZE for proper lane placement
-            case(size_captured)
-                3'b000: begin // Byte access - replicate byte across all lanes
-                    {%- if cpuif.data_width_bytes == 1 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:8];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//1}}{ {{cpuif.signal("hwdata")}}[0+:8] } };
-                    {%- endif %}
-                end
-                {%- if cpuif.data_width_bytes >= 2 %}
-                3'b001: begin // Halfword access - replicate halfword across all lanes
-                    {%- if cpuif.data_width_bytes == 2 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:16];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//2}}{ {{cpuif.signal("hwdata")}}[0+:16] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 4 %}
-                3'b010: begin // Word access - replicate word across all lanes
-                    {%- if cpuif.data_width_bytes == 4 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:32];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//4}}{ {{cpuif.signal("hwdata")}}[0+:32] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 8 %}
-                3'b011: begin // Doubleword access - replicate doubleword across all lanes
-                    {%- if cpuif.data_width_bytes == 8 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:64];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//8}}{ {{cpuif.signal("hwdata")}}[0+:64] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 16 %}
-                3'b100: begin // 128-bit access - replicate 128-bit data across all lanes
-                    {%- if cpuif.data_width_bytes == 16 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:128];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//16}}{ {{cpuif.signal("hwdata")}}[0+:128] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 32 %}
-                3'b101: begin // 256-bit access - replicate 256-bit data across all lanes
-                    {%- if cpuif.data_width_bytes == 32 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:256];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//32}}{ {{cpuif.signal("hwdata")}}[0+:256] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 64 %}
-                3'b110: begin // 512-bit access - replicate 512-bit data across all lanes
-                    {%- if cpuif.data_width_bytes == 64 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:512];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//64}}{ {{cpuif.signal("hwdata")}}[0+:512] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                {%- if cpuif.data_width_bytes >= 128 %}
-                3'b111: begin // 1024-bit access - replicate 1024-bit data across all lanes
-                    {%- if cpuif.data_width_bytes == 128 %}
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}}[0+:1024];
-                    {%- else %}
-                    cpuif_wr_data <= { {{cpuif.data_width_bytes//128}}{ {{cpuif.signal("hwdata")}}[0+:1024] } };
-                    {%- endif %}
-                end
-                {%- endif %}
-                default: begin // Larger than supported accesses (full width)
-                    cpuif_wr_data <= {{cpuif.signal("hwdata")}};
-                end
-                endcase
+            // AMBA places write data on the active byte lane(s) of HWDATA.
+            // Capture the full bus; HSIZE + HADDR select which lanes via wr_biten.
+            cpuif_wr_data <= {{cpuif.signal("hwdata")}};
 
             // Generate byte enable based on captured HSIZE and original address offset
             cpuif_wr_biten <= '0;

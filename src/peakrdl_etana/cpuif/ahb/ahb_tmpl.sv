@@ -1,12 +1,12 @@
 // AHB Transfer Types
-//localparam [1:0] HTRANS_IDLE   = 2'b00;
-//localparam [1:0] HTRANS_BUSY   = 2'b01;
-localparam [1:0] HTRANS_NONSEQ = 2'b10;
-localparam [1:0] HTRANS_SEQ    = 2'b11;
+//localparam logic [1:0] HTRANS_IDLE   = 2'b00;
+//localparam logic [1:0] HTRANS_BUSY   = 2'b01;
+localparam logic [1:0] HTRANS_NONSEQ = 2'b10;
+localparam logic [1:0] HTRANS_SEQ    = 2'b11;
 
 // AHB Response Types
-localparam HRESP_OKAY  = 1'b0;
-localparam HRESP_ERROR = 1'b1;
+localparam logic HRESP_OKAY  = 1'b0;
+localparam logic HRESP_ERROR = 1'b1;
 
 // -----------------------------------------------------------------------------
 // Single-stage: capture address/data, dispatch to cpuif, complete on ack
@@ -99,23 +99,22 @@ always @(*) begin
     wr_data_capture = '0;
     wr_biten_capture = '0;
     if (txn_valid && txn_write && !txn_data_ready) begin
+        // AMBA places write data on the active byte lane(s) of HWDATA.
+        // Capture the full bus; HSIZE + HADDR select which lanes via wr_biten.
+        wr_data_capture = {{cpuif.signal("hwdata")}};
         case(txn_size)
             3'b000: begin
                 {%- if cpuif.data_width_bytes == 1 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:8];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//1}}{ {{cpuif.signal("hwdata")}}[0+:8] } };
                 wr_biten_capture[txn_offset*8 +: 8] = '1;
                 {%- endif %}
             end
             {%- if cpuif.data_width_bytes >= 2 %}
             3'b001: begin
                 {%- if cpuif.data_width_bytes == 2 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:16];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//2}}{ {{cpuif.signal("hwdata")}}[0+:16] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:1]*16 +: 16] = '1;
                 {%- endif %}
             end
@@ -123,10 +122,8 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 4 %}
             3'b010: begin
                 {%- if cpuif.data_width_bytes == 4 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:32];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//4}}{ {{cpuif.signal("hwdata")}}[0+:32] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:2]*32 +: 32] = '1;
                 {%- endif %}
             end
@@ -134,10 +131,8 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 8 %}
             3'b011: begin
                 {%- if cpuif.data_width_bytes == 8 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:64];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//8}}{ {{cpuif.signal("hwdata")}}[0+:64] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:3]*64 +: 64] = '1;
                 {%- endif %}
             end
@@ -145,10 +140,8 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 16 %}
             3'b100: begin
                 {%- if cpuif.data_width_bytes == 16 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:128];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//16}}{ {{cpuif.signal("hwdata")}}[0+:128] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:4]*128 +: 128] = '1;
                 {%- endif %}
             end
@@ -156,10 +149,8 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 32 %}
             3'b101: begin
                 {%- if cpuif.data_width_bytes == 32 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:256];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//32}}{ {{cpuif.signal("hwdata")}}[0+:256] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:5]*256 +: 256] = '1;
                 {%- endif %}
             end
@@ -167,10 +158,8 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 64 %}
             3'b110: begin
                 {%- if cpuif.data_width_bytes == 64 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:512];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//64}}{ {{cpuif.signal("hwdata")}}[0+:512] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:6]*512 +: 512] = '1;
                 {%- endif %}
             end
@@ -178,16 +167,13 @@ always @(*) begin
             {%- if cpuif.data_width_bytes >= 128 %}
             3'b111: begin
                 {%- if cpuif.data_width_bytes == 128 %}
-                wr_data_capture = {{cpuif.signal("hwdata")}}[0+:1024];
                 wr_biten_capture = '1;
                 {%- else %}
-                wr_data_capture = { {{cpuif.data_width_bytes//128}}{ {{cpuif.signal("hwdata")}}[0+:1024] } };
                 wr_biten_capture[txn_offset[{{clog2(cpuif.data_width_bytes)-1}}:7]*1024 +: 1024] = '1;
                 {%- endif %}
             end
             {%- endif %}
             default: begin
-                wr_data_capture = {{cpuif.signal("hwdata")}};
                 wr_biten_capture = '1;
             end
         endcase

@@ -12,6 +12,20 @@ On a common/shared AHB bus, the slave **must** be able to drive `HREADY` low to 
 
 ---
 
+## REQ-AHB-002: HWDATA Byte-Lane Placement (mandatory)
+
+For transfers narrower than the data bus, the master **shall** drive write data
+on the active byte lane(s) of `HWDATA` corresponding to `HADDR` and `HSIZE`
+(AMBA sparse-bus / little-endian lane mapping). The slave **shall** capture the
+full `HWDATA` vector and apply write strobes derived from `HSIZE` and the
+address offset. The slave **shall not** take `HWDATA[7:0]` (or other low-order
+slices) and replicate them across all lanes.
+
+Example on a 32-bit bus: a byte write to address `0x5` (`HSIZE=BYTE`) places
+the byte on `HWDATA[15:8]`. The slave enables only that lane.
+
+---
+
 ## When the Slave Must Stall (HREADY = 0)
 
 | Condition | Rationale |
@@ -51,7 +65,7 @@ On a common/shared AHB bus, the slave **must** be able to drive `HREADY` low to 
 | `HWRITE` | Direction (1 = write, 0 = read) |
 | `HSIZE[2:0]` | Transfer size (byte, halfword, word, etc.) |
 | `HADDR` | Byte address |
-| `HWDATA` | Write data (valid in data phase for writes) |
+| `HWDATA` | Write data (valid in data phase for writes). Sub-word data is on the active byte lane(s), not necessarily in the low-order bits. |
 
 **Response Phase (outputs from slave):**
 

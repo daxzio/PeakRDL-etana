@@ -39,6 +39,20 @@ Response signals (outputs):
     * ``s_ahb_hrdata`` - Read data bus
     * ``s_ahb_hresp`` - Transfer response (0 = OKAY, 1 = ERROR)
 
+Write Data Lanes (HWDATA / HSIZE)
+---------------------------------
+
+AMBA places write data on the **active byte lane(s)** of ``HWDATA``, not in the
+low-order bits. For a byte write to address ``N``, the valid byte is
+``HWDATA[8*N[1:0] +: 8]`` on a 32-bit bus (and similarly for halfword and
+wider transfers). The slave captures the full ``HWDATA`` bus and uses ``HSIZE``
+plus the address offset to form write strobes (``cpuif_wr_biten``). It does
+**not** replicate ``HWDATA[7:0]`` across all lanes.
+
+Masters such as cocotbext-ahb should use ``format_amba=True`` when driving
+sub-word writes so data is shifted onto the correct lane. The same capture
+behavior applies to ``ahb5-flat`` and ``ahblite-flat``.
+
 HREADY and Stall Handling
 -------------------------
 
@@ -78,7 +92,9 @@ Testing
 -------
 
 The ``test_ahb_pipeline`` test validates the AHB interface, including read/write
-operations to internal and external registers and multi-cycle external memory access.
+operations to internal and external registers, multi-cycle external memory access,
+and AMBA-placed sub-word writes (byte/halfword ``HSIZE`` with data on the active
+``HWDATA`` lane).
 
 References
 ----------
