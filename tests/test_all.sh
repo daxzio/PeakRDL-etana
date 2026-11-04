@@ -10,6 +10,7 @@ CPUIF="apb4-flat"
 GIT_CHECK=0
 GHDL=0
 NVC=0
+XEZIM=0
 
 for arg in "$@"; do
     case $arg in
@@ -37,16 +38,20 @@ for arg in "$@"; do
         NVC=*)
             NVC="${arg#*=}"
             ;;
+        XEZIM=*)
+            XEZIM="${arg#*=}"
+            ;;
         *)
             echo "Unknown argument: $arg"
-            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1] [NVC=0|1]"
+            echo "Usage: $0 [REGBLOCK=0|1] [SIM=icarus|verilator|xezim] [COCOTB_REV=2.0.0|1.9.2] [YOSYS=0|1] [CPUIF=apb4-flat|axi4-lite|etc] [GIT_CHECK=0|1] [GHDL=0|1] [NVC=0|1] [XEZIM=0|1]"
+            echo "xezim modes: REGBLOCK=1 SIM=xezim (regblock SV) | SIM=xezim (etana SV) | XEZIM=1 (VHDL, like GHDL=1)"
             exit 1
             ;;
     esac
 done
 
 # Determine target name for display
-if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
+if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
     TARGET_NAME="regblock-vhdl"
 elif [ "$REGBLOCK" -eq 1 ]; then
     TARGET_NAME="regblock"
@@ -61,7 +66,7 @@ else
     SYNTH_INDICATOR=""
 fi
 
-echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF GIT_CHECK=$GIT_CHECK GHDL=$GHDL NVC=$NVC ==="
+echo "=== Testing All Tests with target=$TARGET_NAME$SYNTH_INDICATOR SIM=$SIM COCOTB_REV=$COCOTB_REV CPUIF=$CPUIF GIT_CHECK=$GIT_CHECK GHDL=$GHDL NVC=$NVC XEZIM=$XEZIM ==="
 echo ""
 
 # Define skip lists based on conditions
@@ -79,7 +84,7 @@ SKIP_TESTS+=("test_early_external_read" "test_early_external_mixed")
 SKIP_TESTS+=("test_ahb5")
 
 # Skip certain tests when REGBLOCK=1
-if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
+if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
     SKIP_TESTS+=("test_cpuif_err_rsp")
     SKIP_TESTS+=("test_ahb_pipeline")
@@ -123,7 +128,7 @@ for dir in test_*/; do
         echo "Testing $test_name..."
 
         # Choose target based on GHDL or REGBLOCK values
-        if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ]; then
+        if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
             target="regblock-vhdl"
         elif [ "$REGBLOCK" -eq 1 ]; then
             target="regblock"
@@ -162,10 +167,13 @@ for dir in test_*/; do
         if [ "$NVC" -eq 1 ]; then
             make_vars="$make_vars NVC=$NVC"
         fi
+        if [ "$XEZIM" -eq 1 ]; then
+            make_vars="$make_vars XEZIM=$XEZIM"
+        fi
 
-        (cd "$dir" && timeout 60 sh -c "make clean $target $make_vars && make sim $make_vars" > /tmp/${test_name}.log 2>&1)
+        (cd "$dir" && timeout 600 sh -c "make clean $target $make_vars && make sim $make_vars" > /tmp/${test_name}.log 2>&1)
 
-        if grep -q "PASS=1.*FAIL=0" "/tmp/${test_name}.log" 2>/dev/null; then
+        if grep -Eq "TESTS=[1-9][0-9]* PASS=[1-9][0-9]* FAIL=0" "/tmp/${test_name}.log" 2>/dev/null; then
             echo "  ✅ PASS"
             PASS_COUNT=$((PASS_COUNT + 1))
             TEST_NAMES+=("$test_name")

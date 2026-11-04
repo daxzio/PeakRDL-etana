@@ -22,6 +22,14 @@ REGBLOCK=0
 export REGBLOCK
 GHDL=0
 NVC=0
+# Three xezim modes. REGBLOCK=1 without SIM=xezim still forces Verilator.
+#   make clean regblock sim REGBLOCK=1 SIM=xezim   # same SV Verilator compiles
+#   make clean etana    sim SIM=xezim              # etana SystemVerilog
+#   make clean regblock-vhdl sim XEZIM=1           # VHDL, same role as GHDL=1
+# XEZIM=1 selects the VHDL binary. SIM=xezim uses the SystemVerilog release.
+XEZIM=0
+XEZIM_VHD_BIN?=/home/gomez/projects/xezim-vhd/target/release/xezim
+XEZIM_SV_BIN?=$(shell ls -d /cadtools/spack-2025/opt/linux-ubuntu24.04-skylake/gcc-13.3.0/xezim/*/bin/xezim 2>/dev/null | sort -V | tail -n 1)
 YOSYS=0
 GIT_CHECK=0
 
@@ -39,8 +47,13 @@ SYNTH_SOURCE_TARGET?=etana
 VERILOG_SOURCES?= \
     ./etana-rtl/*.sv
 ifeq ($(REGBLOCK),1)
+    # Command-line SIM=xezim compiles this same file list. Any other SIM
+    # (including the icarus default) stays on Verilator.
+    ifneq ($(SIM),xezim)
 	override SIM=verilator
+    endif
     TOPLEVEL=regblock_wrapper
+    ifeq ($(SIM),verilator)
 	COMPILE_ARGS += -Wno-MULTIDRIVEN
 	COMPILE_ARGS += -Wno-ALWCOMBORDER
 	COMPILE_ARGS += -Wno-WIDTHTRUNC
@@ -49,6 +62,7 @@ ifeq ($(REGBLOCK),1)
 	COMPILE_ARGS += -Wno-BLKLOOPINIT
 	COMPILE_ARGS += -Wno-UNSIGNED
 	COMPILE_ARGS += -Wno-CMPCONST
+    endif
     VERILOG_SOURCES= \
         ./regblock-rtl/*.sv
 	HDL_DIR=regblock-rtl
@@ -79,6 +93,23 @@ ifeq ($(NVC),1)
         ./regblock-vhdl-rtl/regblock.vhd \
 		./regblock-vhdl-rtl/regblock_wrapper.vhd
 endif
+ifeq ($(XEZIM),1)
+    override SIM=xezim
+    override TOPLEVEL_LANG=vhdl
+    TOPLEVEL=regblock_wrapper
+    undefine VERILOG_SOURCES
+    VHDL_SOURCES= \
+        ../interfaces/reg_utils.vhd \
+		./regblock-vhdl-rtl/regblock_pkg.vhd \
+        ./regblock-vhdl-rtl/regblock.vhd \
+		./regblock-vhdl-rtl/regblock_wrapper.vhd
+	EXTRA_ARGS += --std=08
+	XEZIM_BIN ?= $(XEZIM_VHD_BIN)
+	HDL_DIR=regblock-vhdl-rtl
+	VIVADO_GLOB=*.vhd
+	VIVADO_READ_CMD=read_vhdl
+	SYNTH_SOURCE_TARGET=regblock-vhdl
+endif
 ifeq ($(YOSYS),1)
     VERILOG_SOURCES= \
         ./$(SYNTH_OUTPUT)/*
@@ -94,14 +125,33 @@ ifeq ($(TOPLEVEL_LANG),verilog)
         SIM_BUILD:=sim_build_xcelium
 	else ifeq ($(SIM),verilator)
         SIM_BUILD:=sim_build_verilator
+	else ifeq ($(SIM),xezim)
+        SIM_BUILD:=sim_build_xezim
 	else ifneq ($(filter $(SIM),questa modelsim ),)
         SIM_BUILD:=sim_build_questa
 	endif
+endif
+# xezim elaborates Verilog and VHDL into the same build directory.
+ifeq ($(SIM),xezim)
+SIM_BUILD:=sim_build_xezim
+ifeq ($(TOPLEVEL_LANG),verilog)
+# XEZIM_BIN ?= $(if $(XEZIM_SV_BIN),$(XEZIM_SV_BIN),xezim)
+XEZIM_BIN ?= xezim
+endif
 endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 ifeq ($(SIM),verilator)
 	COMPILE_ARGS += --no-timing
+else ifeq ($(SIM),xezim)
+    ifeq ($(TOPLEVEL_LANG),verilog)
+	DEFINES += COCOTB_XEZIM=1
+	# -g/<module>/NAME overrides that module only; instance values still win.
+	# Quote the same way as Icarus (-P) and Verilator (-G). A bare expansion
+	# lets the shell eat quotes, and xezim then rejects a string parameter.
+	COMPILE_ARGS += $(addprefix -g/${TOPLEVEL}/, $(addsuffix ', $(subst =,=', $(GENERICS))))
+	COMPILE_ARGS += $(addprefix -D , $(DEFINES))
+    endif
 endif
 ifeq ($(WAVES),1)
 	ifeq ($(SIM),verilator)
@@ -218,4 +268,6 @@ else ifeq ($(SIM), ius)
 	simvision -waves waves.shm &
 else ifeq ($(SIM),verilator)
 	gtkwave dump.fst &
+else ifeq ($(SIM),xezim)
+	gtkwave ${SIM_BUILD}/${TOPLEVEL}.fst &
 endif
