@@ -19,8 +19,9 @@ class RegblockWishboneMaster(WishboneMaster):
     (deadbf7, wishbone_tmpl.sv) drives both wb_ack and wb_err on error responses.
     cocotbext-wishbone correctly flags that as a protocol violation.
 
-    Etana tracks this as potential upstream feedback; see UPSTREAM_SYNC_STATUS.md
-    item 35. Until regblock is fixed, this subclass accepts ack+err together so
+    Etana tracks this as potential upstream feedback; see
+    cursor_help/UPSTREAM_SYNC_STATUS.md, section "Wishbone ACK and ERR".
+    Until regblock is fixed, this subclass accepts ack+err together so
     Cocotb tests can run against the current RTL.
     """
 

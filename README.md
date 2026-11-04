@@ -238,7 +238,7 @@ This project is licensed under the LGPL-3.0 license. See the LICENSE file for de
 
 ## Project Origins
 
-PeakRDL-etana is derived from [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock) v0.22.0 (December 2024), with applicable fixes from v1.1.0. The key innovation is the replacement of SystemVerilog struct-based interfaces with individual flattened signals.
+PeakRDL-etana is derived from [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock) v0.22.0 (December 2024), with applicable logic fixes through v1.3.1 (`ed07496`). The key innovation is the replacement of SystemVerilog struct-based interfaces with individual flattened signals.
 
 **Why the flattened interface approach?**
 - **Broader tool support** - Some synthesis and simulation tools have limitations with complex structs
@@ -246,4 +246,4 @@ PeakRDL-etana is derived from [PeakRDL-regblock](https://github.com/SystemRDL/Pe
 - **Legacy compatibility** - Easier integration with existing designs expecting individual signals
 - **Debugging clarity** - Individual signals are easier to trace and debug
 
-For detailed information about upstream synchronization and applied modifications, see `UPSTREAM_SYNC_STATUS.md`.
+For how to port later regblock changes, and for the etana-only work that stays here, see `cursor_help/UPSTREAM_SYNC_STATUS.md` and `cursor_help/COCOTB_MIGRATION_GUIDE.md`.

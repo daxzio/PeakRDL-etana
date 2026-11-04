@@ -368,14 +368,13 @@ Activate the virtual environment:
 
     source ../venv.2.0.0/bin/activate
 
-**Signal Name Mismatch**
+**External data port names**
 
-Regblock and etana have different field naming conventions:
-
-* **Regblock:** Includes field suffix (e.g., ``hwif_out_reg_wr_data_f``)
-* **Etana:** No field suffix (e.g., ``hwif_out_reg_wr_data``)
-
-The external emulators auto-detect this difference.
+Etana uses the same external data port rule as regblock. A register with one
+software-visible field uses ``hwif_in_<reg>_rd_data``. A register with several
+uses ``hwif_in_<reg>_rd_data_<field>`` (right-aligned).
+``tests/test_cpuif_err_rsp/external_emulators.py`` tries a ``_f`` suffix and
+then the unsuffixed name, because that design's field is named ``f``.
 
 **Cocotb 2.0.0 + AXI4-Lite Compatibility**
 
