@@ -14,9 +14,7 @@ jobs:
         python-version: ["3.13"]
         cpuif: ["passthrough", "apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
         target: [verilator]
-    # Pinned explicitly: ubuntu-latest can resolve to 26.04, whose asset now exists.
-    # See https://github.com/veryl-lang/setup-verilator/issues/2
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -29,8 +27,7 @@ jobs:
           cache: 'pip'
       - name: Install system tools
         run: |
-          # mold: the prebuilt verilator archives bake -fuse-ld=mold into verilated.mk
-          sudo apt install ccache mold
+          sudo apt install ccache
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -40,10 +37,4 @@ jobs:
         run: |
           unset PYTHONHOME
           cd tests
-          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=${{ matrix.cpuif }} COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=ahb-flat          COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
-#           ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
+          ./test_all.sh SIM=verilator GIT_CHECK=0 CPUIF=${{ matrix.cpuif }}
