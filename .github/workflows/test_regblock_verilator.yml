@@ -12,12 +12,9 @@ jobs:
       fail-fast: false # So that one fail doesn't stop remaining tests
       matrix:
         python-version: ["3.13"]
-#         cpuif: ["apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat"]
-        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat", "apb4", "apb3", "axi4-lite", "avalon-mm", "obi", "wishbone"]
         target: [verilator]
-    # Pinned explicitly: ubuntu-latest can resolve to 26.04, whose asset now exists.
-    # See https://github.com/veryl-lang/setup-verilator/issues/2
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -30,8 +27,7 @@ jobs:
           cache: 'pip'
       - name: Install system tools
         run: |
-          # mold: the prebuilt verilator archives bake -fuse-ld=mold into verilated.mk
-          sudo apt install ccache mold
+          sudo apt install ccache
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
