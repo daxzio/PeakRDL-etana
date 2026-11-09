@@ -12,10 +12,18 @@ jobs:
       fail-fast: false # So that one fail doesn't stop remaining tests
       matrix:
         python-version: ["3.13"]
-        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat", "apb4", "apb3", "axi4-lite", "avalon-mm", "obi", "wishbone"]
+        # Flat interfaces only. The non-flat ones need hdl-src/*_intf.sv from a
+        # peakrdl-regblock source checkout; a pip git install ships no hdl-src,
+        # so generate_wrapper.py cannot find them (same failure on Verilator).
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
         target: [xezim]
     # setup-xezim ships a build for Ubuntu 24.04; do not use ubuntu-latest.
     runs-on: ubuntu-24.04
+    env:
+      # peakrdl-regblock@main declares field_storage after the write-buffer
+      # always blocks that read it (test_write_buffer). Verilator tolerates it,
+      # xezim rejects it by default. Fixed on daxzio/PeakRDL-regblock develop.
+      XEZIM_RELAX_USE_BEFORE_DECL: "1"
 
     steps:
       - uses: actions/checkout@v5
