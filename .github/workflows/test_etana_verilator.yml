@@ -14,7 +14,9 @@ jobs:
         python-version: ["3.13"]
         cpuif: ["passthrough", "apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
         target: [verilator]
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is now 26.04, which has no verilator-package asset.
+    # See https://github.com/veryl-lang/setup-verilator/issues/2
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v5
