@@ -33,6 +33,12 @@ jobs:
           python -m pip install .
           python -m pip uninstall -y peakrdl-regblock
           python -m pip install --upgrade git+https://github.com/daxzio/PeakRDL-regblock.git@develop
+          # The wheel carries no hdl-src/*_intf.sv, so generate_wrapper.py cannot
+          # find the non-flat interface sources. Place them next to the package.
+          sitepkg="$(python -c 'import os, peakrdl_regblock; print(os.path.dirname(os.path.dirname(peakrdl_regblock.__file__)))')"
+          git clone -q --depth 1 -b develop https://github.com/daxzio/PeakRDL-regblock.git /tmp/peakrdl-regblock-src
+          cp -r /tmp/peakrdl-regblock-src/hdl-src "${sitepkg}/"
+          ls "${sitepkg}/hdl-src"
       - name: Patch cocotb with the xezim simulator makefile
         run: |
           # Upstream cocotb has no SIM=xezim. Install the makefile beside the others.
