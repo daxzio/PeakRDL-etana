@@ -29,7 +29,8 @@ jobs:
           cache: 'pip'
       - name: Install system tools
         run: |
-          sudo apt install ccache
+          # mold: the prebuilt verilator archives bake -fuse-ld=mold into verilated.mk
+          sudo apt install ccache mold
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
