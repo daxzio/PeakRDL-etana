@@ -1,0 +1,59 @@
+name: EDA tool versions
+
+# Dependabot covers action refs and PyPI requirements. The versions passed to
+# setup actions (icarus "2026.11.04", nvc "latest", ...) and the COCOTB_REV pin
+# are action inputs, which it cannot see, so they are checked here instead.
+#
+# Reports to the job summary every week, and opens or updates a single
+# `tool-versions` issue when a pinned tool is behind its latest release.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    # ubuntu-24.04 rather than ubuntu-latest: this job does not need a specific
+    # distro, and the label has been moving between 24.04 and 26.04.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Compare pins with latest releases
+        id: check
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          python scripts/check_tool_versions.py \
+            --markdown "${RUNNER_TEMP}/tool-versions.md" \
+            --fail-on-drift | tee -a "${GITHUB_STEP_SUMMARY}"
+      - name: Open or update the tracking issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          report="${RUNNER_TEMP}/tool-versions.md"
+          gh label create tool-versions \
+            --description "Newer EDA tool releases are available" \
+            --color 5319e7 --force
+          number="$(gh issue list --label tool-versions --state open \
+            --json number --jq '.[0].number // empty')"
+          if [ -n "${number}" ]; then
+            gh issue comment "${number}" --body-file "${report}"
+          else
+            gh issue create \
+              --title "EDA tool versions: newer releases available" \
+              --body-file "${report}" \
+              --label tool-versions
+          fi
