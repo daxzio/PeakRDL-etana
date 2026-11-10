@@ -23,7 +23,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      # Scheduled workflows only run from the default branch, but the tool pins
+      # live on develop, which is ahead of main. Check develop out so the report
+      # describes the versions the test workflows actually use.
       - uses: actions/checkout@v5
+        with:
+          ref: develop
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
