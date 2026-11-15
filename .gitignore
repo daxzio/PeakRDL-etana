@@ -38,3 +38,8 @@ repos/
 *_hwif.csv
 vivado_synth.tcl
 *.fst
+*_cov.json
+vivado*
+*e~*.o
+cursor_help/
+.cursor*

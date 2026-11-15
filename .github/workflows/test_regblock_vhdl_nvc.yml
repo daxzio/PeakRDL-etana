@@ -11,20 +11,20 @@ jobs:
     strategy:
       fail-fast: false # So that one fail doesn't stop remaining tests
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        #cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat"]
-        cpuif: ["apb4-flat"]
+        python-version: ["3.13"]
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "axi4-lite-flat", "avalon-mm-flat"]
+       # cpuif: ["apb4-flat"]
         target: [nvc]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Setup NVC
         uses: nickg/setup-nvc@v1
         with:
           version: latest
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -42,10 +42,4 @@ jobs:
         run: |
           unset PYTHONHOME
           cd tests
-          ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=${{ matrix.cpuif }} COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=1 CPUIF=apb4-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=apb3-flat      COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=ahb-flat          COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=axi4-lite-flat COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=avalon-mm-flat COCOTB_REV=1.9.2
-#           ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=obi-flat       COCOTB_REV=1.9.2
+          ./test_all.sh NVC=1 SIM=nvc GIT_CHECK=0 CPUIF=${{ matrix.cpuif }}

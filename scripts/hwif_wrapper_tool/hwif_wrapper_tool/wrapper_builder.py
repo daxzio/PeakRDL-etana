@@ -54,6 +54,48 @@ def _find_intf_sv(intf_type: str) -> str:
     )
 
 
+def _eval_int_expr(expr: str) -> "int | None":
+    """Fold a constant integer expression made of digits, + - * / and parens."""
+    import ast
+
+    def walk(node) -> int:
+        if isinstance(node, ast.Constant) and isinstance(node.value, int):
+            return node.value
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            value = walk(node.operand)
+            return -value if isinstance(node.op, ast.USub) else value
+        if isinstance(node, ast.BinOp):
+            left, right = walk(node.left), walk(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                return left // right
+        raise ValueError(expr)
+
+    try:
+        return walk(ast.parse(expr, mode="eval").body)
+    except (SyntaxError, ValueError, TypeError):
+        return None
+
+
+def _substitute_params(text: str, values: dict) -> str:
+    """Replace interface parameter names with their resolved values."""
+    for name, value in values.items():
+        text = re.sub(rf"\b{re.escape(name)}\b", value, text)
+
+    def _dim(match: "re.Match[str]") -> str:
+        bounds = [_eval_int_expr(part.strip()) for part in match.group(1).split(":")]
+        if any(bound is None for bound in bounds):
+            return match.group(0)
+        return "[" + ":".join(str(bound) for bound in bounds) + "]"
+
+    return re.sub(r"\[([^\[\]]+)\]", _dim, text)
+
+
 def build_cpuif_flat(cpuif) -> Optional[CpuifFlat]:
     """Map an interface CPU port onto the flattened port list.
 
@@ -108,6 +150,14 @@ def build_cpuif_flat(cpuif) -> Optional[CpuifFlat]:
     parameters: List[Tuple[str, str]] = []
     for name, default in re.findall(r"parameter\s+(\w+)\s*=\s*([^,\n]+)", header):
         parameters.append((name, known.get(name, default.strip())))
+
+    # A port width may name an interface parameter (OBI's ``[ID_WIDTH-1:0]``).
+    # The wrapper declares no parameters of its own, so substitute the value the
+    # interface is instantiated with; otherwise the name is undefined in the
+    # wrapper scope.
+    port_values = dict(parameters)
+    if port_values:
+        ports = [_substitute_params(port, port_values) for port in ports]
 
     return CpuifFlat(
         intf_type=intf_type,
