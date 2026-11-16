@@ -101,14 +101,12 @@ if [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
     SKIP_TESTS+=("test_cpuif_err_rsp")
     SKIP_TESTS+=("test_ahb_pipeline")
+    # field_reset hierarchy is covered for etana and PeakRDL-regblock, not VHDL.
+    SKIP_TESTS+=("test_field_reset_hier")
 fi
 # Skip certain tests when REGBLOCK=1
 if [ "$REGBLOCK" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
-fi
-# Inherited field_reset is checked against etana RTL only for now.
-if [ "$REGBLOCK" -eq 1 ] || [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
-    SKIP_TESTS+=("test_field_reset_hier")
 fi
 # Skip certain tests when using specific simulators
 # if [ "$SIM" = "verilator" ]; then

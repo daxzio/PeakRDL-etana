@@ -38,8 +38,8 @@ SKIP_TESTS=(
 	"test_loops"
 )
 
-# Inherited field_reset is checked against etana RTL only for now.
-if [ "$REGBLOCK_MODE" = "1" ] || [ "$GHDL_MODE" = "1" ]; then
+# field_reset hierarchy is covered for etana and PeakRDL-regblock, not VHDL.
+if [ "$GHDL_MODE" = "1" ]; then
 	SKIP_TESTS+=("test_field_reset_hier")
 fi
 
