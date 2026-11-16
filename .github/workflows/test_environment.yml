@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Verilator
-        uses: veryl-lang/setup-verilator@v1
+        uses: veryl-lang/setup-verilator@v2
       - name: Report verilator
         run: |
           which verilator
