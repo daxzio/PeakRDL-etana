@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for read-write, read-only, and write-only memories
 
 ### Fixed
+- **Inherited `field_reset`**: A `field_reset` signal declared on an addrmap, a regfile, or above the top addrmap resets the fields under it. The nearest signal wins, and an explicit `resetsignal` on a field overrides it. Covered by `tests/test_field_reset_hier`.
 - **AHB/AHB5/AHB-Lite sub-word writes**: Capture full ``HWDATA`` and strobe the
   active AMBA byte lane(s) from ``HSIZE`` + address offset. Previously the
   interface replicated ``HWDATA[7:0]`` (or the low halfword/word) across all

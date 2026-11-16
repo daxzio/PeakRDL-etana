@@ -1,0 +1,105 @@
+// field_reset is inherited from the nearest ancestor that declares one.
+// An explicit resetsignal on a field overrides that.
+//
+// root_rst          above the top addrmap (module port)
+// map_rst           addrmap
+// plain_rst         not a field_reset; used only by explicit resetsignal
+// blk.rf_rst        regfile; shadows map_rst
+// blk.local_reg.reg_rst
+//                   register; shadows rf_rst
+// blk.async_rf.async_rst_n
+//                   nested regfile, active-low async
+// a_blk.a_rst       nested regfile, active-high async
+
+signal { field_reset; activehigh; sync; } root_rst;
+
+addrmap top {
+    signal { field_reset; activehigh; sync; } map_rst;
+    signal { activehigh; sync; } plain_rst;
+
+    // Both fields inherit map_rst.
+    reg {
+        field { sw = rw; hw = r; reset = 16'hA001; } lo[15:0];
+        field { sw = rw; hw = r; reset = 16'hA002; } hi[31:16];
+    } map_reg @ 0x00;
+
+    // lo names root_rst. hi still inherits map_rst.
+    reg {
+        field { sw = rw; hw = r; reset = 16'hB001; } lo[15:0];
+        field { sw = rw; hw = r; reset = 16'hB002; } hi[31:16];
+    } split_reg @ 0x04;
+
+    // Neither field uses the inherited field_reset.
+    reg {
+        field { sw = rw; hw = r; reset = 16'hC001; } lo[15:0];
+        field { sw = rw; hw = r; reset = 16'hC002; } hi[31:16];
+    } plain_reg @ 0x08;
+
+    // Inherited signal is map_rst, but there is no reset value, so the field
+    // is not reset (SystemRDL 5.9.1-g).
+    reg {
+        field { sw = rw; hw = r; } data[31:0];
+    } noreset_reg @ 0x0C;
+
+    // One addrmap signal resets every element of the array.
+    reg {
+        field { sw = rw; hw = r; reset = 8'hD1; } f[7:0];
+    } map_arr[4] @ 0x20;
+
+    // Regfile with no field_reset of its own. Search continues up to map_rst.
+    regfile {
+        reg {
+            field { sw = rw; hw = r; reset = 16'h1901; } f[15:0];
+        } entry;
+    } pass_thru @ 0x30;
+
+    regfile {
+        signal { field_reset; activehigh; sync; } rf_rst;
+
+        reg {
+            field { sw = rw; hw = r; reset = 16'hE001; } lo[15:0];
+            field { sw = rw; hw = r; reset = 16'hE002; } hi[31:16];
+        } rf_reg @ 0x00;
+
+        // reg_rst shadows rf_rst. escaped names map_rst explicitly.
+        reg {
+            signal { field_reset; activehigh; sync; } reg_rst;
+            field { sw = rw; hw = r; reset = 16'hF001; } lo[15:0];
+            field { sw = rw; hw = r; reset = 16'hF002; } hi[31:16];
+        } local_reg @ 0x04;
+
+        // No field_reset here, so this inherits blk.rf_rst, not map_rst.
+        regfile {
+            reg {
+                field { sw = rw; hw = r; reset = 16'h1111; } f[15:0];
+            } entry;
+        } inner @ 0x08;
+
+        regfile {
+            signal { field_reset; activelow; async; } async_rst_n;
+            reg {
+                field { sw = rw; hw = r; reset = 16'h2222; } f[15:0];
+            } entry;
+        } async_rf @ 0x0C;
+
+        // regwidth > accesswidth. Each subword is its own field, both inherit rf_rst.
+        reg {
+            regwidth = 64;
+            accesswidth = 32;
+            field { sw = rw; hw = r; reset = 32'h55556666; } lo[31:0];
+            field { sw = rw; hw = r; reset = 32'h33334444; } hi[63:32];
+        } wide_reg @ 0x10;
+    } blk @ 0x40;
+
+    regfile {
+        signal { field_reset; activehigh; async; } a_rst;
+        reg {
+            field { sw = rw; hw = r; reset = 16'hA5A5; } f[15:0];
+        } entry;
+    } a_blk @ 0x60;
+
+    split_reg.lo->resetsignal = root_rst;
+    plain_reg.lo->resetsignal = plain_rst;
+    plain_reg.hi->resetsignal = plain_rst;
+    blk.local_reg.hi->resetsignal = map_rst;
+};

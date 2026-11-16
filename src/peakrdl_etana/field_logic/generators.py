@@ -382,14 +382,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 new_conditionals.append(conditional)
         conditionals = new_conditionals
 
-        # Get reset signal - check for field_reset signal in parent register first
-        resetsignal = node.get_property("resetsignal", default=None)
-        if resetsignal is None:
-            # Check if parent register has a field_reset signal
-            for signal in node.parent.signals():  # type: ignore[assignment]
-                if signal.get_property("field_reset", default=False):  # type: ignore[attr-defined]
-                    resetsignal = signal  # type: ignore[assignment]
-                    break
+        # Unset resetsignal resolves to the nearest field_reset up the hierarchy
+        # (register, regfile, addrmap, or above the top). An explicit
+        # resetsignal on the field still wins.
+        resetsignal = node.get_property("resetsignal")
 
         reset_value = node.get_property("reset", default=None)
         if reset_value is not None:
@@ -447,15 +443,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         # No unconditional actions for wide fields
         unconditional = None
 
-        # Get reset information (same pattern as standard field storage)
-        # Get reset signal - check for field_reset signal in parent register first
-        resetsignal = node.get_property("resetsignal", default=None)
-        if resetsignal is None:
-            # Check if parent register has a field_reset signal
-            for signal in node.parent.signals():
-                if signal.get_property("field_reset", default=False):
-                    resetsignal = signal
-                    break
+        # Same resolution as standard field storage.
+        resetsignal = node.get_property("resetsignal")
 
         reset_value = node.get_property("reset", default=None)
         if reset_value is not None:
