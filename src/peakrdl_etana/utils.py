@@ -47,7 +47,7 @@ class IndexedPath:
 
             # Move to parent
             if hasattr(current, "parent"):
-                current = current.parent  # type: ignore[assignment]
+                current = current.parent
             else:
                 break
 
@@ -236,7 +236,7 @@ def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) 
             # not internal!
             return False
 
-        current_node = current_node.parent  # type: ignore[assignment]
+        current_node = current_node.parent
 
     # A root signal was referenced, which dodged the top addrmap
     # This is considerd internal for this exporter

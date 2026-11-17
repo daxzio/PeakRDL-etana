@@ -155,8 +155,9 @@ class InputLogicGenerator(RDLListener):
         from ..utils import IndexedPath, clog2
 
         self.regfile_array = []
-        if node.is_array:
-            self.regfile_array.extend(str(d) for d in node.array_dimensions)  # type: ignore[union-attr]  # type: ignore[arg-type]
+        dims = node.array_dimensions
+        if dims is not None:
+            self.regfile_array.extend(str(d) for d in dims)
 
         # For external regfiles, generate bus interface ports
         if self.policy.is_external(node):
@@ -249,7 +250,7 @@ class InputLogicGenerator(RDLListener):
                 and self.policy.is_external(parent)
             ):
                 return  # Skip this register
-            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
+            parent = parent.parent if hasattr(parent, "parent") else None
 
         # Handle verilog_reg_only: generate single vector signal for the entire register
         if self.current_verilog_reg_only and not self.policy.is_external(node):
@@ -366,7 +367,7 @@ class InputLogicGenerator(RDLListener):
             ):
                 # Inside an external regfile/addrmap - skip field ports
                 return
-            parent = parent.parent if hasattr(parent, "parent") else None  # type: ignore[assignment]
+            parent = parent.parent if hasattr(parent, "parent") else None
 
         # Check for implied property inputs
         implied_props = []

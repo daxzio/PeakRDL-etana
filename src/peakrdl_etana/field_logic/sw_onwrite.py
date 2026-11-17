@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from systemrdl.rdltypes import OnWriteType
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class _OnWrite(NextStateConditional):
-    onwritetype = None
+    onwritetype: Optional[OnWriteType] = None
 
     def is_match(self, field: "FieldNode") -> bool:
         return (
