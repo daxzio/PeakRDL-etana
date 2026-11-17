@@ -1,0 +1,10 @@
+addrmap refused_regfile_array {
+    external regfile {
+        reg {
+            field {
+                sw = rw;
+                hw = r;
+            } f[8] = 0;
+        } rg;
+    } erf[2];
+};

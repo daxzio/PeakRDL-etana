@@ -9,6 +9,7 @@ from .utils import (
     addr_range_match_expr,
     is_inside_external_block,
     external_policy,
+    unpacked_array_suffix,
 )
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
@@ -144,7 +145,8 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
-            s = f"logic {p.path};"
+            dims = unpacked_array_suffix(p.array_dimensions)
+            s = f"logic {p.path}{dims};"
             self._logic_stack.append(s)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -157,7 +159,8 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             # Declare strobe signal for external addrmap
             p = self.addr_decode.get_external_block_access_strobe(node)
-            s = f"logic {p.path};"
+            dims = unpacked_array_suffix(p.array_dimensions)
+            s = f"logic {p.path}{dims};"
             self._logic_stack.append(s)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
@@ -167,11 +170,13 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
             raise
         # Declare strobe signal for external mem
         p = self.addr_decode.get_external_block_access_strobe(node)
-        s = f"logic {p.path};"
+        dims = unpacked_array_suffix(p.array_dimensions)
+        s = f"logic {p.path}{dims};"
         self._logic_stack.append(s)
         if node.get_property("early_external_read", default=False):
             ep = self.addr_decode.get_external_block_early_strobe(node)
-            self._logic_stack.append(f"logic {ep.path};")
+            early_dims = unpacked_array_suffix(ep.array_dimensions)
+            self._logic_stack.append(f"logic {ep.path}{early_dims};")
 
     def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
         # Skip registers inside external blocks
@@ -219,16 +224,19 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
     def _get_address_str(self, node: "AddressableNode", subword_offset: int = 0) -> str:
         if len(self._array_stride_stack):
+            # Cast the generate index. An uncast genvar is 32 bits, and the
+            # sum then widens a narrow cpuif_addr (Verilator WIDTHEXPAND).
+            expr_width = self.addr_decode.exp.ds.addr_width
             a = str(
                 SVInt(
                     node.raw_absolute_address
                     - self.addr_decode.top_node.raw_absolute_address
                     + subword_offset,
-                    32,
+                    expr_width,
                 )
             )
             for i, stride in enumerate(self._array_stride_stack):
-                a += f" + i{i}*{SVInt(stride, self.addr_decode.exp.ds.addr_width)}"
+                a += f" + ({expr_width})'(i{i})*{SVInt(stride, expr_width)}"
         else:
             a = str(
                 SVInt(
@@ -300,7 +308,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         """Emit decoded_early_strb and fold into is_early_external."""
         addr_match = self._cpuif_early_req_in_range(node)
         rhs = f"{addr_match} & ~cpuif_early_req_is_wr"
-        self.add_content(f"{early_strb.path} = {rhs};")
+        self.add_content(f"{early_strb.path}{early_strb.index_str} = {rhs};")
         self.add_content(f"is_early_external |= {rhs};")
 
     #         expr_width = self.addr_decode.exp.ds.addr_width
@@ -316,7 +324,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = self._cpuif_req_in_range(node)
-            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"{strb.path}{strb.index_str} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
             # invalid RW accesses on existing registers only.
@@ -341,7 +349,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node):
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = self._cpuif_req_in_range(node)
-            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"{strb.path}{strb.index_str} = {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch
             # invalid RW accesses on existing registers only.
@@ -379,7 +387,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             else:
                 raise RuntimeError("External memory must be readable and/or writable")
 
-            self.add_content(f"{strb.path} = {rhs};")
+            self.add_content(f"{strb.path}{strb.index_str} = {rhs};")
             self.add_content(f"is_external |= {rhs};")
 
             # Also assign is_valid_addr when err_if_bad_rw is set so that it can be used to catch

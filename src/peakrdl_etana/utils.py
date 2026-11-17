@@ -129,6 +129,13 @@ def clog2(n: int) -> int:
     return (n - 1).bit_length()
 
 
+def unpacked_array_suffix(dimensions: Optional[List[int]]) -> str:
+    """Unpacked dimensions after a signal name, for example `` [1:0] [3:0]``."""
+    if not dimensions:
+        return ""
+    return "".join(f" [{dim - 1}:0]" for dim in dimensions)
+
+
 def resolve_inst_int(value: Any) -> int:
     """
     Resolve an integer component property that may still be an AST expression.
