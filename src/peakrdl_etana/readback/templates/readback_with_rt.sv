@@ -12,7 +12,7 @@ always @(*) begin
     logic [{{cpuif.data_width-1}}:0] readback_data_var[{{2 ** high_addr_width}}];
     for(int i=0; i<{{2 ** high_addr_width}}; i++) readback_data_var[i] = '0;
     {{readback_mux|indent}}
-    readback_data_rt_c = readback_data_var;
+    for(int i=0; i<{{2 ** high_addr_width}}; i++) readback_data_rt_c[i] = readback_data_var[i];
 end
 
 logic [{{cpuif.data_width-1}}:0] readback_data_rt[{{2 ** high_addr_width}}];
@@ -26,8 +26,12 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
         readback_err_rt <= '0;
         readback_addr_rt <= '0;
     end else begin
-        readback_data_rt <= readback_data_rt_c;
+        for(int i=0; i<{{2 ** high_addr_width}}; i++) readback_data_rt[i] <= readback_data_rt_c[i];
+        {%- if ds.err_if_bad_addr or ds.err_if_bad_rw %}
         readback_err_rt <= decoded_err;
+        {%- else %}
+        readback_err_rt <= '0;
+        {%- endif %}
         {%- if ds.has_external_addressable %}
         readback_done_rt <= decoded_req & ~decoded_req_is_wr & ~decoded_strb_is_external;
         {%- else %}
