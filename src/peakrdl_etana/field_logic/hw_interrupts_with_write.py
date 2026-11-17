@@ -1,13 +1,13 @@
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from .hw_interrupts import (
+    BothedgeStickybit,
+    NegedgeStickybit,
+    PosedgeStickybit,
     Sticky,
     Stickybit,
-    PosedgeStickybit,
-    NegedgeStickybit,
-    BothedgeStickybit,
 )
-from .hw_write import WEWrite, WELWrite
+from .hw_write import WELWrite, WEWrite
 
 if TYPE_CHECKING:
     from systemrdl.node import FieldNode
@@ -28,7 +28,7 @@ class StickyWE(Sticky, WEWrite):
         WE = WEWrite.get_predicate(self, field)
         return f"{BASE} && {WE}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return Sticky.get_assignments(self, field)
 
 
@@ -47,7 +47,7 @@ class StickyWEL(Sticky, WELWrite):
         WEL = WELWrite.get_predicate(self, field)
         return f"{BASE} && {WEL}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return Sticky.get_assignments(self, field)
 
 
@@ -66,7 +66,7 @@ class StickybitWE(Stickybit, WEWrite):
         WE = WEWrite.get_predicate(self, field)
         return f"{BASE} && {WE}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return Stickybit.get_assignments(self, field)
 
 
@@ -85,7 +85,7 @@ class StickybitWEL(Stickybit, WELWrite):
         WEL = WELWrite.get_predicate(self, field)
         return f"{BASE} && {WEL}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return Stickybit.get_assignments(self, field)
 
 
@@ -104,7 +104,7 @@ class PosedgeStickybitWE(PosedgeStickybit, WEWrite):
         WE = WEWrite.get_predicate(self, field)
         return f"{BASE} && {WE}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return PosedgeStickybit.get_assignments(self, field)
 
 
@@ -123,7 +123,7 @@ class PosedgeStickybitWEL(PosedgeStickybit, WELWrite):
         WEL = WELWrite.get_predicate(self, field)
         return f"{BASE} && {WEL}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return PosedgeStickybit.get_assignments(self, field)
 
 
@@ -142,7 +142,7 @@ class NegedgeStickybitWE(NegedgeStickybit, WEWrite):
         WE = WEWrite.get_predicate(self, field)
         return f"{BASE} && {WE}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return NegedgeStickybit.get_assignments(self, field)
 
 
@@ -161,7 +161,7 @@ class NegedgeStickybitWEL(NegedgeStickybit, WELWrite):
         WEL = WELWrite.get_predicate(self, field)
         return f"{BASE} && {WEL}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return NegedgeStickybit.get_assignments(self, field)
 
 
@@ -180,7 +180,7 @@ class BothedgeStickybitWE(BothedgeStickybit, WEWrite):
         WE = WEWrite.get_predicate(self, field)
         return f"{BASE} && {WE}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return BothedgeStickybit.get_assignments(self, field)
 
 
@@ -201,5 +201,5 @@ class BothedgeStickybitWEL(BothedgeStickybit, WELWrite):
         WEL = WELWrite.get_predicate(self, field)
         return f"{BASE} && {WEL}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return BothedgeStickybit.get_assignments(self, field)

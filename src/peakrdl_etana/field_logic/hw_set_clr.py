@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from .bases import NextStateConditional
 
@@ -21,7 +21,7 @@ class HWSet(NextStateConditional):
             identifier = str(self.exp.dereferencer.get_value(prop))
         return identifier
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
         R = self.exp.field_logic.get_storage_identifier(field)
@@ -55,7 +55,7 @@ class HWClear(NextStateConditional):
             identifier = str(self.exp.dereferencer.get_value(prop))
         return identifier
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
         R = self.exp.field_logic.get_storage_identifier(field)

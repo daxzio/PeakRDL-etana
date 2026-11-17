@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from .bases import NextStateConditional, NextStateUnconditional
 
@@ -22,7 +22,7 @@ class AlwaysWrite(NextStateUnconditional):
             and not field.get_property("wel")
         )
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
         input_val = str(self.exp.hwif.get_input_identifier(field))
@@ -43,7 +43,7 @@ class AlwaysWrite(NextStateUnconditional):
 
 
 class _QualifiedWrite(NextStateConditional):
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         hwmask = field.get_property("hwmask")
         hwenable = field.get_property("hwenable")
         input_val = str(self.exp.hwif.get_input_identifier(field))

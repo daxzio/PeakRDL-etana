@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
-from systemrdl.udp import UDPDefinition
 from systemrdl.component import Mem
+from systemrdl.udp import UDPDefinition
 
 if TYPE_CHECKING:
     from systemrdl.node import Node
@@ -15,7 +15,7 @@ class EarlyExternalRead(UDPDefinition):
     """
 
     name = "early_external_read"
-    valid_components = {Mem}
+    valid_components = {Mem}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = bool
 
     def get_unassigned_default(self, node: "Node") -> Any:

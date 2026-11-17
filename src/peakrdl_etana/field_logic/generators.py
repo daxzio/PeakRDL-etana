@@ -1,39 +1,39 @@
 import re
-from typing import TYPE_CHECKING, Optional, Dict, Any, List
-
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any
 
+from systemrdl.node import AddrmapNode, FieldNode, MemNode, RegfileNode, RegNode
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
-from systemrdl.node import RegNode, RegfileNode, MemNode, AddrmapNode, FieldNode
 
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import (
     IndexedPath,
     clog2,
-    is_inside_external_block,
-    is_external_for_codegen,
-    has_sw_writable_descendants,
-    has_sw_readable_descendants,
-    resolve_inst_int,
     get_concrete_index_str,
+    has_sw_readable_descendants,
+    has_sw_writable_descendants,
+    is_external_for_codegen,
+    is_inside_external_block,
+    resolve_inst_int,
 )
 from .bases import NextStateUnconditional
 from .wide_field import WideFieldSubwordWrite
 
 if TYPE_CHECKING:
-    from . import FieldLogic
     from systemrdl.node import AddressableNode, Node
+
+    from . import FieldLogic
 
 
 class FieldResetGenerator(RDLListener):
     def __init__(self, field_logic: "FieldLogic") -> None:
         self.field_logic = field_logic
         self.exp = field_logic.exp
-        self.assigns: List[str] = []
+        self.assigns: list[str] = []
 
     def enter_AddressableComponent(
         self, node: "AddressableNode"
-    ) -> Optional[WalkerAction]:
+    ) -> WalkerAction | None:
         # inst.external can be None for array element override subtrees
         if node.inst.external:
             return WalkerAction.SkipDescendants
@@ -55,7 +55,7 @@ class FieldResetGenerator(RDLListener):
             f"assign field_reset_{p.path}_value{index_str} = {reset_value_str};"
         )
 
-    def get_content(self, node: "AddrmapNode") -> Optional[str]:
+    def get_content(self, node: "AddrmapNode") -> str | None:
         self.assigns = []
         walker = RDLWalker(unroll=True)
         walker.walk(node, self, skip_top=True)
@@ -85,11 +85,11 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         self.external_block_template = self.exp.jj_env.get_template(
             "field_logic/templates/external_block.sv"
         )
-        self.intr_fields = []  # type: List[FieldNode]
-        self.halt_fields = []  # type: List[FieldNode]
+        self.intr_fields: list[FieldNode] = []
+        self.halt_fields: list[FieldNode] = []
         self.declarations_only = False  # Flag to control what gets generated
 
-    def get_declarations(self, node: "Node") -> Optional[str]:
+    def get_declarations(self, node: "Node") -> str | None:
         """Walk the tree and generate only field storage declarations."""
         from systemrdl.walker import RDLWalker
 
@@ -102,14 +102,14 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             return None
         return self.top
 
-    def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
+    def enter_Reg(self, node: "RegNode") -> WalkerAction | None:
         # Check if this register is inside an external regfile/addrmap
         # If so, skip it - the parent external block handles the interface
         if is_inside_external_block(node, self.ds.top_node, self.ds):
             return WalkerAction.SkipDescendants
 
         self.msg = self.ds.top_node.env.msg
-        self.fields: List[FieldNode] = []
+        self.fields: list[FieldNode] = []
         self.intr_fields = []
         self.halt_fields = []
 
@@ -120,14 +120,14 @@ class FieldLogicGenerator(RDLForLoopGenerator):
 
         return WalkerAction.Continue
 
-    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+    def enter_Regfile(self, node: "RegfileNode") -> WalkerAction | None:
         # For external regfiles, generate bus interface and skip descendants
         if is_external_for_codegen(node, self.ds):
             self.assign_external_block_outputs(node)
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction | None:
         # Skip top-level addrmap
         if node == self.ds.top_node:
             return WalkerAction.Continue
@@ -138,10 +138,10 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
-    def enter_Mem(self, node: "MemNode") -> Optional[WalkerAction]:
+    def enter_Mem(self, node: "MemNode") -> WalkerAction | None:
         # Memnode is always external so big problem if it isn't
         if not node.external:
-            raise
+            raise RuntimeError("Memory nodes are external")
 
         # Is an external block
         self.assign_external_block_outputs(node)
@@ -361,7 +361,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
     def generate_standard_field_storage(self, node: "FieldNode") -> None:
         conditionals = self.field_logic.get_conditionals(node)
         extra_combo_signals = OrderedDict()
-        unconditional: Optional[NextStateUnconditional] = None
+        unconditional: NextStateUnconditional | None = None
         new_conditionals = []
         for conditional in conditionals:
             for signal in conditional.get_extra_combo_signals(node):
@@ -438,7 +438,7 @@ class FieldLogicGenerator(RDLForLoopGenerator):
                 conditionals.append(conditional)
 
         # No extra combo signals for wide fields
-        extra_combo_signals: Dict[str, Any] = {}
+        extra_combo_signals: dict[str, Any] = {}
 
         # No unconditional actions for wide fields
         unconditional = None

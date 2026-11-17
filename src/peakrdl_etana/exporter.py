@@ -1,31 +1,31 @@
 import os
-from typing import Union, Any, cast, List, Set, Type, Optional
 from collections import OrderedDict
+from typing import Any, cast
 
 import jinja2 as jj
 from systemrdl.node import AddrmapNode, RootNode, SignalNode
 
 from .addr_decode import AddressDecode
-from .field_logic import FieldLogic
-from .dereferencer import Dereferencer
-from .readback import Readback
-from .identifier_filter import kw_filter as kwf
-from .utils import clog2
-from .scan_design import DesignScanner
-from .validate_design import DesignValidator
-from .cpuif.base import CpuifBase
 from .cpuif.apb4 import APB4_Cpuif_flattened
-from .hwif import Hwif
-from .write_buffering import WriteBuffering
-from .read_buffering import ReadBuffering
+from .cpuif.base import CpuifBase
+from .dereferencer import Dereferencer
 from .external_acks import (
-    ExternalWriteAckGenerator,
+    ExternalMemReqValueGenerator,
     ExternalReadAckGenerator,
     ExternalReadErrGenerator,
+    ExternalWriteAckGenerator,
     ExternalWriteErrGenerator,
-    ExternalMemReqValueGenerator,
 )
+from .field_logic import FieldLogic
+from .hwif import Hwif
+from .identifier_filter import kw_filter as kwf
 from .parity import ParityErrorReduceGenerator
+from .read_buffering import ReadBuffering
+from .readback import Readback
+from .scan_design import DesignScanner
+from .utils import clog2
+from .validate_design import DesignValidator
+from .write_buffering import WriteBuffering
 
 
 class RegblockExporter:
@@ -33,18 +33,18 @@ class RegblockExporter:
         # Check for stray kwargs
         if kwargs:
             raise TypeError(
-                f"got an unexpected keyword argument '{list(kwargs.keys())[0]}'"
+                f"got an unexpected keyword argument '{next(iter(kwargs.keys()))}'"
             )
 
-        self.hwif: "Hwif" = cast("Hwif", None)
-        self.cpuif: "CpuifBase" = cast("CpuifBase", None)
-        self.address_decode: "AddressDecode" = cast("AddressDecode", None)
-        self.field_logic: "FieldLogic" = cast("FieldLogic", None)
-        self.readback: "Readback" = cast("Readback", None)
-        self.write_buffering: "WriteBuffering" = cast("WriteBuffering", None)
-        self.read_buffering: "ReadBuffering" = cast("ReadBuffering", None)
-        self.dereferencer: "Dereferencer" = cast("Dereferencer", None)
-        self.ds: "DesignState" = cast("DesignState", None)
+        self.hwif: Hwif = cast("Hwif", None)
+        self.cpuif: CpuifBase = cast("CpuifBase", None)
+        self.address_decode: AddressDecode = cast("AddressDecode", None)
+        self.field_logic: FieldLogic = cast("FieldLogic", None)
+        self.readback: Readback = cast("Readback", None)
+        self.write_buffering: WriteBuffering = cast("WriteBuffering", None)
+        self.read_buffering: ReadBuffering = cast("ReadBuffering", None)
+        self.dereferencer: Dereferencer = cast("Dereferencer", None)
+        self.ds: DesignState = cast("DesignState", None)
 
         loader = jj.ChoiceLoader(
             [
@@ -64,7 +64,7 @@ class RegblockExporter:
         )
 
     def export(
-        self, node: Union[RootNode, AddrmapNode], output_dir: str, **kwargs: Any
+        self, node: RootNode | AddrmapNode, output_dir: str, **kwargs: Any
     ) -> None:
         """
         Parameters
@@ -151,13 +151,13 @@ class RegblockExporter:
 
         cpuif_cls = (
             kwargs.pop("cpuif_cls", None) or APB4_Cpuif_flattened
-        )  # type: Type[CpuifBase]
+        )  # type: type[CpuifBase]
         generate_hwif_report = kwargs.pop("generate_hwif_report", False)  # type: bool
 
         # Check for stray kwargs
         if kwargs:
             raise TypeError(
-                f"got an unexpected keyword argument '{list(kwargs.keys())[0]}'"
+                f"got an unexpected keyword argument '{next(iter(kwargs.keys()))}'"
             )
 
         # Construct exporter components
@@ -229,8 +229,7 @@ class RegblockExporter:
         with open(module_file_path, "r") as f:
             lines = f.readlines()
         with open(module_file_path, "w") as f:
-            for line in lines:
-                f.write(line.rstrip() + "\n")
+            f.writelines(line.rstrip() + "\n" for line in lines)
 
         # Generate template example if requested
         if self.ds.generate_template:
@@ -268,7 +267,7 @@ class DesignState:
         self.package_name = kwargs.pop("package_name", None) or (
             self.module_name + "_pkg"
         )  # type: str
-        user_addr_width: Optional[int] = kwargs.pop("address_width", None)
+        user_addr_width: int | None = kwargs.pop("address_width", None)
 
         # Pipelining options
         self.retime_read_fanin = kwargs.pop("retime_read_fanin", False)  # type: bool
@@ -313,7 +312,7 @@ class DesignState:
         self.cpuif_data_width = 0
 
         # Collections of signals that were actually referenced by the design
-        self.in_hier_signal_paths: Set[str] = set()
+        self.in_hier_signal_paths: set[str] = set()
         self.out_of_hier_signals: OrderedDict[str, SignalNode] = OrderedDict()
 
         self.has_writable_msb0_fields = False
@@ -328,7 +327,7 @@ class DesignState:
         self.has_paritycheck = False
 
         # Track any referenced enums
-        self.user_enums: List[Type[Any]] = []
+        self.user_enums: list[type[Any]] = []
 
         # Scan the design to fill in above variables
         DesignScanner(self).do_scan()

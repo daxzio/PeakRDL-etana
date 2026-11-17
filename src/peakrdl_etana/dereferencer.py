@@ -1,15 +1,17 @@
-from typing import TYPE_CHECKING, Union, Optional
-from systemrdl.node import AddrmapNode, FieldNode, SignalNode, RegNode, AddressableNode
+from typing import TYPE_CHECKING
+
+from systemrdl.node import AddressableNode, AddrmapNode, FieldNode, RegNode, SignalNode
 from systemrdl.rdltypes import PropertyReference
 
 from .sv_int import SVInt
 
 if TYPE_CHECKING:
     from systemrdl.node import MemNode
-    from .exporter import RegblockExporter, DesignState
-    from .hwif import Hwif
-    from .field_logic import FieldLogic
+
     from .addr_decode import AddressDecode
+    from .exporter import DesignState, RegblockExporter
+    from .field_logic import FieldLogic
+    from .hwif import Hwif
     from .utils import IndexedPath
 
 
@@ -44,9 +46,9 @@ class Dereferencer:
 
     def get_value(
         self,
-        obj: Union[int, FieldNode, SignalNode, PropertyReference],
-        width: Optional[int] = None,
-    ) -> Union[SVInt, str]:
+        obj: int | FieldNode | SignalNode | PropertyReference,
+        width: int | None = None,
+    ) -> SVInt | str:
         """
         Returns the Verilog string that represents the readable value associated
         with the object.
@@ -118,7 +120,7 @@ class Dereferencer:
             elif isinstance(obj.node, RegNode):
                 return self.get_reg_propref_value(obj.node, obj.name)
             else:
-                raise RuntimeError
+                raise TypeError(f"Unhandled reference to: {obj}")
 
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
@@ -126,8 +128,8 @@ class Dereferencer:
         self,
         field: FieldNode,
         prop_name: str,
-        width: Optional[int] = None,
-    ) -> Union[SVInt, str]:
+        width: int | None = None,
+    ) -> SVInt | str:
         # Value reduction properties.
         # Wrap with the appropriate Verilog reduction operator
         if prop_name == "anded":
@@ -280,7 +282,7 @@ class Dereferencer:
         raise NotImplementedError
 
     def get_access_strobe(
-        self, obj: Union[RegNode, FieldNode], reduce_substrobes: bool = True
+        self, obj: RegNode | FieldNode, reduce_substrobes: bool = True
     ) -> "IndexedPath":
         """
         Returns the IndexedPath that represents the register's access strobe
@@ -309,7 +311,7 @@ class Dereferencer:
             s = f"{s}_n"
         return s
 
-    def get_resetsignal(self, obj: Optional[SignalNode] = None) -> str:
+    def get_resetsignal(self, obj: SignalNode | None = None) -> str:
         """
         Returns a normalized active-high reset signal
         """
@@ -326,7 +328,7 @@ class Dereferencer:
             s = f"~{s}"
         return s
 
-    def get_always_ff_event(self, resetsignal: Optional[SignalNode] = None) -> str:
+    def get_always_ff_event(self, resetsignal: SignalNode | None = None) -> str:
         if resetsignal is None:
             # No explicit reset signal specified. Fall back to default reset signal
             if self.ds.default_reset_async:

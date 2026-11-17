@@ -1,13 +1,19 @@
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING
 
-from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
+from systemrdl.node import (
+    AddressableNode,
+    AddrmapNode,
+    FieldNode,
+    MemNode,
+    Node,
+    RegfileNode,
+    RegNode,
+    SignalNode,
+)
 from systemrdl.rdltypes import PropertyReference
-from systemrdl.node import Node, RegNode, FieldNode, SignalNode, AddressableNode
-from systemrdl.node import RegfileNode, AddrmapNode, MemNode
+from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
-from .utils import roundup_pow2, is_pow2
-
-from .utils import ref_is_internal
+from .utils import is_pow2, ref_is_internal, roundup_pow2
 
 if TYPE_CHECKING:
     from .exporter import RegblockExporter
@@ -23,7 +29,7 @@ class DesignValidator(RDLListener):
         self.exp = exp
         self.msg = self.top_node.env.msg
 
-        self._contains_external_block_stack: List[bool] = []
+        self._contains_external_block_stack: list[bool] = []
         self.contains_external_block = False
 
     @property
@@ -48,7 +54,7 @@ class DesignValidator(RDLListener):
         if self.msg.had_error:
             self.msg.fatal("Unable to export due to previous errors")
 
-    def enter_Component(self, node: "Node") -> Optional[WalkerAction]:
+    def enter_Component(self, node: "Node") -> WalkerAction | None:
         from .utils import external_policy
 
         if (
@@ -62,18 +68,19 @@ class DesignValidator(RDLListener):
         # Check if any property references reach across the internal/external boundary
         for prop_name in node.list_properties():
             value = node.get_property(prop_name)
-            if isinstance(value, (PropertyReference, Node)):
-                if not ref_is_internal(self.top_node, value):
-                    if isinstance(value, PropertyReference):
-                        src_ref = value.src_ref
-                    else:
-                        src_ref = node.inst.property_src_ref.get(
-                            prop_name, node.inst.inst_src_ref
-                        )
-                    self.msg.error(
-                        "Property is assigned a reference that points to a component not internal to the regblock being exported.",
-                        src_ref,
+            if isinstance(value, (PropertyReference, Node)) and not ref_is_internal(
+                self.top_node, value
+            ):
+                if isinstance(value, PropertyReference):
+                    src_ref = value.src_ref
+                else:
+                    src_ref = node.inst.property_src_ref.get(
+                        prop_name, node.inst.inst_src_ref
                     )
+                self.msg.error(
+                    "Property is assigned a reference that points to a component not internal to the regblock being exported.",
+                    src_ref,
+                )
         return None
 
     def enter_Signal(self, node: "SignalNode") -> None:
@@ -178,15 +185,14 @@ class DesignValidator(RDLListener):
         accesswidth = node.get_property("accesswidth")
         regwidth = node.get_property("regwidth")
 
-        if accesswidth < regwidth:
-            # register is 'wide'
-            if accesswidth != self.exp.cpuif.data_width:
-                self.msg.error(
-                    f"Multi-word registers that have an accesswidth ({accesswidth}) "
-                    "that is inconsistent with this regblock's CPU bus width "
-                    f"({self.exp.cpuif.data_width}) are not supported.",
-                    node.inst.inst_src_ref,
-                )
+        # A wide register must use this block's CPU bus width.
+        if accesswidth < regwidth and accesswidth != self.exp.cpuif.data_width:
+            self.msg.error(
+                f"Multi-word registers that have an accesswidth ({accesswidth}) "
+                "that is inconsistent with this regblock's CPU bus width "
+                f"({self.exp.cpuif.data_width}) are not supported.",
+                node.inst.inst_src_ref,
+            )
 
     def enter_Field(self, node: "FieldNode") -> None:
         parent_accesswidth = node.parent.get_property("accesswidth")
@@ -266,13 +272,14 @@ class DesignValidator(RDLListener):
                             f"This is required by the regblock exporter if a component {err_suffix}.",
                             node.inst.inst_src_ref,
                         )
-                    if node.is_array:
-                        if node.array_stride is not None and not is_pow2(
-                            node.array_stride
-                        ):
-                            self.msg.error(
-                                f"Address stride of instance array '{node.inst_name}' is not a power of 2"
-                                f"This is required by the regblock exporter if a component {err_suffix}.",
-                                node.inst.inst_src_ref,
-                            )
+                    if (
+                        node.is_array
+                        and node.array_stride is not None
+                        and not is_pow2(node.array_stride)
+                    ):
+                        self.msg.error(
+                            f"Address stride of instance array '{node.inst_name}' is not a power of 2"
+                            f"This is required by the regblock exporter if a component {err_suffix}.",
+                            node.inst.inst_src_ref,
+                        )
                 # When flattening, we don't enforce this strict alignment on flattened blocks

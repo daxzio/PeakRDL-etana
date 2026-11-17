@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, List
 import inspect
 import os
+from typing import TYPE_CHECKING
 
 import jinja2 as jj
 
@@ -40,7 +40,7 @@ class CpuifBase:
         raise NotImplementedError()
 
     @property
-    def parameters(self) -> List[str]:
+    def parameters(self) -> list[str]:
         """
         Optional list of additional parameters this CPU interface provides to
         the module's definition

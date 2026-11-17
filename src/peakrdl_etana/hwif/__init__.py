@@ -1,24 +1,23 @@
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING
 
 from systemrdl.node import (
-    AddrmapNode,
-    SignalNode,
-    FieldNode,
-    RegNode,
-    RegfileNode,
-    MemNode,
     AddressableNode,
+    AddrmapNode,
+    FieldNode,
+    MemNode,
+    RegfileNode,
+    RegNode,
+    SignalNode,
 )
 from systemrdl.rdltypes import PropertyReference
 
-from ..utils import IndexedPath
 from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
-
+from ..utils import IndexedPath
 from .generators import InputLogicGenerator
 
 if TYPE_CHECKING:
-    from ..exporter import RegblockExporter, DesignState
+    from ..exporter import DesignState, RegblockExporter
 
 
 class Hwif:
@@ -96,7 +95,7 @@ class Hwif:
     # ---------------------------------------------------------------------------
     # hwif utility functions
     # ---------------------------------------------------------------------------
-    def has_value_input(self, obj: Union[FieldNode, SignalNode]) -> bool:
+    def has_value_input(self, obj: FieldNode | SignalNode) -> bool:
         """
         Returns True if the object infers an input wire in the hwif
         """
@@ -106,7 +105,7 @@ class Hwif:
             # Signals are implicitly always inputs
             return True
         else:
-            raise RuntimeError
+            raise TypeError(f"Unhandled hwif input: {obj}")
 
     def has_value_output(self, obj: FieldNode) -> bool:
         """
@@ -116,10 +115,10 @@ class Hwif:
 
     def get_input_identifier(
         self,
-        obj: Union[FieldNode, SignalNode, PropertyReference],
-        width: Optional[int] = None,
-        index: Optional[bool] = True,
-    ) -> Union[SVInt, str]:
+        obj: FieldNode | SignalNode | PropertyReference,
+        width: int | None = None,
+        index: bool | None = True,
+    ) -> SVInt | str:
         """
         Returns the identifier string that best represents the input object.
 
@@ -163,7 +162,7 @@ class Hwif:
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
     def get_external_rd_data(
-        self, node: Union[FieldNode, AddressableNode], index: bool = False
+        self, node: FieldNode | AddressableNode, index: bool = False
     ) -> str:
         """
         Returns the identifier string for an external component's rd_data signal
@@ -189,20 +188,11 @@ class Hwif:
                 field_suffix = f"_{kwf(node.inst_name.lower())}"
                 s = f"{self.hwif_in_str}_{p_reg.path}_rd_data{field_suffix}"
             p = p_reg  # For index handling below
-        elif isinstance(node, RegfileNode):
-            p = IndexedPath(self.top_node, node)
-            s = f"{self.hwif_in_str}_{p.path}_rd_data"
-        elif isinstance(node, RegNode):
-            p = IndexedPath(self.top_node, node)
-            s = f"{self.hwif_in_str}_{p.path}_rd_data"
-        elif isinstance(node, MemNode):
-            p = IndexedPath(self.top_node, node)
-            s = f"{self.hwif_in_str}_{p.path}_rd_data"
-        elif isinstance(node, AddrmapNode):
+        elif isinstance(node, (RegfileNode, RegNode, MemNode, AddrmapNode)):
             p = IndexedPath(self.top_node, node)
             s = f"{self.hwif_in_str}_{p.path}_rd_data"
         else:
-            raise RuntimeError(
+            raise TypeError(
                 f"Unhandled node type in get_external_rd_data: {type(node)}"
             )
         if index:
@@ -273,7 +263,7 @@ class Hwif:
         return s
 
     def get_output_identifier(
-        self, obj: Union[FieldNode, PropertyReference], index: Optional[bool] = True
+        self, obj: FieldNode | PropertyReference, index: bool | None = True
     ) -> str:
         """
         Returns the identifier string that best represents the output object.
@@ -287,7 +277,7 @@ class Hwif:
         if isinstance(obj, FieldNode):
             p = IndexedPath(self.top_node, obj)
             hwif_out = f"{self.hwif_out_str}_{p.path}"
-            if not 0 == len(p.index) and index:
+            if 0 != len(p.index) and index:
                 # For unpacked arrays, use array indices directly
                 hwif_out += p.index_str
             return hwif_out
@@ -305,7 +295,7 @@ class Hwif:
         raise RuntimeError(f"Unhandled reference to: {obj}")
 
     def get_implied_prop_output_identifier(
-        self, node: Union[FieldNode, RegNode], prop: str, index: bool = True
+        self, node: FieldNode | RegNode, prop: str, index: bool = True
     ) -> str:
         if isinstance(node, FieldNode):
             assert prop in {

@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from .bases import NextStateConditional
 
 if TYPE_CHECKING:
     from systemrdl.node import FieldNode
+
     from ..exporter import RegblockExporter
 
 
@@ -48,7 +49,7 @@ class WideFieldSubwordWrite(NextStateConditional):
             # Non-arrayed: path[subword_idx]
             return f"({self.strb_path}[{self.subword_idx}] && decoded_req_is_wr)"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         """Generate the assignments for this subword write."""
         subword_start = self.subword_idx * self.accesswidth
 

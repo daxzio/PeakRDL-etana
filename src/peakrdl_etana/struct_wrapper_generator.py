@@ -6,25 +6,25 @@ signals used by etana. This provides compatibility with code expecting the
 struct-based interface from PeakRDL-regblock.
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from systemrdl.node import (
-    FieldNode,
-    RegNode,
     AddrmapNode,
-    RegfileNode,
-    SignalNode,
+    FieldNode,
     MemNode,
+    RegfileNode,
+    RegNode,
+    SignalNode,
 )
 from systemrdl.walker import RDLListener, RDLWalker
 
 from .utils import (
     IndexedPath,
     external_policy,
-    has_sw_writable_descendants,
     has_sw_readable_descendants,
+    has_sw_writable_descendants,
 )
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class RegSignalInfo:
     """Information about a register's signals for struct generation."""
 
     reg_name: str
-    fields: Dict[str, FieldSignalInfo]
+    fields: dict[str, FieldSignalInfo]
     has_intr: bool
     has_halt: bool
 
@@ -71,10 +71,10 @@ class StructSignalCollector(RDLListener):
         self.generator = generator
         self.hwif = generator.hwif
         self.ds = generator.ds
-        self.regs: Dict[str, RegSignalInfo] = OrderedDict()
-        self.external_regs: Dict[str, Dict] = OrderedDict()
-        self.signals: List[Tuple[str, int]] = []  # (name, width)
-        self.current_reg: Optional[RegSignalInfo] = None
+        self.regs: dict[str, RegSignalInfo] = OrderedDict()
+        self.external_regs: dict[str, dict] = OrderedDict()
+        self.signals: list[tuple[str, int]] = []  # (name, width)
+        self.current_reg: RegSignalInfo | None = None
         self.policy = external_policy(self.ds)
         super().__init__()
 
@@ -275,8 +275,8 @@ class StructWrapperGenerator:
             top_prefix = self.ds.top_node.inst_name.lower()
 
         # Generate field-level structs for inputs
-        field_in_structs: Dict[str, str] = {}
-        field_out_structs: Dict[str, str] = {}
+        field_in_structs: dict[str, str] = {}
+        field_out_structs: dict[str, str] = {}
 
         for reg_name, reg_info in collector.regs.items():
             for field_name, field_info in reg_info.fields.items():
@@ -350,19 +350,19 @@ class StructWrapperGenerator:
                     lines.append("")
 
         # Generate register-level structs for inputs
-        reg_in_structs: Dict[str, str] = {}
+        reg_in_structs: dict[str, str] = {}
         for reg_name, reg_info in collector.regs.items():
             # Only generate struct if it has fields with input signals
             has_input_fields = any(
                 f"{reg_name}__{field_name}" in field_in_structs
-                for field_name in reg_info.fields.keys()
+                for field_name in reg_info.fields
             )
             if has_input_fields:
                 struct_name = f"{top_prefix}__{reg_name}__in_t"
                 reg_in_structs[reg_name] = struct_name
 
                 lines.append("    typedef struct {")
-                for field_name in reg_info.fields.keys():
+                for field_name in reg_info.fields:
                     field_key = f"{reg_name}__{field_name}"
                     if field_key in field_in_structs:
                         lines.append(
@@ -372,19 +372,19 @@ class StructWrapperGenerator:
                 lines.append("")
 
         # Generate register-level structs for outputs
-        reg_out_structs: Dict[str, str] = {}
+        reg_out_structs: dict[str, str] = {}
         for reg_name, reg_info in collector.regs.items():
             # Only generate struct if it has fields with output signals or register-level signals
             has_output_fields = any(
                 f"{reg_name}__{field_name}" in field_out_structs
-                for field_name in reg_info.fields.keys()
+                for field_name in reg_info.fields
             )
             if has_output_fields or reg_info.has_intr or reg_info.has_halt:
                 struct_name = f"{top_prefix}__{reg_name}__out_t"
                 reg_out_structs[reg_name] = struct_name
 
                 lines.append("    typedef struct {")
-                for field_name in reg_info.fields.keys():
+                for field_name in reg_info.fields:
                     field_key = f"{reg_name}__{field_name}"
                     if field_key in field_out_structs:
                         lines.append(
@@ -400,10 +400,10 @@ class StructWrapperGenerator:
         # Generate top-level input struct
         if reg_in_structs or collector.external_regs or collector.signals:
             lines.append("    typedef struct {")
-            for reg_name in collector.regs.keys():
+            for reg_name in collector.regs:
                 if reg_name in reg_in_structs:
                     lines.append(f"        {reg_in_structs[reg_name]} {reg_name};")
-            for ext_name, ext_info in collector.external_regs.items():
+            for ext_name in collector.external_regs:
                 lines.append(f"        // External: {ext_name}")
             for sig_name, _ in collector.signals:
                 lines.append(f"        // Signal: {sig_name}")
@@ -413,7 +413,7 @@ class StructWrapperGenerator:
         # Generate top-level output struct
         if reg_out_structs:
             lines.append("    typedef struct {")
-            for reg_name in collector.regs.keys():
+            for reg_name in collector.regs:
                 if reg_name in reg_out_structs:
                     lines.append(f"        {reg_out_structs[reg_name]} {reg_name};")
             lines.append(f"    }} {module_name}__out_t;")
@@ -602,8 +602,7 @@ class StructWrapperGenerator:
                         lines.append(f"        .{signal_name}({signal_name}),")
 
         # Remove trailing comma from last connection
-        if lines[-1].endswith(","):
-            lines[-1] = lines[-1][:-1]
+        lines[-1] = lines[-1].removesuffix(",")
 
         lines.append("    );")
         lines.append("")
@@ -615,7 +614,7 @@ class StructWrapperGenerator:
 
     def _generate_struct_to_flat_assignments(
         self,
-        lines: List[str],
+        lines: list[str],
         collector: StructSignalCollector,
         module_name: str,
         is_input: bool,
@@ -668,7 +667,7 @@ class StructWrapperGenerator:
                         lines.append(f"    assign {flat_name} = {struct_path};")
 
     def _generate_flat_to_struct_assignments(
-        self, lines: List[str], collector: StructSignalCollector, module_name: str
+        self, lines: list[str], collector: StructSignalCollector, module_name: str
     ) -> None:
         """Generate assignments from flattened signals to struct."""
         for reg_name, reg_info in collector.regs.items():

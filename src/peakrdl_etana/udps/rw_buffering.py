@@ -1,14 +1,14 @@
 from typing import Any
 
-from systemrdl.udp import UDPDefinition
 from systemrdl.component import Reg
-from systemrdl.rdltypes.references import RefType, PropertyReference
+from systemrdl.node import FieldNode, Node, RegNode, SignalNode, VectorNode
 from systemrdl.rdltypes import NoValue
-from systemrdl.node import Node, RegNode, VectorNode, SignalNode, FieldNode
+from systemrdl.rdltypes.references import PropertyReference, RefType
+from systemrdl.udp import UDPDefinition
 
 
 class xBufferTrigger(UDPDefinition):
-    valid_components = {Reg}
+    valid_components = {Reg}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = RefType
 
     def validate(self, node: Node, value: Any) -> None:
@@ -23,36 +23,25 @@ class xBufferTrigger(UDPDefinition):
             # Trigger can reference a vector, but only if it is a single-bit
             if value.width != 1:
                 self.msg.error(
-                    "%s '%s' references %s '%s' but its width is not 1"
-                    % (
-                        node.component_type_name,
-                        node.inst_name,
-                        value.component_type_name,
-                        value.inst_name,
-                    ),
+                    f"{node.component_type_name} '{node.inst_name}' references {value.component_type_name} '{value.inst_name}' but its width is not 1",
                     self.get_src_ref(node),
                 )
 
-            if isinstance(value, SignalNode):
-                if not value.get_property("activehigh") and not value.get_property(
-                    "activelow"
-                ):
-                    self.msg.error(
-                        "Trigger was asigned a signal, but it does not specify whether it is activehigh/activelow",
-                        self.get_src_ref(node),
-                    )
+            if (
+                isinstance(value, SignalNode)
+                and not value.get_property("activehigh")
+                and not value.get_property("activelow")
+            ):
+                self.msg.error(
+                    "Trigger was asigned a signal, but it does not specify whether it is activehigh/activelow",
+                    self.get_src_ref(node),
+                )
 
         elif isinstance(value, PropertyReference) and value.width is not None:
             # Trigger can reference a property, but only if it is a single-bit
             if value.width != 1:
                 self.msg.error(
-                    "%s '%s' references property '%s->%s' but its width is not 1"
-                    % (
-                        node.component_type_name,
-                        node.inst_name,
-                        value.node.inst_name,
-                        value.name,
-                    ),
+                    f"{node.component_type_name} '{node.inst_name}' references property '{value.node.inst_name}->{value.name}' but its width is not 1",
                     self.get_src_ref(node),
                 )
         elif isinstance(value, RegNode):
@@ -64,8 +53,7 @@ class xBufferTrigger(UDPDefinition):
         else:
             # All other reference types are invalid
             self.msg.error(
-                "Reference to a %s component is incompatible with the '%s' property."
-                % (node.component_type_name, self.name),
+                f"Reference to a {node.component_type_name} component is incompatible with the '{self.name}' property.",
                 self.get_src_ref(node),
             )
 
@@ -73,17 +61,16 @@ class xBufferTrigger(UDPDefinition):
 # -------------------------------------------------------------------------------
 class BufferWrites(UDPDefinition):
     name = "buffer_writes"
-    valid_components = {Reg}
+    valid_components = {Reg}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = bool
 
     def validate(self, node: "Node", value: Any) -> None:
         assert isinstance(node, RegNode)
-        if value:
-            if not node.has_sw_writable:
-                self.msg.error(
-                    "'buffer_writes' is set to true, but this register does not contain any writable fields.",
-                    self.get_src_ref(node),
-                )
+        if value and not node.has_sw_writable:
+            self.msg.error(
+                "'buffer_writes' is set to true, but this register does not contain any writable fields.",
+                self.get_src_ref(node),
+            )
 
     def get_unassigned_default(self, node: "Node") -> Any:
         return False
@@ -101,27 +88,25 @@ class WBufferTrigger(xBufferTrigger):
     def validate(self, node: Node, value: Any) -> None:
         super().validate(node, value)
 
-        if isinstance(value, FieldNode):
-            if value.parent == node:
-                self.msg.error(
-                    "Trigger for a write-buffered register cannot be a field "
-                    "within the same register since the buffering makes it impossible to trigger."
-                )
+        if isinstance(value, FieldNode) and value.parent == node:
+            self.msg.error(
+                "Trigger for a write-buffered register cannot be a field "
+                "within the same register since the buffering makes it impossible to trigger."
+            )
 
 
 class BufferReads(UDPDefinition):
     name = "buffer_reads"
-    valid_components = {Reg}
+    valid_components = {Reg}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = bool
 
     def validate(self, node: "Node", value: Any) -> None:
         assert isinstance(node, RegNode)
-        if value:
-            if not node.has_sw_readable:
-                self.msg.error(
-                    "'buffer_reads' is set to true, but this register does not contain any readable fields.",
-                    self.get_src_ref(node),
-                )
+        if value and not node.has_sw_readable:
+            self.msg.error(
+                "'buffer_reads' is set to true, but this register does not contain any readable fields.",
+                self.get_src_ref(node),
+            )
 
     def get_unassigned_default(self, node: "Node") -> Any:
         return False

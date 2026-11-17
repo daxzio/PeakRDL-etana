@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
-from systemrdl.udp import UDPDefinition
 from systemrdl.component import Reg
+from systemrdl.udp import UDPDefinition
 
 if TYPE_CHECKING:
     from systemrdl.node import Node
@@ -15,7 +15,7 @@ class VerilogRegOnly(UDPDefinition):
     """
 
     name = "verilog_reg_only"
-    valid_components = {Reg}
+    valid_components = {Reg}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = bool
 
     def get_unassigned_default(self, node: "Node") -> Any:

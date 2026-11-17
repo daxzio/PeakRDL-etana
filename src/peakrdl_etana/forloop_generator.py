@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, Optional, List, Union
 import textwrap
+from typing import TYPE_CHECKING
 
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
@@ -9,10 +9,10 @@ if TYPE_CHECKING:
 
 class Body:
     def __init__(self) -> None:
-        self.children: List[Union[str, "Body"]] = []
+        self.children: list[str | Body] = []
 
     def __str__(self) -> str:
-        s = "\n".join((str(x) for x in self.children))
+        s = "\n".join(str(x) for x in self.children)
         return s
 
 
@@ -20,7 +20,7 @@ class LoopBody(Body):
     _label_counter = 0  # Class-level counter for unique labels
 
     def __init__(
-        self, dim: int, iterator: str, i_type: str, label: Optional[str] = None
+        self, dim: int, iterator: str, i_type: str, label: str | None = None
     ) -> None:
         super().__init__()
         self.dim = dim
@@ -51,7 +51,7 @@ class ForLoopGenerator:
 
     def __init__(self) -> None:
         self._loop_level = 0
-        self._stack: List["Body"] = []
+        self._stack: list[Body] = []
         self.top = ""
 
     @property
@@ -68,7 +68,7 @@ class ForLoopGenerator:
         self.current_loop.children.append(s)
 
     def add_top(self) -> None:
-        if not "" == self.top:
+        if "" != self.top:
             self.current_loop.children.insert(0, self.top)
 
     def pop_loop(self) -> None:
@@ -84,7 +84,7 @@ class ForLoopGenerator:
         b = Body()
         self._stack.append(b)
 
-    def finish(self) -> Optional[str]:
+    def finish(self) -> str | None:
         self.add_top()
         b = self._stack.pop()
         assert not self._stack
@@ -95,7 +95,7 @@ class ForLoopGenerator:
 
 
 class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
-    def get_content(self, node: "Node") -> Optional[str]:
+    def get_content(self, node: "Node") -> str | None:
         self.start()
         walker = RDLWalker()
         walker.walk(node, self, skip_top=True)
@@ -107,7 +107,7 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
 
     def enter_AddressableComponent(
         self, node: "AddressableNode"
-    ) -> Optional[WalkerAction]:
+    ) -> WalkerAction | None:
         if not node.array_dimensions:
             return None
 
@@ -115,9 +115,7 @@ class RDLForLoopGenerator(ForLoopGenerator, RDLListener):
             self.push_loop(dim)
         return None
 
-    def exit_AddressableComponent(
-        self, node: "AddressableNode"
-    ) -> Optional[WalkerAction]:
+    def exit_AddressableComponent(self, node: "AddressableNode") -> WalkerAction | None:
         if not node.array_dimensions:
             return None
 

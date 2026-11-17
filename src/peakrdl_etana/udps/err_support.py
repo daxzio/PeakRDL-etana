@@ -15,7 +15,7 @@ class ErrSupport(UDPDefinition):
     """
 
     name = "err_support"
-    valid_components = {Mem}
+    valid_components = {Mem}  # noqa: RUF012  # UDPDefinition requires a set
     valid_type = bool
 
     def get_unassigned_default(self, node: "Node") -> Any:

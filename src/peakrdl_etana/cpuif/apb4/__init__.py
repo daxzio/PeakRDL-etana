@@ -1,5 +1,5 @@
-from ..base import CpuifBase
 from ...utils import clog2
+from ..base import CpuifBase
 
 
 class APB4_Cpuif_flattened(CpuifBase):

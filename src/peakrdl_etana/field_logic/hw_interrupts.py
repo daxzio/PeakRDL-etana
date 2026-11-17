@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from systemrdl.rdltypes import InterruptType
 
@@ -30,7 +30,7 @@ class Sticky(NextStateConditional):
         storage_val = self.exp.field_logic.get_storage_identifier(field)
         return f"({storage_val} == '0) && ({input_val} != '0)"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         input_val = self.exp.hwif.get_input_identifier(field)
         return [
             f"next_c = {input_val};",
@@ -59,7 +59,7 @@ class Stickybit(NextStateConditional):
         else:
             return f"{F} != '0"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         if field.width == 1:
             return [
                 "next_c = '1;",
@@ -96,7 +96,7 @@ class PosedgeStickybit(NextStateConditional):
         else:
             return f"(~{input_delayed} & {input_val}) != '0"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         if field.width == 1:
             return [
                 "next_c = '1;",
@@ -134,7 +134,7 @@ class NegedgeStickybit(NextStateConditional):
         else:
             return f"({input_delayed} & ~{input_val}) != '0"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         if field.width == 1:
             return [
                 "next_c = '1;",
@@ -169,7 +169,7 @@ class BothedgeStickybit(NextStateConditional):
         input_delayed = self.exp.field_logic.get_next_q_identifier(field)
         return f"{input_delayed} != {input_val}"
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         if field.width == 1:
             return [
                 "next_c = '1;",
@@ -203,7 +203,7 @@ class PosedgeNonsticky(NextStateUnconditional):
             and field.get_property("intr type") == InterruptType.posedge
         )
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         input_val = self.exp.hwif.get_input_identifier(field)
         input_delayed = self.exp.field_logic.get_next_q_identifier(field)
         return [
@@ -230,7 +230,7 @@ class NegedgeNonsticky(NextStateUnconditional):
             and field.get_property("intr type") == InterruptType.negedge
         )
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         input_val = self.exp.hwif.get_input_identifier(field)
         input_delayed = self.exp.field_logic.get_next_q_identifier(field)
         return [
@@ -257,7 +257,7 @@ class BothedgeNonsticky(NextStateUnconditional):
             and field.get_property("intr type") == InterruptType.bothedge
         )
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         input_val = self.exp.hwif.get_input_identifier(field)
         input_delayed = self.exp.field_logic.get_next_q_identifier(field)
         return [

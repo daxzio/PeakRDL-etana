@@ -1,15 +1,16 @@
 import re
-from typing import Any, Match, Union, Optional, List, TYPE_CHECKING
+from re import Match
+from typing import TYPE_CHECKING, Any, Optional
 
-from systemrdl.rdltypes.references import PropertyReference
 from systemrdl.node import (
-    Node,
-    AddrmapNode,
-    RegNode,
-    FieldNode,
-    RegfileNode,
     AddressableNode,
+    AddrmapNode,
+    FieldNode,
+    Node,
+    RegfileNode,
+    RegNode,
 )
+from systemrdl.rdltypes.references import PropertyReference
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
@@ -27,7 +28,7 @@ class IndexedPath:
 
         # Collect ALL array dimensions from target up to top
         # Walk up the hierarchy and collect array dimensions from all regfiles
-        self.array_dimensions: List[int] = []
+        self.array_dimensions: list[int] = []
         current = target_node
 
         # For FieldNodes, start from the parent (the register)
@@ -108,14 +109,13 @@ class IndexedPath:
     @property
     def index_vector(self) -> str:
         v = ""
-        if not 0 == len(self.index):
+        if 0 != len(self.index):
             v += "["
             for i in self.index:
                 v += f"({i}*{self.regwidth})+"  # type: ignore[attr-defined]
             v += f":{self.regwidth}]"  # type: ignore[attr-defined]
         return v
 
-    #
     @property
     def array_instances(self) -> str:
         s = ""
@@ -129,7 +129,7 @@ def clog2(n: int) -> int:
     return (n - 1).bit_length()
 
 
-def unpacked_array_suffix(dimensions: Optional[List[int]]) -> str:
+def unpacked_array_suffix(dimensions: list[int] | None) -> str:
     """Unpacked dimensions after a signal name, for example `` [1:0] [3:0]``."""
     if not dimensions:
         return ""
@@ -153,8 +153,8 @@ def get_concrete_index_str(top_node: Node, target_node: Node) -> str:
     Returns concrete array index suffixes for an unrolled node, e.g. ``[0][2]``.
     Walks addressable ancestors from target up to (but not including) top.
     """
-    indices: List[int] = []
-    current: Optional[Node] = target_node
+    indices: list[int] = []
+    current: Node | None = target_node
     if isinstance(target_node, FieldNode):
         current = target_node.parent
 
@@ -181,7 +181,7 @@ def addr_range_match_expr(
     *,
     has_array_index: bool = False,
     and_op: str = "&",
-) -> Optional[str]:
+) -> str | None:
     """
     Build an unsigned address range match, omitting bounds that are always true.
 
@@ -213,7 +213,7 @@ def roundup_pow2(x: int) -> int:
     return 1 << (x - 1).bit_length()
 
 
-def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) -> bool:
+def ref_is_internal(top_node: AddrmapNode, ref: Node | PropertyReference) -> bool:
     """
     Determine whether the reference is internal to the top node.
 
@@ -224,7 +224,7 @@ def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) 
     elif isinstance(ref, PropertyReference):
         current_node = ref.node
     else:
-        raise RuntimeError
+        raise TypeError(f"Unhandled reference to: {ref}")
 
     while current_node is not None:
         if current_node == top_node:
@@ -243,7 +243,7 @@ def ref_is_internal(top_node: AddrmapNode, ref: Union[Node, PropertyReference]) 
     return True
 
 
-def do_slice(value: Union[SVInt, str], high: int, low: int) -> Union[SVInt, str]:
+def do_slice(value: SVInt | str, high: int, low: int) -> SVInt | str:
     if isinstance(value, str):
         # If string, assume this is an identifier. Append bit-slice
         if high == low:
@@ -263,9 +263,7 @@ def do_slice(value: Union[SVInt, str], high: int, low: int) -> Union[SVInt, str]
         return SVInt(v, w)
 
 
-def do_bitswap(
-    value: Union[SVInt, str], width: Optional[int] = None
-) -> Union[SVInt, str]:
+def do_bitswap(value: SVInt | str, width: int | None = None) -> SVInt | str:
     if isinstance(value, str):
         # If string, assume this is an identifier
         # Generate explicit bit reversal for Icarus Verilog compatibility
@@ -331,13 +329,8 @@ def is_external_for_codegen(node: Node, ds: "DesignState") -> bool:
     if not ds.flatten_nested_blocks:
         return True
 
-    # When flattening is enabled:
-    # - Nested addrmaps/regfiles are NOT external (flatten them)
-    # - But respect explicit external register declarations
-    if node_type in ["AddrmapNode", "RegfileNode"]:
-        return False  # Flatten these
-
-    return True  # RegNode with external property stays external
+    # Nested addrmaps and regfiles flatten. An external register stays external.
+    return node_type not in ["AddrmapNode", "RegfileNode"]
 
 
 class ExternalPolicy:
@@ -362,7 +355,7 @@ def external_policy(ds: "DesignState") -> ExternalPolicy:
 
 
 # Backward compat alias (to be removed after downstream updates)
-def should_treat_as_external(node: Node, ds: "DesignState") -> bool:  # noqa: N802
+def should_treat_as_external(node: Node, ds: "DesignState") -> bool:
     return is_external_for_codegen(node, ds)
 
 
@@ -396,7 +389,7 @@ def is_inside_external_block(
     return False
 
 
-def has_sw_writable_descendants(node: Union[RegfileNode, AddrmapNode]) -> bool:
+def has_sw_writable_descendants(node: RegfileNode | AddrmapNode) -> bool:
     """
     Check if node has any sw-writable descendants.
 
@@ -417,7 +410,7 @@ def has_sw_writable_descendants(node: Union[RegfileNode, AddrmapNode]) -> bool:
     return False
 
 
-def has_sw_readable_descendants(node: Union[RegfileNode, AddrmapNode]) -> bool:
+def has_sw_readable_descendants(node: RegfileNode | AddrmapNode) -> bool:
     """
     Check if node has any sw-readable descendants.
 

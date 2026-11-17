@@ -1,32 +1,33 @@
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING
 
-from systemrdl.node import FieldNode, RegNode, AddrmapNode, MemNode, SignalNode
+from systemrdl.node import AddrmapNode, FieldNode, MemNode, RegNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
 
+from ..identifier_filter import kw_filter as kwf
 from ..utils import (
     clog2,
-    unpacked_array_suffix,
-    has_sw_writable_descendants,
-    has_sw_readable_descendants,
     external_policy,
+    has_sw_readable_descendants,
+    has_sw_writable_descendants,
+    unpacked_array_suffix,
 )
-from ..identifier_filter import kw_filter as kwf
 
 if TYPE_CHECKING:
     from systemrdl.node import Node, RegfileNode
+
     from . import Hwif
 
 
 class InputLogicGenerator(RDLListener):
     def __init__(self, hwif: "Hwif") -> None:
         self.hwif = hwif
-        self.hwif_port: List[str] = []
+        self.hwif_port: list[str] = []
         #         self.hwif_out = []
         super().__init__()
         self.regfile = False
-        self.in_port: List[str] = []
-        self.out_port: List[str] = []
-        self.regfile_array: List[str] = []
+        self.in_port: list[str] = []
+        self.out_port: list[str] = []
+        self.regfile_array: list[str] = []
         self.vector_text = ""  # Initialize to empty string
         self.unpacked_dims = ""  # Initialize unpacked dimensions for after signal name
         self.policy = external_policy(self.hwif.ds)
@@ -34,14 +35,14 @@ class InputLogicGenerator(RDLListener):
             False  # Track if current register has verilog_reg_only property
         )
 
-    def get_logic(self, node: "Node") -> Optional[str]:
+    def get_logic(self, node: "Node") -> str | None:
 
         walker = RDLWalker()
         walker.walk(node, self, skip_top=True)
 
         return self.finish()
 
-    def finish(self) -> Optional[str]:
+    def finish(self) -> str | None:
         self.lines = []
         self.lines.extend(self.hwif_port)
         #         self.lines.extend(self.hwif_out)
@@ -325,7 +326,7 @@ class InputLogicGenerator(RDLListener):
 
         if self.policy.is_external(node):
             vector_extend = ""
-            if not 1 == self.n_subwords:
+            if 1 != self.n_subwords:
                 vector_extend = f"[{self.n_subwords-1}:0]"
 
             x = self.hwif.get_output_identifier(node)  # type: ignore[arg-type]
@@ -513,18 +514,21 @@ class InputLogicGenerator(RDLListener):
             # For verilog_reg_only registers, the field value in/out is provided
             # by the register-level vector, so skip the per-field value ports
             # (the implied strobe ports below are still generated).
-            if self.hwif.has_value_input(node) and not self.current_verilog_reg_only:
-                # Check if field has 'next' property - if so, the signal provides the input
-                if node.get_property("next") is None:
-                    input_identifier = self.hwif.get_input_identifier(node, index=False)
-                    if packed_dim:
-                        self.hwif_port.append(
-                            f"input wire {packed_dim} {input_identifier}{self.unpacked_dims}"
-                        )
-                    else:
-                        self.hwif_port.append(
-                            f"input wire {input_identifier}{self.unpacked_dims}"
-                        )
+            # A 'next' property provides the input, so this port is not emitted.
+            if (
+                self.hwif.has_value_input(node)
+                and not self.current_verilog_reg_only
+                and node.get_property("next") is None
+            ):
+                input_identifier = self.hwif.get_input_identifier(node, index=False)
+                if packed_dim:
+                    self.hwif_port.append(
+                        f"input wire {packed_dim} {input_identifier}{self.unpacked_dims}"
+                    )
+                else:
+                    self.hwif_port.append(
+                        f"input wire {input_identifier}{self.unpacked_dims}"
+                    )
             if self.hwif.has_value_output(node) and not self.current_verilog_reg_only:
                 output_identifier = self.hwif.get_output_identifier(node, index=False)
                 if packed_dim:
@@ -616,9 +620,12 @@ class InputLogicGenerator(RDLListener):
     def enter_Signal(self, node: "SignalNode") -> None:
         # Signals that are not promoted to top-level need to be added as ports
         # Check if signal is out-of-hierarchy (promoted to top-level)
-        if hasattr(self.hwif, "ds") and hasattr(self.hwif.ds, "out_of_hier_signals"):
-            if node.get_path() in self.hwif.ds.out_of_hier_signals:
-                return
+        if (
+            hasattr(self.hwif, "ds")
+            and hasattr(self.hwif.ds, "out_of_hier_signals")
+            and node.get_path() in self.hwif.ds.out_of_hier_signals
+        ):
+            return
 
         width = node.width if node.width is not None else 1
         if width > 1:

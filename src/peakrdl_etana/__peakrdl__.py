@@ -1,30 +1,30 @@
-from typing import TYPE_CHECKING, Dict, Type, List, Any
-import functools
 import sys
+from typing import TYPE_CHECKING, Any
 
+from peakrdl.config import schema  # pylint: disable=import-error
 from peakrdl.plugins.exporter import (
     ExporterSubcommandPlugin,
 )  # pylint: disable=import-error
-from peakrdl.config import schema  # pylint: disable=import-error
 
-from .exporter import RegblockExporter
+from . import entry_points
 from .cpuif import (
     CpuifBase,
+    ahb,
+    ahblite,
     apb3,
     apb4,
-    axi4lite,
-    passthrough,
     avalon,
-    ahblite,
-    ahb,
+    axi4lite,
     obi,
+    passthrough,
     wishbone,
 )
+from .exporter import RegblockExporter
 from .udps import ALL_UDPS
-from . import entry_points
 
 if TYPE_CHECKING:
     import argparse
+
     from systemrdl.node import AddrmapNode
 
 
@@ -36,7 +36,7 @@ class Choice(schema.String):
     is added and widely available.
     """
 
-    def __init__(self, choices: List[str]) -> None:
+    def __init__(self, choices: list[str]) -> None:
         super().__init__()
         self.choices = choices
 
@@ -54,13 +54,15 @@ class Exporter(ExporterSubcommandPlugin):
 
     udp_definitions = ALL_UDPS
 
-    cfg_schema = {
+    cfg_schema = {  # noqa: RUF012  # peakrdl reads this class dict before __init__
         "cpuifs": {"*": schema.PythonObjectImport()},
         "default_reset": Choice(["rst", "rst_n", "arst", "arst_n"]),
     }
 
-    @functools.lru_cache()
-    def get_cpuifs(self) -> Dict[str, Type[CpuifBase]]:
+    def get_cpuifs(self) -> dict[str, type[CpuifBase]]:
+        cached = getattr(self, "_cpuifs", None)
+        if cached is not None:
+            return cached
 
         # All built-in CPUIFs - FLATTENED SIGNALS ONLY (no SystemVerilog structs)
         cpuifs = {
@@ -84,7 +86,7 @@ class Exporter(ExporterSubcommandPlugin):
                     f"A plugin for 'peakrdl-regblock' tried to load cpuif '{name}' but it already exists"
                 )
             if not issubclass(cpuif, CpuifBase):
-                raise RuntimeError(
+                raise TypeError(
                     f"A plugin for 'peakrdl-regblock' tried to load cpuif '{name}' but it not a CpuifBase class"
                 )
             cpuifs[name] = cpuif
@@ -96,17 +98,18 @@ class Exporter(ExporterSubcommandPlugin):
                     f"A plugin for 'peakrdl-regblock' tried to load cpuif '{name}' but it already exists"
                 )
             if not issubclass(cpuif, CpuifBase):
-                raise RuntimeError(
+                raise TypeError(
                     f"A plugin for 'peakrdl-regblock' tried to load cpuif '{name}' but it not a CpuifBase class"
                 )
             cpuifs[name] = cpuif
 
+        self._cpuifs = cpuifs
         return cpuifs
 
     def add_exporter_arguments(self, arg_group: "argparse._ActionsContainer") -> None:
         cpuifs = self.get_cpuifs()
 
-        _selectable_cpuifs = [k for k in cpuifs.keys() if k != "ahblite-flat"]
+        _selectable_cpuifs = [k for k in cpuifs if k != "ahblite-flat"]
         arg_group.add_argument(
             "--cpuif",
             choices=_selectable_cpuifs,
@@ -261,7 +264,7 @@ class Exporter(ExporterSubcommandPlugin):
                     retime_external_addrmap = True
                 else:
                     print(
-                        "error: invalid option for --rt-external: '%s'" % key,
+                        f"error: invalid option for --rt-external: '{key}'",
                         file=sys.stderr,
                     )
 

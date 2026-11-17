@@ -1,8 +1,7 @@
-from .rw_buffering import BufferWrites, WBufferTrigger
-from .rw_buffering import BufferReads, RBufferTrigger
+from .early_external_read import EarlyExternalRead
 from .extended_swacc import ReadSwacc, WriteSwacc
 from .reg_only import VerilogRegOnly
-from .early_external_read import EarlyExternalRead
+from .rw_buffering import BufferReads, BufferWrites, RBufferTrigger, WBufferTrigger
 
 ALL_UDPS = [
     BufferWrites,

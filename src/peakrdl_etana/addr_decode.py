@@ -1,25 +1,24 @@
-from typing import TYPE_CHECKING, Union, Optional, List
+from typing import TYPE_CHECKING
 
 from systemrdl.node import FieldNode, RegNode
-from systemrdl.walker import WalkerAction
-from systemrdl.walker import RDLWalker
+from systemrdl.walker import RDLWalker, WalkerAction
 
+from .forloop_generator import RDLForLoopGenerator
+from .sv_int import SVInt
 from .utils import (
     IndexedPath,
     addr_range_match_expr,
-    is_inside_external_block,
     external_policy,
+    is_inside_external_block,
     unpacked_array_suffix,
 )
-from .forloop_generator import RDLForLoopGenerator
-from .sv_int import SVInt
 
 if TYPE_CHECKING:
+    from systemrdl.node import AddressableNode, AddrmapNode, MemNode, Node, RegfileNode
+
     from .exporter import RegblockExporter
-    from systemrdl.node import AddrmapNode, AddressableNode
-    from systemrdl.node import Node, RegfileNode, MemNode
 else:
-    from systemrdl.node import RegfileNode, MemNode
+    from systemrdl.node import MemNode, RegfileNode
 
 
 class AddressDecode:
@@ -43,7 +42,7 @@ class AddressDecode:
         return s
 
     def get_access_strobe(
-        self, node: Union[RegNode, FieldNode], reduce_substrobes: bool = True
+        self, node: RegNode | FieldNode, reduce_substrobes: bool = True
     ) -> IndexedPath:
         """
         Returns the IndexedPath that represents the register/field's access strobe.
@@ -102,11 +101,11 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def __init__(self, addr_decode: AddressDecode) -> None:
         self.addr_decode = addr_decode
         super().__init__()
-        self._logic_stack: List[object] = []
+        self._logic_stack: list[object] = []
         self.printed = False
         self.policy = external_policy(self.addr_decode.exp.ds)
 
-    def get_logic(self, node: "Node") -> Optional[str]:
+    def get_logic(self, node: "Node") -> str | None:
 
         walker = RDLWalker()
         walker.walk(node, self, skip_top=True)
@@ -141,7 +140,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
     def enter_AddressableComponent(self, node: "AddressableNode") -> None:
         super().enter_AddressableComponent(node)
 
-    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+    def enter_Regfile(self, node: "RegfileNode") -> WalkerAction | None:
         if self.policy.is_external(node):
             # Declare strobe signal for external regfile
             p = self.addr_decode.get_external_block_access_strobe(node)
@@ -151,7 +150,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction | None:
         # Skip top-level
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
@@ -167,7 +166,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
 
     def enter_Mem(self, node: "MemNode") -> None:
         if not node.external:
-            raise
+            raise RuntimeError("Memory nodes are external")
         # Declare strobe signal for external mem
         p = self.addr_decode.get_external_block_access_strobe(node)
         dims = unpacked_array_suffix(p.array_dimensions)
@@ -178,7 +177,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
             early_dims = unpacked_array_suffix(ep.array_dimensions)
             self._logic_stack.append(f"logic {ep.path}{early_dims};")
 
-    def enter_Reg(self, node: "RegNode") -> Optional[WalkerAction]:
+    def enter_Reg(self, node: "RegNode") -> WalkerAction | None:
         # Skip registers inside external blocks
         if is_inside_external_block(
             node, self.addr_decode.top_node, self.addr_decode.exp.ds
@@ -191,7 +190,7 @@ class DecodeStrbGenerator(RDLForLoopGenerator):
         self.printed = False
         return WalkerAction.Continue
 
-    def finish(self) -> Optional[str]:
+    def finish(self) -> str | None:
         s = self._logic_stack
         return "\n".join(str(item) for item in s)
 
@@ -202,12 +201,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         super().__init__()
 
         # List of address strides for each dimension
-        self._array_stride_stack = []  # type: List[int]
+        self._array_stride_stack: list[int] = []
         self.policy = external_policy(self.addr_decode.exp.ds)
 
     def enter_AddressableComponent(
         self, node: "AddressableNode"
-    ) -> Optional[WalkerAction]:
+    ) -> WalkerAction | None:
         super().enter_AddressableComponent(node)
 
         if node.array_dimensions:
@@ -320,7 +319,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
     #             a += f" + ({expr_width})'(i{i}) * {SVInt(stride, expr_width)}"
     #         return a
 
-    def enter_Regfile(self, node: "RegfileNode") -> Optional[WalkerAction]:
+    def enter_Regfile(self, node: "RegfileNode") -> WalkerAction | None:
         if self.policy.is_external(node):
             strb = self.addr_decode.get_external_block_access_strobe(node)
             rhs = self._cpuif_req_in_range(node)
@@ -341,7 +340,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             return WalkerAction.SkipDescendants
         return WalkerAction.Continue
 
-    def enter_Addrmap(self, node: "AddrmapNode") -> Optional[WalkerAction]:
+    def enter_Addrmap(self, node: "AddrmapNode") -> WalkerAction | None:
         # Skip top-level addrmap
         if node == self.addr_decode.top_node:
             return WalkerAction.Continue
@@ -368,7 +367,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
 
     def enter_Mem(self, node: MemNode) -> None:
         if not node.external:
-            raise
+            raise RuntimeError("Memory nodes are external")
         if node.external:
             strb = self.addr_decode.get_external_block_access_strobe(node)
             addr_match = self._cpuif_req_in_range(node)
@@ -399,13 +398,12 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 self.add_content(f"is_valid_addr |= {addr_match};")
             if self.addr_decode.exp.ds.err_if_bad_rw:
                 self.add_content(f"is_valid_rw |= {rhs};")
-            if node.get_property("early_external_read", default=False):
-                if readable:
-                    early_strb = self.addr_decode.get_external_block_early_strobe(node)
-                    self._emit_early_external_strobe(node, early_strb)
+            if node.get_property("early_external_read", default=False) and readable:
+                early_strb = self.addr_decode.get_external_block_early_strobe(node)
+                self._emit_early_external_strobe(node, early_strb)
         # return WalkerAction.SkipDescendants
 
-    def enter_Reg(self, node: RegNode) -> Optional[WalkerAction]:
+    def enter_Reg(self, node: RegNode) -> WalkerAction | None:
         # Skip registers inside external blocks
         if is_inside_external_block(
             node, self.addr_decode.top_node, self.addr_decode.exp.ds

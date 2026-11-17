@@ -1,12 +1,13 @@
-from typing import TYPE_CHECKING, List, Sequence, Optional
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from systemrdl.node import (
-    RegNode,
     AddressableNode,
+    AddrmapNode,
     FieldNode,
     MemNode,
     RegfileNode,
-    AddrmapNode,
+    RegNode,
 )
 from systemrdl.walker import WalkerAction
 
@@ -29,15 +30,13 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         self.exp = exp
 
         # List of address strides for each dimension
-        self._array_stride_stack: List[int] = []
+        self._array_stride_stack: list[int] = []
 
     @property
     def ds(self) -> "DesignState":
         return self.exp.ds
 
-    def enter_AddressableComponent(
-        self, node: AddressableNode
-    ) -> Optional[WalkerAction]:
+    def enter_AddressableComponent(self, node: AddressableNode) -> WalkerAction | None:
         super().enter_AddressableComponent(node)
 
         if node.array_dimensions:
@@ -66,7 +65,7 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
 
         return WalkerAction.Continue
 
-    def _external_block_range_cond(self, node: AddressableNode) -> Optional[str]:
+    def _external_block_range_cond(self, node: AddressableNode) -> str | None:
         """
         Address-range condition for muxing an external block's read data.
 
@@ -353,7 +352,7 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         fields: Sequence[FieldNode],
         regwidth: int,
         accesswidth: int,
-    ) -> List[List[str]]:
+    ) -> list[list[str]]:
         """
         Get a list of assignments for each subword
 
@@ -362,7 +361,7 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         """
         n_subwords = regwidth // accesswidth
         subword_stride = accesswidth // 8
-        subword_assignments: List[List[str]] = [[] for _ in range(n_subwords)]
+        subword_assignments: list[list[str]] = [[] for _ in range(n_subwords)]
 
         # Fields are sorted by ascending low bit
         for field in fields:

@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
-from systemrdl.node import AddrmapNode, RegNode, FieldNode, SignalNode
+from systemrdl.node import AddrmapNode, FieldNode, RegNode, SignalNode
 
-from .implementation_generator import WBufLogicGenerator
 from ..sv_int import SVInt
 from ..utils import IndexedPath
+from .implementation_generator import WBufLogicGenerator
 
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter
@@ -24,20 +24,20 @@ class WriteBuffering:
         assert s is not None
         return s
 
-    def get_wbuf_prefix(self, node: Union[RegNode, FieldNode]) -> str:
+    def get_wbuf_prefix(self, node: RegNode | FieldNode) -> str:
         if isinstance(node, FieldNode):
             node = node.parent
         p = IndexedPath(self.top_node, node)
         wbuf_prefix = f"wbuf_storage_{p.path}"
-        if not 0 == len(p.index):
+        if 0 != len(p.index):
             wbuf_prefix += f"{p.index_str}"
         return wbuf_prefix
 
-    def get_write_strobe(self, node: Union[RegNode, FieldNode]) -> str:
+    def get_write_strobe(self, node: RegNode | FieldNode) -> str:
         prefix = self.get_wbuf_prefix(node)
         return f"{prefix}_pending && {self.get_trigger(node)}"
 
-    def get_raw_trigger(self, node: "RegNode") -> Union[SVInt, str]:
+    def get_raw_trigger(self, node: "RegNode") -> SVInt | str:
         trigger = node.get_property("wbuffer_trigger")
 
         if isinstance(trigger, RegNode):
@@ -64,7 +64,7 @@ class WriteBuffering:
             # Trigger is a field or propref bit
             return self.exp.dereferencer.get_value(trigger)
 
-    def get_trigger(self, node: Union[RegNode, FieldNode]) -> Union[SVInt, str]:
+    def get_trigger(self, node: RegNode | FieldNode) -> SVInt | str:
         if isinstance(node, FieldNode):
             node = node.parent
         trigger = node.get_property("wbuffer_trigger")

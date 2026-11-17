@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
 
+from ..utils import clog2
 from .readback_mux_generator import (
     ReadbackMuxGenerator,
-    RetimedReadbackMuxGenerator,
     RetimedExtBlockReadbackMuxGenerator,
+    RetimedReadbackMuxGenerator,
 )
-from ..utils import clog2
 
 if TYPE_CHECKING:
-    from ..exporter import RegblockExporter, DesignState
+    from ..exporter import DesignState, RegblockExporter
 
 
 class Readback:

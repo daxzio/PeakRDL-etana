@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, List
 import enum
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from systemrdl.node import FieldNode
@@ -89,7 +89,7 @@ class NextStateConditional:
         """
         raise NotImplementedError
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         """
         Returns a list of rendered assignment strings
         This will basically always be two:
@@ -98,7 +98,7 @@ class NextStateConditional:
         """
         raise NotImplementedError
 
-    def get_extra_combo_signals(self, field: "FieldNode") -> List[SVLogic]:
+    def get_extra_combo_signals(self, field: "FieldNode") -> list[SVLogic]:
         """
         Return any additional combinational signals that this conditional
         will assign if present.

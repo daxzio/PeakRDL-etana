@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from systemrdl.rdltypes import OnReadType
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class _OnRead(NextStateConditional):
-    onreadtype: Optional[OnReadType] = None
+    onreadtype: OnReadType | None = None
 
     def is_match(self, field: "FieldNode") -> bool:
         return field.get_property("onread") == self.onreadtype
@@ -29,7 +29,7 @@ class ClearOnRead(_OnRead):
     comment = "SW clear on read"
     onreadtype = OnReadType.rclr
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return [
             "next_c = '0;",
             "load_next_c = '1;",
@@ -40,7 +40,7 @@ class SetOnRead(_OnRead):
     comment = "SW set on read"
     onreadtype = OnReadType.rset
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return [
             "next_c = '1;",
             "load_next_c = '1;",

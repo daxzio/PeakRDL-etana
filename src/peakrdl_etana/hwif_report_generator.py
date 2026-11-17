@@ -5,8 +5,8 @@ Generates reports mapping RDL fields to flattened signal names,
 including addresses, widths, and access properties.
 """
 
-from typing import TYPE_CHECKING, List, Optional
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from systemrdl.node import FieldNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker
@@ -25,10 +25,10 @@ class SignalMetadata:
     direction: str  # 'input' or 'output'
     width: int
     rdl_path: str  # Full RDL path (e.g., "PMBUS.PAGE.PAGE")
-    address: Optional[int]  # None for array elements without resolved index
+    address: int | None  # None for array elements without resolved index
     sw_access: str  # 'r', 'w', 'rw', etc.
     hw_access: str  # 'r', 'w', 'rw', etc.
-    reset_value: Optional[int]
+    reset_value: int | None
     description: str
 
 
@@ -41,7 +41,7 @@ class SignalCollector(RDLListener):
         self.generator = generator
         self.hwif = generator.hwif
         self.ds = generator.ds
-        self.signals: List[SignalMetadata] = []
+        self.signals: list[SignalMetadata] = []
         super().__init__()
 
     def enter_Field(self, node: FieldNode) -> None:
@@ -72,7 +72,7 @@ class SignalCollector(RDLListener):
 
         # Get reset value and ensure it's an int or None
         reset_prop = node.get_property("reset", default=None)
-        reset_value: Optional[int] = None
+        reset_value: int | None = None
         if isinstance(reset_prop, int):
             reset_value = reset_prop
 
@@ -81,25 +81,23 @@ class SignalCollector(RDLListener):
         if desc is None:
             desc = ""
 
-        # Check if this field generates input signal
-        if node.is_hw_writable:
-            # Check if 'next' property overrides the signal
-            if node.get_property("next") is None:
-                signal_name = f"{self.hwif.hwif_in_str}_{p.path}"
+        # A 'next' property overrides the inferred input signal.
+        if node.is_hw_writable and node.get_property("next") is None:
+            signal_name = f"{self.hwif.hwif_in_str}_{p.path}"
 
-                self.signals.append(
-                    SignalMetadata(
-                        signal_name=signal_name,
-                        direction="input",
-                        width=node.width,
-                        rdl_path=rdl_path,
-                        address=address,
-                        sw_access=sw_access,
-                        hw_access=hw_access,
-                        reset_value=reset_value,
-                        description=desc,
-                    )
+            self.signals.append(
+                SignalMetadata(
+                    signal_name=signal_name,
+                    direction="input",
+                    width=node.width,
+                    rdl_path=rdl_path,
+                    address=address,
+                    sw_access=sw_access,
+                    hw_access=hw_access,
+                    reset_value=reset_value,
+                    description=desc,
                 )
+            )
 
         # Check if this field generates output signal
         if node.is_hw_readable:
@@ -196,8 +194,8 @@ class HwifReportGenerator:
     def _generate_markdown_report(
         self,
         output_file: str,
-        input_signals: List[SignalMetadata],
-        output_signals: List[SignalMetadata],
+        input_signals: list[SignalMetadata],
+        output_signals: list[SignalMetadata],
     ) -> None:
         """Generate markdown-formatted report."""
 
@@ -271,8 +269,8 @@ class HwifReportGenerator:
     def _generate_csv_report(
         self,
         output_file: str,
-        input_signals: List[SignalMetadata],
-        output_signals: List[SignalMetadata],
+        input_signals: list[SignalMetadata],
+        output_signals: list[SignalMetadata],
     ) -> None:
         """Generate CSV-formatted report."""
 

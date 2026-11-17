@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from systemrdl.node import RegNode, AddressableNode
+from systemrdl.node import AddressableNode, RegNode
 from systemrdl.walker import WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator
@@ -19,9 +19,7 @@ class RBufLogicGenerator(RDLForLoopGenerator):
         self.exp = rbuf.exp
         self.template = self.exp.jj_env.get_template("read_buffering/template.sv")
 
-    def enter_AddressableComponent(
-        self, node: AddressableNode
-    ) -> Optional[WalkerAction]:
+    def enter_AddressableComponent(self, node: AddressableNode) -> WalkerAction | None:
         if node.external:
             return WalkerAction.SkipDescendants
         return super().enter_AddressableComponent(node)

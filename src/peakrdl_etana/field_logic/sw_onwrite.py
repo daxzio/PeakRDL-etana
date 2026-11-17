@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from systemrdl.rdltypes import OnWriteType
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class _OnWrite(NextStateConditional):
-    onwritetype: Optional[OnWriteType] = None
+    onwritetype: OnWriteType | None = None
 
     def is_match(self, field: "FieldNode") -> bool:
         return (
@@ -118,7 +118,7 @@ class _OnWrite(NextStateConditional):
                 value = "decoded_wr_biten" + bslice
             return value
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         accesswidth = field.parent.get_property("accesswidth")
 
         # Due to 10.6.1-f, it is impossible for a field with an onwrite action to
@@ -193,7 +193,7 @@ class WriteClear(_OnWrite):
     comment = "SW write clear"
     onwritetype = OnWriteType.wclr
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return [
             "next_c = '0;",
             "load_next_c = '1;",
@@ -204,7 +204,7 @@ class WriteSet(_OnWrite):
     comment = "SW write set"
     onwritetype = OnWriteType.wset
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return [
             "next_c = '1;",
             "load_next_c = '1;",

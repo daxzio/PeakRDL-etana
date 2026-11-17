@@ -1,32 +1,33 @@
-from typing import TYPE_CHECKING, Union, Dict, List
+from typing import TYPE_CHECKING
 
-from systemrdl.rdltypes import PrecedenceType, InterruptType
+from systemrdl.rdltypes import InterruptType, PrecedenceType
 
-from .bases import AssignmentPrecedence, NextStateConditional
-from . import sw_onread
-from . import sw_onwrite
-from . import sw_singlepulse
-from . import hw_write
-from . import hw_set_clr
-from . import hw_interrupts
-from . import hw_interrupts_with_write
-
-from ..utils import IndexedPath
 from ..sv_int import SVInt
-
+from ..utils import IndexedPath
+from . import (
+    hw_interrupts,
+    hw_interrupts_with_write,
+    hw_set_clr,
+    hw_write,
+    sw_onread,
+    sw_onwrite,
+    sw_singlepulse,
+)
+from .bases import AssignmentPrecedence, NextStateConditional
 from .generators import FieldLogicGenerator, FieldResetGenerator
 
 if TYPE_CHECKING:
     from systemrdl.node import AddrmapNode, FieldNode
-    from ..exporter import RegblockExporter, DesignState
+
+    from ..exporter import DesignState, RegblockExporter
 
 
 class FieldLogic:
     def __init__(self, exp: "RegblockExporter") -> None:
         self.exp = exp
 
-        self._hw_conditionals: Dict[int, List[NextStateConditional]] = {}
-        self._sw_conditionals: Dict[int, List[NextStateConditional]] = {}
+        self._hw_conditionals: dict[int, list[NextStateConditional]] = {}
+        self._sw_conditionals: dict[int, list[NextStateConditional]] = {}
 
         self.init_conditionals()
 
@@ -71,7 +72,7 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_value"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -84,7 +85,7 @@ class FieldLogic:
         """
         p = IndexedPath(self.top_node, field)
         s = f"field_reset_{p.path}_value"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -98,7 +99,7 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_next_q"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -114,7 +115,7 @@ class FieldLogic:
         assert field.implements_storage
         p = IndexedPath(self.top_node, field)
         s = f"field_combo_{p.path}_{name}"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -131,7 +132,7 @@ class FieldLogic:
         # unset by the user, points to the implied input signal
         return self.exp.hwif.get_implied_prop_input_identifier(field, "incr")
 
-    def get_counter_incrvalue(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_incrvalue(self, field: "FieldNode") -> SVInt | str:
         """
         Return the string that represents the field's increment value
         """
@@ -142,7 +143,7 @@ class FieldLogic:
             return self.exp.hwif.get_implied_prop_input_identifier(field, "incrvalue")
         return "1'b1"
 
-    def get_counter_incrsaturate_value(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_incrsaturate_value(self, field: "FieldNode") -> SVInt | str:
         prop_value = field.get_property("incrsaturate")
         if prop_value is True:
             return self.exp.dereferencer.get_value(2**field.width - 1, field.width)
@@ -154,7 +155,7 @@ class FieldLogic:
         """
         return field.get_property("incrsaturate") is not False
 
-    def get_counter_incrthreshold_value(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_incrthreshold_value(self, field: "FieldNode") -> SVInt | str:
         prop_value = field.get_property("incrthreshold", default=False)
         if isinstance(prop_value, bool):
             # No explicit value set. use max
@@ -172,7 +173,7 @@ class FieldLogic:
         # unset by the user, points to the implied input signal
         return self.exp.hwif.get_implied_prop_input_identifier(field, "decr")
 
-    def get_counter_decrvalue(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_decrvalue(self, field: "FieldNode") -> SVInt | str:
         """
         Return the string that represents the field's decrement value
         """
@@ -183,7 +184,7 @@ class FieldLogic:
             return self.exp.hwif.get_implied_prop_input_identifier(field, "decrvalue")
         return "1'b1"
 
-    def get_counter_decrsaturate_value(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_decrsaturate_value(self, field: "FieldNode") -> SVInt | str:
         prop_value = field.get_property("decrsaturate")
         if prop_value is True:
             return f"{field.width}'d0"
@@ -195,7 +196,7 @@ class FieldLogic:
         """
         return field.get_property("decrsaturate") is not False
 
-    def get_counter_decrthreshold_value(self, field: "FieldNode") -> Union[SVInt, str]:
+    def get_counter_decrthreshold_value(self, field: "FieldNode") -> SVInt | str:
         prop_value = field.get_property("decrthreshold", default=False)
         if isinstance(prop_value, bool):
             # No explicit value set. use min
@@ -368,7 +369,7 @@ class FieldLogic:
         """
         p = IndexedPath(self.top_node, field)
         s = f"field_storage_{p.path}_parity"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -382,7 +383,7 @@ class FieldLogic:
         """
         p = IndexedPath(self.top_node, field)
         s = f"field_combo_{p.path}_parity_error"
-        if declare and not 0 == len(p.index):
+        if declare and 0 != len(p.index):
             s += f" {p.array_instances} "
         else:
             s += f"{p.index_str}"
@@ -395,14 +396,11 @@ class FieldLogic:
 
         Returns True if this is the case.
         """
-        if field.get_property("intr type") in {
+        return field.get_property("intr type") in {
             InterruptType.posedge,
             InterruptType.negedge,
             InterruptType.bothedge,
-        }:
-            return True
-
-        return False
+        }
 
     # ---------------------------------------------------------------------------
     # Field Logic Conditionals
@@ -572,8 +570,8 @@ class FieldLogic:
         self.add_hw_conditional(hw_set_clr.HWSet(self.exp), AssignmentPrecedence.HWSET)
 
     def _get_X_conditionals(
-        self, conditionals: "Dict[int, List[NextStateConditional]]", field: "FieldNode"
-    ) -> "List[NextStateConditional]":
+        self, conditionals: "dict[int, list[NextStateConditional]]", field: "FieldNode"
+    ) -> "list[NextStateConditional]":
         result = []
         precedences = sorted(conditionals.keys(), reverse=True)
         for precedence in precedences:
@@ -583,7 +581,7 @@ class FieldLogic:
                     break
         return result
 
-    def get_conditionals(self, field: "FieldNode") -> "List[NextStateConditional]":
+    def get_conditionals(self, field: "FieldNode") -> "list[NextStateConditional]":
         """
         Get a list of NextStateConditional objects that apply to the given field.
 

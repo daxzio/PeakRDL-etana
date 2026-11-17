@@ -1,10 +1,11 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
+from systemrdl.node import MemNode, RegNode, SignalNode
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
-from systemrdl.node import SignalNode, RegNode, MemNode
 
 if TYPE_CHECKING:
-    from systemrdl.node import Node, FieldNode, AddressableNode, AddrmapNode
+    from systemrdl.node import AddressableNode, AddrmapNode, FieldNode, Node
+
     from .exporter import DesignState
 
 
@@ -62,7 +63,7 @@ class DesignScanner(RDLListener):
         if self.msg.had_error:
             self.msg.fatal("Unable to export due to previous errors")
 
-    def enter_Component(self, node: "Node") -> Optional[WalkerAction]:
+    def enter_Component(self, node: "Node") -> WalkerAction | None:
         from .utils import external_policy
 
         policy = external_policy(self.ds)

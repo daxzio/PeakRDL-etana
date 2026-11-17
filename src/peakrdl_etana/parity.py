@@ -2,12 +2,12 @@ from typing import TYPE_CHECKING
 
 from systemrdl.walker import WalkerAction
 
-
 from .forloop_generator import RDLForLoopGenerator
 
 if TYPE_CHECKING:
+    from systemrdl.node import AddressableNode, FieldNode
+
     from .exporter import RegblockExporter
-    from systemrdl.node import FieldNode, AddressableNode
 
 
 class ParityErrorReduceGenerator(RDLForLoopGenerator):

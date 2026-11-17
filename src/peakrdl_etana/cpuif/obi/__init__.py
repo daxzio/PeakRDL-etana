@@ -1,7 +1,5 @@
-from typing import List
-
-from ..base import CpuifBase
 from ...utils import clog2
+from ..base import CpuifBase
 
 
 class OBI_Cpuif_flattened(CpuifBase):
@@ -61,7 +59,7 @@ class OBI_Cpuif_flattened(CpuifBase):
         )
 
     @property
-    def parameters(self) -> List[str]:
+    def parameters(self) -> list[str]:
         return ["parameter ID_WIDTH = 1"]
 
     @property

@@ -5,9 +5,9 @@ Generates example SystemVerilog modules showing how to instantiate
 the generated register block with proper signal declarations.
 """
 
-from typing import TYPE_CHECKING, List
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .exporter import RegblockExporter
@@ -67,13 +67,13 @@ class TemplateGenerator:
         with open(output_file, "w") as f:
             f.write(template_code)
 
-    def _get_apb_signals(self) -> List[SignalInfo]:
+    def _get_apb_signals(self) -> list[SignalInfo]:
         """
         Extract APB interface signals from cpuif port declarations.
 
         Returns list of APB signals (clk, reset, and bus interface signals).
         """
-        signals: List[SignalInfo] = []
+        signals: list[SignalInfo] = []
 
         # Add clk and reset first - these come from the design state, not cpuif
         signals.append(
@@ -141,13 +141,13 @@ class TemplateGenerator:
 
         return signals
 
-    def _get_hwif_signals(self) -> List[SignalInfo]:
+    def _get_hwif_signals(self) -> list[SignalInfo]:
         """
         Extract hardware interface signals from hwif port declarations.
 
         Returns list of hwif signals with w_ prefix applied to base names.
         """
-        signals: List[SignalInfo] = []
+        signals: list[SignalInfo] = []
 
         # Get hwif port declarations
         if not self.hwif.has_hwif_ports:
@@ -182,9 +182,7 @@ class TemplateGenerator:
                     base_name = name[len(self.hwif.hwif_in_str) + 1 :]
                 elif name.startswith(f"{self.hwif.hwif_out_str}_"):
                     base_name = name[len(self.hwif.hwif_out_str) + 1 :]
-                elif name.startswith("i_"):
-                    base_name = name[2:]
-                elif name.startswith("o_"):
+                elif name.startswith(("i_", "o_")):
                     base_name = name[2:]
 
                 signals.append(
@@ -202,8 +200,8 @@ class TemplateGenerator:
     def _generate_template_code(
         self,
         module_name: str,
-        apb_signals: List[SignalInfo],
-        hwif_signals: List[SignalInfo],
+        apb_signals: list[SignalInfo],
+        hwif_signals: list[SignalInfo],
     ) -> str:
         """
         Generate the complete template module code.

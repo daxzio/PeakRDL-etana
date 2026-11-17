@@ -1,58 +1,23 @@
-import sys
-from typing import List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from importlib.metadata import EntryPoint, Distribution
+    from importlib.metadata import Distribution, EntryPoint
 
-if sys.version_info >= (3, 10, 0):
-    from importlib import metadata
-
-    def _get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
-        eps = []
-        for ep in metadata.entry_points().select(group=group_name):  # type: ignore[attr-defined]
-            eps.append((ep, ep.dist))
-        return eps
-
-    def _get_name_from_dist(dist: "Distribution") -> str:
-        return dist.name  # type: ignore[attr-defined]
-
-elif sys.version_info >= (3, 8, 0):  # pragma: no cover
-    from importlib import metadata
-
-    def _get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
-        eps = []
-        dist_names = set()
-        for dist in metadata.distributions():
-            # Due to a bug in importlib.metadata's distributions iterator, in
-            # some cases editable installs will cause duplicate dist entries.
-            # Filter this out.
-            dist_name = get_name_from_dist(dist)
-            if dist_name in dist_names:
-                continue
-            dist_names.add(dist_name)
-
-            for ep in dist.entry_points:
-                if ep.group == group_name:
-                    eps.append((ep, dist))
-        return eps
-
-    def _get_name_from_dist(dist: "Distribution") -> str:
-        return dist.metadata["Name"]
-
-else:  # pragma: no cover
-    import pkg_resources
-
-    def _get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
-        eps = []
-        for ep in pkg_resources.iter_entry_points(group_name):
-            eps.append((ep, ep.dist))
-        return eps  # type: ignore[return-value]
-
-    def _get_name_from_dist(dist: "Distribution") -> str:
-        return dist.project_name  # type: ignore
+from importlib import metadata
 
 
-def get_entry_points(group_name: str) -> List[Tuple["EntryPoint", "Distribution"]]:
+def _get_entry_points(group_name: str) -> list[tuple["EntryPoint", "Distribution"]]:
+    eps = []
+    for ep in metadata.entry_points().select(group=group_name):  # type: ignore[attr-defined]
+        eps.append((ep, ep.dist))
+    return eps
+
+
+def _get_name_from_dist(dist: "Distribution") -> str:
+    return dist.name  # type: ignore
+
+
+def get_entry_points(group_name: str) -> list[tuple["EntryPoint", "Distribution"]]:
     return _get_entry_points(group_name)
 
 

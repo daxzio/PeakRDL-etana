@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from .bases import NextStateUnconditional
 
@@ -16,7 +16,7 @@ class Singlepulse(NextStateUnconditional):
     def is_match(self, field: "FieldNode") -> bool:
         return field.get_property("singlepulse")
 
-    def get_assignments(self, field: "FieldNode") -> List[str]:
+    def get_assignments(self, field: "FieldNode") -> list[str]:
         return [
             "next_c = '0;",
             "load_next_c = '1;",
