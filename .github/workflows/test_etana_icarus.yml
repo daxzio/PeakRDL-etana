@@ -33,15 +33,13 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
         cpuif: ["passthrough", "apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
         target: [icarus]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [run_lint]
 
     steps:
       - uses: actions/checkout@v7
       - name: Setup Icarus
         uses: daxzio/setup-icarus@v1
-        with:
-          version: "2026.11.04"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
