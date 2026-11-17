@@ -157,7 +157,7 @@ def get_concrete_index_str(top_node: Node, target_node: Node) -> str:
         if isinstance(current, AddressableNode) and current.current_idx is not None:
             indices = list(current.current_idx) + indices
         if hasattr(current, "parent"):
-            current = current.parent  # type: ignore[assignment]
+            current = current.parent
         else:
             break
 

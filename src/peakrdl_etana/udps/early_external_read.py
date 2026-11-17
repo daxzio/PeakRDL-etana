@@ -4,7 +4,7 @@ from systemrdl.udp import UDPDefinition
 from systemrdl.component import Mem
 
 if TYPE_CHECKING:
-    from systemrdl.node import Node, MemNode
+    from systemrdl.node import Node
 
 
 class EarlyExternalRead(UDPDefinition):
