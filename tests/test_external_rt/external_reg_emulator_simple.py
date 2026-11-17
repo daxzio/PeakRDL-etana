@@ -1,0 +1,1 @@
+../test_external/external_reg_emulator_simple.py

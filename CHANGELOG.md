@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for read-write, read-only, and write-only memories
 
 ### Fixed
+- **Retimed external register arrays** (`--rt-external reg`): The registered request path reset the whole unpacked port array from every generate iteration, and the read/write request strobe was not indexed. Reset and the strobe now target that iteration's element. Covered by `tests/test_external_rt`. (#12)
 - **Inherited `field_reset`**: A `field_reset` signal declared on an addrmap, a regfile, or above the top addrmap resets the fields under it. The nearest signal wins, and an explicit `resetsignal` on a field overrides it. Covered by `tests/test_field_reset_hier`.
 - **AHB/AHB5/AHB-Lite sub-word writes**: Capture full ``HWDATA`` and strobe the
   active AMBA byte lane(s) from ``HSIZE`` + address offset. Previously the
