@@ -140,7 +140,18 @@ XEZIM_BIN ?= xezim
 endif
 endif
 
+# A synthesis check elaborates generated RTL and does not need a simulator.
+# Skip the cocotb makefile when every goal is generate/synth/clean, so
+# `make yosys` runs without cocotb installed.
+_SYNTH_ONLY_GOALS := etana yosys clean check-etana check-gen
+ifneq ($(filter-out $(_SYNTH_ONLY_GOALS),$(MAKECMDGOALS)),)
+_NEED_COCOTB := 1
+else ifeq ($(MAKECMDGOALS),)
+_NEED_COCOTB := 1
+endif
+ifdef _NEED_COCOTB
 include $(shell cocotb-config --makefiles)/Makefile.sim
+endif
 ifeq ($(SIM),verilator)
 	COMPILE_ARGS += --no-timing
 else ifeq ($(SIM),xezim)
@@ -211,7 +222,7 @@ regblock-vhdl:
 	peakrdl regblock-vhdl ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} ${PEAKRDL_ARGS} --rename regblock
 	../../scripts/hwif_wrapper_tool_vhdl/generate_wrapper_vhdl.py ${UDPS} regblock.rdl -o regblock-vhdl-rtl/ --cpuif ${CPUIF} --rename regblock
 
-# Synthesize the design using Yosys
+# Synthesize the design using Yosys (built-in read_slang / sv-elab).
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)
 	rm -rf $(SYNTH_OUTPUT)/*

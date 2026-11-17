@@ -1,6 +1,8 @@
-# Auto-generated Yosys synthesis script
-# Read all source files
-read_verilog -sv ./etana-rtl/regblock.sv
+# Synthesis check for generated PeakRDL-etana RTL (invoked from each test dir via make yosys).
+# Uses Yosys built-in read_slang (sv-elab); read_verilog -sv cannot parse unpacked array ports.
+
+# Read every file peakrdl etana emitted in this test directory.
+read_slang -D SYNTHESIS --top regblock ./etana-rtl/*.sv
 
 # Elaborate design hierarchy
 hierarchy -check -top regblock

@@ -1,0 +1,90 @@
+name: Synthesize PeakRDL Etana
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 1 * * 0'
+jobs:
+  synth:
+    strategy:
+      fail-fast: false # So that one fail doesn't stop remaining tests
+      matrix:
+        python-version: ["3.13"]
+        cpuif: ["passthrough", "apb4-flat", "apb3-flat", "ahb-flat", "axi4-lite-flat", "avalon-mm-flat", "obi-flat", "wishbone-flat"]
+    # Pinned explicitly: ubuntu-latest can resolve to 26.04, whose asset now exists.
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Yosys
+        uses: daxzio/setup-yosys@v1
+        with:
+          version: latest
+      # 0.67+ includes read_slang; setup-yosys picks yosys-ubuntu-26.04.tar.gz on this runner.
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install peakrdl-etana
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[cli]"
+      - name: Synthesize generated RTL
+        run: |
+          set -uo pipefail
+          unset PYTHONHOME
+          yosys -V
+          yosys -p 'help read_slang' | grep -q read_slang
+          cd tests
+          # Same directories as tests/test_all.sh for the Etana Icarus run.
+          cpuif="${{ matrix.cpuif }}"
+          skip=(
+            test_user_cpuif
+            test_pkg_params
+            test_template_report
+            test_ahblite
+            test_loops
+            test_index
+            test_wide_external
+            test_array_reset
+            test_early_external_read
+            test_early_external_mixed
+            test_ahb5
+          )
+          if [ "$cpuif" != "ahb-flat" ]; then
+            skip+=(test_ahb_pipeline)
+          fi
+          pass=0
+          fail=0
+          for dir in test_*/; do
+            [ -f "${dir}/Makefile" ] || continue
+            [ -f "${dir}/test_dut.py" ] || continue
+            name="${dir%/}"
+            skipped=0
+            for item in "${skip[@]}"; do
+              if [ "$item" = "$name" ]; then
+                skipped=1
+                break
+              fi
+            done
+            if [ "$skipped" -eq 1 ]; then
+              printf '%s\n' "Skipping ${name}"
+              continue
+            fi
+            printf '%s\n' "Synthesizing ${name}..."
+            if make -C "$dir" yosys "CPUIF=${{ matrix.cpuif }}" >"/tmp/${name}.log" 2>&1; then
+              printf '%s\n' "  PASS"
+              pass=$((pass + 1))
+            else
+              printf '%s\n' "  FAIL"
+              fail=$((fail + 1))
+              printf '%s\n' "========== Log for ${name} =========="
+              cat "/tmp/${name}.log"
+              printf '%s\n' "========== End of ${name} log =========="
+            fi
+          done
+          printf '\n%s\n' "PASS: ${pass}"
+          printf '%s\n' "FAIL: ${fail}"
+          [ "$fail" -eq 0 ]

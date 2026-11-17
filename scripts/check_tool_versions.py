@@ -33,6 +33,7 @@ REQUIREMENTS = REPO_ROOT / "requirements.txt"
 PINNED_ACTIONS = {
     "daxzio/setup-icarus": "test_etana_icarus.yml",
     "daxzio/setup-xezim": "test_etana_xezim.yml",
+    "daxzio/setup-yosys": "test_etana_yosys.yml",
     "veryl-lang/setup-verilator": "test_etana_verilator.yml",
     "ghdl/setup-ghdl": "test_regblock_vhdl_ghdl.yml",
     "nickg/setup-nvc": "test_regblock_vhdl_nvc.yml",
@@ -42,6 +43,7 @@ PINNED_ACTIONS = {
 LATEST_SOURCES = {
     "icarus": ("github-release", "daxzio/icarus-package"),
     "xezim": ("github-release", "daxzio/xezim-package"),
+    "yosys": ("github-release", "daxzio/yosys-package"),
     "verilator": ("github-release", "veryl-lang/verilator-package"),
     "ghdl": ("github-release", "ghdl/ghdl"),
     "nvc": ("github-release", "nickg/nvc"),
@@ -52,6 +54,7 @@ LATEST_SOURCES = {
 ACTION_TO_TOOL = {
     "daxzio/setup-icarus": "icarus",
     "daxzio/setup-xezim": "xezim",
+    "daxzio/setup-yosys": "yosys",
     "veryl-lang/setup-verilator": "verilator",
     "ghdl/setup-ghdl": "ghdl",
     "nickg/setup-nvc": "nvc",
