@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=77", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,7 +17,8 @@ authors = [
 ]
 description = "Compile SystemRDL into a Verilog control/status register (CSR) block"
 readme = "README.md"
-license = {text = "LGPLv3"}
+license = "LGPL-3.0-only"
+license-files = ["LICENSE"]
 keywords = [
     "SystemRDL", "PeakRDL", "CSR", "compiler", "tool", "registers", "generator",
     "Verilog", "SystemVerilog", "register abstraction layer",
@@ -34,7 +35,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
