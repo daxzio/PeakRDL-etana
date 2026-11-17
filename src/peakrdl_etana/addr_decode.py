@@ -418,11 +418,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
         if regwidth == accesswidth:
             p = self.addr_decode.get_access_strobe(node)
             if len(self._array_stride_stack):
-                # next_cpuif_addr is a 32-bit integer. Cast so the sum stays
-                # at addr_width instead of widening the literal to 32 bits.
-                self.add_content(
-                    f"next_cpuif_addr = 32'({self._get_address_str(node)});"
-                )
+                self.add_content(f"next_cpuif_addr = {self._get_address_str(node)};")
                 addr_match = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
             else:
                 addr_match = (
@@ -472,7 +468,7 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                     addr_expr = self._get_address_str(
                         node, subword_offset=(i * subword_stride)
                     )
-                    self.add_content(f"next_cpuif_addr = 32'({addr_expr});")
+                    self.add_content(f"next_cpuif_addr = {addr_expr};")
                     rhs = f"cpuif_req_masked & (cpuif_addr == next_cpuif_addr[{self.addr_decode.exp.ds.addr_width-1}:0])"
                 else:
                     rhs = f"cpuif_req_masked & (cpuif_addr == {self._get_address_str(node, subword_offset=(i*subword_stride))})"

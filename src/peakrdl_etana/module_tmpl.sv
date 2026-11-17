@@ -159,7 +159,7 @@ module {{ds.module_name}}
 
     always @(*) begin
         /* verilator lint_off UNUSEDSIGNAL */
-        integer next_cpuif_addr;
+        logic [{{cpuif.addr_width-1}}:0] next_cpuif_addr;
         /* verilator lint_on UNUSEDSIGNAL */
     {%- if ds.has_external_addressable or ds.err_if_bad_addr or ds.err_if_bad_rw %}
         {%- if ds.has_external_addressable %}
