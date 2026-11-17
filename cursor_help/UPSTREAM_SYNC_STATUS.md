@@ -141,7 +141,20 @@ comm -13 \
 | `src/peakrdl_regblock/module_tmpl.sv` | `src/peakrdl_etana/module_tmpl.sv` | Flat ports. Etana does not call `get_module_port_list()` |
 | `tests/test_<name>/` | `tests/test_<name>/` | Copy `.rdl`. Translate the SV testbench to `test_dut.py` |
 
-### 5. Test
+### 5. Re-check filed upstream bugs
+
+Bugs we have reported against SystemRDL, and the etana tests skipped because of them, are listed under "Filed upstream bugs". Do this on every sync, including a sync that finds no new commits. A closed issue is not proof the skip can go. The test has to pass on `FETCH_HEAD`.
+
+For each row:
+
+```bash
+gh issue view <number> --repo SystemRDL/PeakRDL-regblock --json state,closedAt,title
+```
+
+- Still open: leave the skip. Record that in the sync note.
+- Closed, or the fixing commit is in `ed07496..FETCH_HEAD`: run the row's re-check against `FETCH_HEAD`. If it passes, delete the skip and update the table. If it fails, leave the skip and note that the issue closed without fixing this case.
+
+### 6. Test
 
 ```bash
 make -C tests/test_<name> clean etana sim
@@ -151,9 +164,9 @@ cd tests && bash test_all.sh
 
 `tests/tests.mak` forces Verilator when `REGBLOCK=1`, unless `SIM=xezim`. An `SIM=icarus` setting on a regblock reference run does not stick. Etana runs (`REGBLOCK=0`) use Icarus unless `SIM` is set.
 
-### 6. Update this file
+### 7. Update this file
 
-Record the new upstream commit, what was ported, what was left because it is struct-only, any etana adaptation, and the test result. Advance the `ed07496` marker in the commands above to that commit.
+Record the new upstream commit, what was ported, what was left because it is struct-only, any etana adaptation, the test result, and the result of the filed-bug re-check. Advance the `ed07496` marker in the commands above to that commit.
 
 ## CPU interfaces
 
@@ -239,12 +252,20 @@ wb_err = cpuif_rd_err | cpuif_wr_err;
 
 On a slave error both strobes assert. Wishbone B4 requires ACK and ERR to be mutually exclusive. `cocotbext-wishbone` reports that. `RegblockWishboneMaster` in `tests/interfaces/wishbone_wrapper.py` accepts both so the suite can run. The RTL stays matched to regblock until upstream changes it. A regblock fix would suppress `ack` when `err` is set (or drive `err` alone); port that fix onto the flat template and then drop the testbench workaround.
 
+## Filed upstream bugs
+
+Re-check this table at step 5 of every sync. The skip stays until the re-check command passes on SystemRDL `FETCH_HEAD`.
+
+| Issue | Skip | Re-check |
+|---|---|---|
+| [SystemRDL/PeakRDL-regblock#224](https://github.com/SystemRDL/PeakRDL-regblock/issues/224) | `test_external_rt` when `REGBLOCK=1` and `SIM=verilator`, in `tests/test_all.sh`. Open since 17 November 2026. `--rt-external reg` non-blocking-assigns members of the unpacked `hwif_out` while other members are continuous-assigned. Verilator 5.054 reports `BLKANDNBLK`. Regblock VHDL and xezim still run the test. Etana's own run is unaffected. | From a clean `FETCH_HEAD`: `peakrdl regblock` on the RDL in the issue, with `--cpuif passthrough --rt-external reg`, then `verilator --lint-only`. If that is clean, `make -C tests/test_external_rt clean regblock sim REGBLOCK=1 SIM=verilator`. Remove the skip only if both pass. |
+
 ## Test sweep skips
 
 `tests/test_all.sh` is the list of what the default sweep runs. As of 4 November 2026 it always skips:
 
 `test_user_cpuif`, `test_pkg_params`, `test_template_report`, `test_ahblite`, `test_loops`, `test_index`, `test_wide_external`, `test_array_reset`, `test_early_external_read`, `test_early_external_mixed`, `test_ahb5`.
 
-It also skips `test_ahb_pipeline` unless `CPUIF=ahb-flat`, and skips `test_addrmap` when `REGBLOCK=1`. A skip here is an etana choice. A missing upstream test after the `comm` command above is a porting task.
+It also skips `test_ahb_pipeline` unless `CPUIF=ahb-flat`, and skips `test_addrmap` when `REGBLOCK=1`. `test_external_rt` is skipped only for regblock under Verilator, because of issue #224 above. A skip here is an etana choice, except for a row in "Filed upstream bugs", which is removed when that re-check passes. A missing upstream test after the `comm` command above is a porting task.
 
 The May 2026 note of "32 passed, 4 skipped" described the suite at that sync. The tree now has more etana-only tests, and the skip list above is the one to use.

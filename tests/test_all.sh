@@ -107,10 +107,10 @@ fi
 # Skip certain tests when REGBLOCK=1
 if [ "$REGBLOCK" -eq 1 ]; then
     SKIP_TESTS+=("test_addrmap")
-    # test_external_rt passes --rt-external reg. PeakRDL-regblock then assigns
-    # the unpacked hwif_out with both blocking and non-blocking statements,
-    # which Verilator rejects (BLKANDNBLK). The flag is an etana regression;
-    # regblock VHDL and xezim still run the test.
+    # PeakRDL-regblock --rt-external reg assigns the unpacked hwif_out with
+    # both blocking and non-blocking statements. Verilator rejects that
+    # (BLKANDNBLK). SystemRDL/PeakRDL-regblock#224. Re-check on each upstream
+    # sync; see cursor_help/UPSTREAM_SYNC_STATUS.md. VHDL and xezim still run it.
     if [ "$SIM" = "verilator" ]; then
         SKIP_TESTS+=("test_external_rt")
     fi
