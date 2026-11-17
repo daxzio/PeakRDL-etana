@@ -598,13 +598,19 @@ class FieldLogicGenerator(RDLForLoopGenerator):
             if field.is_sw_readable:
                 rd_inst_names.append(["", vslice])
         else:
-            # Multi-field register - use per-field naming
+            # Multi-field register - use per-field naming.
+            # decoded_wr_data is one access, so a field above the first
+            # subword is sliced at its position inside that subword.
+            # Field b[47:40] with accesswidth 32 is decoded_wr_data[15:8].
             for field in self.fields:
                 x = IndexedPath(self.exp.ds.top_node, field)
                 path = re.sub(p.path, "", x.path)
-                # For external registers, always use the full field width
-                # The external module handles wide register access internally.
-                vslice = f"[{field.msb}:{field.lsb}]"
+                field_subword = field.low // accesswidth
+                field_in_one_subword = field.high // accesswidth == field_subword
+                if accesswidth < regwidth and field_in_one_subword:
+                    vslice = self.field_logic._wbus_bitslice(field, field_subword)
+                else:
+                    vslice = f"[{field.msb}:{field.lsb}]"
                 if field.is_sw_writable:
                     wr_inst_names.append([path, vslice])
                 if field.is_sw_readable:

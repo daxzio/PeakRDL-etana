@@ -183,7 +183,14 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
                 conditional = self.get_addr_compare_conditional(addr)
                 var = self.get_readback_data_var(addr)
                 self.add_content(f"if({conditional}) begin")
-                self.add_content(f"    {var} = {data};")
+                if len(readable_fields) > 1:
+                    # Per-field rd_data ports are declared; the register-level
+                    # signal is not. Place each field inside this subword.
+                    self._assign_wide_external_fields(
+                        var, readable_fields, subword_idx, accesswidth
+                    )
+                else:
+                    self.add_content(f"    {var} = {data};")
                 self.add_content("end")
         else:
             addr = self._get_address_str(node)
@@ -214,6 +221,33 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             else:
                 self.add_content(f"    {var} = {data};")
             self.add_content("end")
+
+    def _assign_wide_external_fields(
+        self,
+        var: str,
+        readable_fields: Sequence[FieldNode],
+        subword_idx: int,
+        accesswidth: int,
+    ) -> None:
+        """Place right-aligned per-field rd_data into one subword."""
+        sub_low = subword_idx * accesswidth
+        sub_high = sub_low + accesswidth - 1
+        for field in readable_fields:
+            if field.high < sub_low or field.low > sub_high:
+                continue
+            rel_low = max(field.low - sub_low, 0)
+            rel_high = min(field.high - sub_low, accesswidth - 1)
+            src_low = max(sub_low - field.low, 0)
+            src_high = src_low + (rel_high - rel_low)
+            value = self.exp.hwif.get_external_rd_data(field, True)
+            value = do_slice(value, src_high, src_low)
+            field_inside = field.low >= sub_low and field.high <= sub_high
+            if field.msb < field.lsb and field_inside:
+                value = do_bitswap(value, field.width)
+            if rel_high == rel_low:
+                self.add_content(f"    {var}[{rel_low}] = {value};")
+            else:
+                self.add_content(f"    {var}[{rel_high}:{rel_low}] = {value};")
 
     def process_reg(self, node: RegNode, fields: Sequence[FieldNode]) -> None:
         """
