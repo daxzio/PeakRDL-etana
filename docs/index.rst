@@ -129,3 +129,4 @@ Links
     udps/verilog_reg_only
     udps/err_support
     udps/early_external_read
+    udps/cdc

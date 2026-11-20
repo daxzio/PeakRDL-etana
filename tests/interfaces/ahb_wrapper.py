@@ -2,7 +2,7 @@ import math
 import logging
 from collections import deque
 from cocotb import start_soon
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from cocotbext.ahb import AHBBus, AHBLiteMaster, AHBMonitor, AHBTrans, AHBBurst
@@ -148,6 +148,12 @@ class AHBMasterDX(AHBLiteMaster):
             else:
                 self.values.append((value >> (i * self.buswidth)) & self.mask)
 
+    async def _setup(self) -> None:
+        # A transfer started from another clock's edge can land on the same
+        # timestamp as this bus clock. Step off that edge before driving, or
+        # the master treats it as the address phase and samples stale HRDATA.
+        await Timer(1, unit="ns")
+
     def enable_backpressure(self):
         self.backpressure = True
 
@@ -254,6 +260,7 @@ class AHBMasterDX(AHBLiteMaster):
         values = [b["value"] if b["mode"] else 0 for b in pending]
         modes = [b["mode"] for b in pending]
         kwargs.setdefault("pip", pip)
+        await self._setup()
         ret = await super().custom(addrs, values, mode=modes, **kwargs)
         if len(ret) != len(pending):
             raise Exception(
@@ -273,6 +280,7 @@ class AHBMasterDX(AHBLiteMaster):
     ) -> Sequence[dict]:
         self.prepare_addresses(address, value, 1, length)  # type: ignore[arg-type]
         kwargs.setdefault("pip", self.pip)
+        await self._setup()
 
         ret = await super().custom(
             self.addresses, self.values, mode=self.mode, **kwargs
@@ -303,6 +311,7 @@ class AHBMasterDX(AHBLiteMaster):
     ) -> Sequence[dict]:
         self.prepare_addresses(address, value, 0, length)  # type: ignore[arg-type]
         kwargs.setdefault("pip", self.pip)
+        await self._setup()
         ret = await super().custom(
             self.addresses, [0] * len(self.addresses), mode=self.mode, **kwargs
         )

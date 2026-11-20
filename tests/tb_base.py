@@ -3,12 +3,14 @@ from interfaces.clkreset import Reset
 
 
 class testbench:
-    def __init__(self, dut, reset_sense=1, reset_length=2):
+    def __init__(self, dut, reset_sense=1, reset_length=2, resetname="rst"):
 
         period = 10
         self.clk = Clk(dut, period, clkname="clk")
         if not reset_sense is None:
-            self.reset = Reset(dut, self.clk, reset_sense=reset_sense, resetname="rst")
+            self.reset = Reset(
+                dut, self.clk, reset_sense=reset_sense, resetname=resetname
+            )
 
         if hasattr(dut, "s_cpuif_req"):
             from interfaces.passthrough import PTBus, PTMaster
@@ -29,15 +31,21 @@ class testbench:
             from interfaces.ahb_wrapper import AHBMasterDX
 
             self.ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
+            # Reset is held for 100 clocks, and the master counts every cycle
+            # HREADY stays low, including a transfer that starts during reset
+            # and then waits out a CDC round trip.
             self.intf = AHBMasterDX(
-                self.ahb_bus, getattr(dut, "clk"), getattr(dut, "rst")
+                self.ahb_bus,
+                getattr(dut, "clk"),
+                getattr(dut, resetname),
+                timeout=500,
             )
 
             # self.intf = AHBMaster(ahb_bus, getattr(dut, "clk"), getattr(dut, "rst"))
         elif hasattr(dut, "s_axil_awvalid"):
             from interfaces.axi_wrapper import AxiWrapper
 
-            self.intf = AxiWrapper(dut, "s_axil", "clk", "rst")
+            self.intf = AxiWrapper(dut, "s_axil", "clk", resetname)
         elif hasattr(dut, "s_obi_req"):
             from cocotbext.obi import ObiBus, ObiMaster
 

@@ -6,6 +6,7 @@ import jinja2 as jj
 from systemrdl.node import AddrmapNode, RootNode, SignalNode
 
 from .addr_decode import AddressDecode
+from .cdc import Cdc
 from .cpuif.apb4 import APB4_Cpuif_flattened
 from .cpuif.base import CpuifBase
 from .dereferencer import Dereferencer
@@ -175,6 +176,7 @@ class RegblockExporter:
         self.field_logic = FieldLogic(self)
         self.write_buffering = WriteBuffering(self)
         self.read_buffering = ReadBuffering(self)
+        self.cdc = Cdc(self)
         self.dereferencer = Dereferencer(self)
         ext_write_acks = ExternalWriteAckGenerator(self)
         ext_read_acks = ExternalReadAckGenerator(self)
@@ -198,6 +200,7 @@ class RegblockExporter:
             "hwif": self.hwif,
             "write_buffering": self.write_buffering,
             "read_buffering": self.read_buffering,
+            "cdc": self.cdc,
             "get_resetsignal": self.dereferencer.get_resetsignal,
             "default_resetsignal_name": self.dereferencer.default_resetsignal_name,
             "address_decode": self.address_decode,
@@ -224,6 +227,8 @@ class RegblockExporter:
         template = self.jj_env.get_template("module_tmpl.sv")
         stream = template.stream(context)
         stream.dump(module_file_path)
+
+        self.cdc.write_support_files(output_dir)
 
         # Strip trailing whitespace from generated file
         with open(module_file_path, "r") as f:
@@ -305,6 +310,7 @@ class DesignState:
         self.generate_template = kwargs.pop("generate_template", False)  # type: bool
         self.err_if_bad_addr = kwargs.pop("err_if_bad_addr", False)  # type: bool
         self.err_if_bad_rw = kwargs.pop("err_if_bad_rw", False)  # type: bool
+        self.cdc_emit_cells = kwargs.pop("cdc_emit_cells", False)  # type: bool
 
         # ------------------------
         # Info about the design
@@ -325,6 +331,9 @@ class DesignState:
         self.has_array_signals = False
 
         self.has_paritycheck = False
+        self.has_cdc_regs = False
+        self.cdc_domains: OrderedDict[str, Any] = OrderedDict()
+        self.cdc_clock_signals: OrderedDict[str, SignalNode] = OrderedDict()
 
         # Track any referenced enums
         self.user_enums: list[type[Any]] = []

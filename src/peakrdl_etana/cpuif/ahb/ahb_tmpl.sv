@@ -265,7 +265,10 @@ end
 assign completing   = txn_inflight && (cpuif_rd_ack || cpuif_wr_ack);
 assign waiting_data = txn_valid && txn_write && !txn_data_ready;
 assign waiting_ack   = txn_inflight && !completing;
-assign hready_int    = !(waiting_data || waiting_ack);
+// Hold HREADY low through reset. The transaction flops are cleared, so
+// waiting_ack is 0 and HREADY would otherwise be high. A master would then
+// finish the beat and sample HRDATA of 0.
+assign hready_int    = !{{get_resetsignal(cpuif.reset)}} && !(waiting_data || waiting_ack);
 
 
 always @(*) begin

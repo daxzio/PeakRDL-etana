@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from systemrdl.node import AddrmapNode, FieldNode, MemNode, RegfileNode, RegNode
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
+from ..cdc.util import is_cdc_reg
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import (
     IndexedPath,
@@ -40,6 +41,10 @@ class FieldResetGenerator(RDLListener):
         return WalkerAction.Continue
 
     def enter_Field(self, node: "FieldNode") -> None:
+        from ..cdc.util import is_cdc_reg
+
+        if is_cdc_reg(node.parent):
+            return
         if not node.implements_storage:
             return
 
@@ -150,6 +155,8 @@ class FieldLogicGenerator(RDLForLoopGenerator):
         return WalkerAction.SkipDescendants
 
     def enter_Field(self, node: "FieldNode") -> None:
+        if is_cdc_reg(node.parent):
+            return
         if is_external_for_codegen(node, self.ds):
             # For external registers, track fields for wr_data/rd_data generation
             # We need sw_writable fields for wr_data and sw_readable fields for rd_data

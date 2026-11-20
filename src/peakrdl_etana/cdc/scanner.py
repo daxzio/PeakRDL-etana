@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+from collections import OrderedDict
+from typing import TYPE_CHECKING
+
+from systemrdl.node import AddrmapNode, RegNode, SignalNode
+from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
+
+from ..identifier_filter import kw_filter as kwf
+from ..utils import clog2
+from .model import CdcDomain, CdcSlot, CdcSlotKind
+from .util import (
+    cdc_reg_domain_key,
+    get_cdc_clk,
+    is_cdc_read_trigger,
+    is_cdc_reg,
+    is_cdc_write_trigger,
+)
+
+if TYPE_CHECKING:
+    from ..exporter import DesignState
+
+
+class CdcScanner(RDLListener):
+    def __init__(self, ds: DesignState) -> None:
+        self.ds = ds
+        self._regs_by_domain: dict[str, list[RegNode]] = OrderedDict()
+
+    @property
+    def top_node(self) -> AddrmapNode:
+        return self.ds.top_node
+
+    def do_scan(self) -> None:
+        walker = RDLWalker()
+        walker.walk(self.top_node, self)
+        self._build_domains()
+
+    def enter_Reg(self, node: RegNode) -> WalkerAction | None:
+        if not is_cdc_reg(node):
+            return WalkerAction.Continue
+        key = cdc_reg_domain_key(node)
+        self._regs_by_domain.setdefault(key, []).append(node)
+        clk = get_cdc_clk(node)
+        assert clk is not None
+        self.ds.cdc_clock_signals[key] = clk
+        return WalkerAction.Continue
+
+    def _reg_data_width(self, reg: RegNode) -> int:
+        return reg.get_property("regwidth")
+
+    def _unique_regs(self, members: list[RegNode]) -> list[RegNode]:
+        uniq: dict[str, RegNode] = {}
+        for reg in members:
+            uniq[reg.get_path()] = reg
+        return sorted(uniq.values(), key=lambda reg: reg.raw_absolute_address)
+
+    def _build_domains(self) -> None:
+        for key, regs in self._regs_by_domain.items():
+            clk = self.ds.cdc_clock_signals[key]
+            nstages = clk.get_property("cdc_nstages", default=2)
+            fast = clk.get_property("cdc_fast", default=False)
+            if fast:
+                self.top_node.env.msg.warning(
+                    f"cdc_fast is enabled on signal '{clk.inst_name}'. "
+                    "Destination clock must be fast enough that "
+                    "(NSTAGES+1)*T_dst plus path delay fits in one bus cycle.",
+                    clk.inst.def_src_ref,
+                )
+
+            write_groups: dict[str, list[RegNode]] = {}
+            read_groups: dict[str, list[RegNode]] = {}
+            singles: list[RegNode] = []
+
+            for reg in regs:
+                if reg.get_property("buffer_writes", default=False):
+                    trigger = reg.get_property("wbuffer_trigger")
+                    if isinstance(trigger, RegNode):
+                        write_groups.setdefault(trigger.get_path(), []).append(reg)
+                        continue
+                if reg.get_property("buffer_reads", default=False):
+                    trigger = reg.get_property("rbuffer_trigger")
+                    if isinstance(trigger, RegNode):
+                        read_groups.setdefault(trigger.get_path(), []).append(reg)
+                        continue
+                singles.append(reg)
+
+            slots: list[CdcSlot] = []
+            idx = 0
+            data_w = 32
+
+            for members in write_groups.values():
+                members = self._unique_regs(members)
+                trigger = next(
+                    (r for r in members if is_cdc_write_trigger(r)), members[-1]
+                )
+                w = sum(self._reg_data_width(r) for r in members)
+                data_w = max(data_w, w)
+                slots.append(
+                    CdcSlot(
+                        CdcSlotKind.WRITE_GROUP,
+                        idx,
+                        list(members),
+                        trigger=trigger,
+                        data_width=w,
+                    )
+                )
+                idx += 1
+
+            for members in read_groups.values():
+                members = self._unique_regs(members)
+                trigger = next(
+                    (r for r in members if is_cdc_read_trigger(r)), members[0]
+                )
+                w = sum(self._reg_data_width(r) for r in members)
+                data_w = max(data_w, w)
+                slots.append(
+                    CdcSlot(
+                        CdcSlotKind.READ_GROUP,
+                        idx,
+                        list(members),
+                        trigger=trigger,
+                        data_width=w,
+                    )
+                )
+                idx += 1
+
+            for reg in singles:
+                w = self._reg_data_width(reg)
+                data_w = max(data_w, w)
+                slots.append(CdcSlot(CdcSlotKind.SINGLE, idx, [reg], data_width=w))
+                idx += 1
+
+            n_slots = len(slots)
+            idx_w = max(1, clog2(n_slots)) if n_slots > 1 else 1
+
+            soft_resets: set[SignalNode] = set()
+            for reg in regs:
+                for field in reg.fields():
+                    rs = field.get_property("resetsignal")
+                    if isinstance(rs, SignalNode):
+                        soft_resets.add(rs)
+
+            domain = CdcDomain(
+                clk_signal=clk,
+                inst_name=kwf(clk.inst_name),
+                nstages=nstages,
+                fast=fast,
+                slots=slots,
+                idx_width=idx_w,
+                data_width=data_w,
+                soft_reset_signals=soft_resets,
+            )
+            self.ds.cdc_domains[key] = domain
+
+        if self.ds.cdc_domains:
+            self.ds.has_cdc_regs = True
+            self.ds.has_external_addressable = True

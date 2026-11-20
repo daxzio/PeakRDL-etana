@@ -63,6 +63,10 @@ class DesignScanner(RDLListener):
         if self.msg.had_error:
             self.msg.fatal("Unable to export due to previous errors")
 
+        from .cdc.scanner import CdcScanner
+
+        CdcScanner(self.ds).do_scan()
+
     def enter_Component(self, node: "Node") -> WalkerAction | None:
         from .utils import external_policy
 
@@ -103,9 +107,19 @@ class DesignScanner(RDLListener):
         self.ds.cpuif_data_width = max(self.ds.cpuif_data_width, accesswidth)
 
         # Don't emit buffer logic for external registers (they handle their own buffering)
-        if node.get_property("buffer_writes") and not node.external:
+        from .cdc.util import is_cdc_reg
+
+        if (
+            node.get_property("buffer_writes")
+            and not node.external
+            and not is_cdc_reg(node)
+        ):
             self.ds.has_buffered_write_regs = True
-        if node.get_property("buffer_reads") and not node.external:
+        if (
+            node.get_property("buffer_reads")
+            and not node.external
+            and not is_cdc_reg(node)
+        ):
             self.ds.has_buffered_read_regs = True
 
     def enter_Signal(self, node: "SignalNode") -> None:

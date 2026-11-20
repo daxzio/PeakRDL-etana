@@ -10,6 +10,10 @@ module {{ds.module_name}}
         input wire clk,
         input wire {{default_resetsignal_name}},
 
+        {%- for domain in ds.cdc_domains.values() %}
+        input wire {{domain.inst_name}},
+        {%- endfor %}
+
         {%- for signal in ds.out_of_hier_signals.values() %}
         {%- if signal.width == 1 %}
         input wire {{kwf(signal.inst_name)}},
@@ -247,6 +251,14 @@ module {{ds.module_name}}
     // Field logic
     //--------------------------------------------------------------------------
     {{field_logic.get_implementation()|indent}}
+
+{%- if ds.has_cdc_regs %}
+
+    //--------------------------------------------------------------------------
+    // CDC register domains
+    //--------------------------------------------------------------------------
+    {{cdc.get_implementation()|indent}}
+{%- endif %}
 
 {%- if ext_mem_req_value.has_req_value_mems() %}
     //--------------------------------------------------------------------------

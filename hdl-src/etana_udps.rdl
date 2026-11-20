@@ -21,3 +21,18 @@ property early_external_read {
     component = mem;
     type = boolean;
 };
+
+property cdc_clk {
+    component = reg;
+    type = ref;
+};
+
+property cdc_fast {
+    component = signal;
+    type = boolean;
+};
+
+property cdc_nstages {
+    component = signal;
+    type = longint;
+};

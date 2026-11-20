@@ -81,6 +81,13 @@ class SignalCollector(RDLListener):
         if desc is None:
             desc = ""
 
+        from .cdc.util import get_cdc_clk
+
+        cdc_clk = get_cdc_clk(node.parent)
+        if cdc_clk is not None:
+            suffix = f"[CDC domain: {cdc_clk.inst_name}]"
+            desc = f"{desc} {suffix}".strip()
+
         # A 'next' property overrides the inferred input signal.
         if node.is_hw_writable and node.get_property("next") is None:
             signal_name = f"{self.hwif.hwif_in_str}_{p.path}"

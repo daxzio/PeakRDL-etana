@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from systemrdl.node import AddressableNode, RegNode
 from systemrdl.walker import WalkerAction
 
+from ..cdc.util import is_cdc_reg
 from ..forloop_generator import RDLForLoopGenerator
 from ..utils import do_bitswap, is_inside_external_block
 
@@ -34,6 +35,9 @@ class RBufLogicGenerator(RDLForLoopGenerator):
 
         # Skip registers inside external blocks - they don't have read buffer logic
         if is_inside_external_block(node, self.exp.ds.top_node, self.exp.ds):
+            return
+
+        if is_cdc_reg(node):
             return
 
         if not node.get_property("buffer_reads", default=False):

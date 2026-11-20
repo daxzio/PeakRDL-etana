@@ -11,7 +11,15 @@ from systemrdl.node import (
 )
 from systemrdl.walker import WalkerAction
 
+from ..cdc.util import (
+    cdc_reg_domain_key,
+    cdc_uses_cell_access,
+    get_cdc_clk,
+    is_cdc_group_member,
+    is_cdc_reg,
+)
 from ..forloop_generator import RDLForLoopGenerator
+from ..identifier_filter import kw_filter as kwf
 from ..sv_int import SVInt
 from ..utils import (
     addr_range_match_expr,
@@ -108,6 +116,13 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             # Reg has no readable fields
             return WalkerAction.SkipDescendants
 
+        if is_cdc_reg(node):
+            if cdc_uses_cell_access(node):
+                self.process_cdc_cell_reg(node)
+            elif is_cdc_group_member(node):
+                self.process_cdc_member_reg(node)
+            return WalkerAction.SkipDescendants
+
         if node.external:
             self.process_external_reg(node)
             return WalkerAction.SkipDescendants
@@ -155,6 +170,70 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
 
     def get_readback_data_var(self, addr: str) -> str:
         return "readback_data_var"
+
+    def _cdc_shadow_name(self, reg: RegNode) -> str:
+        from ..utils import IndexedPath
+
+        p = IndexedPath(self.ds.top_node, reg)
+        return f"cdc_shadow_{p.path}{p.index_str}"
+
+    def _cdc_snapshot_name(self, reg: RegNode) -> str:
+        from ..utils import IndexedPath
+
+        p = IndexedPath(self.ds.top_node, reg)
+        return f"cdc_snap_{p.path}{p.index_str}"
+
+    def process_cdc_member_reg(self, node: RegNode) -> None:
+        addr = self._get_address_str(node)
+        regwidth = node.get_property("regwidth")
+        if node.get_property("buffer_writes", default=False):
+            data = self._cdc_shadow_name(node)
+        else:
+            data = self._cdc_snapshot_name(node)
+        conditional = self.get_addr_compare_conditional(addr)
+        var = self.get_readback_data_var(addr)
+        self.add_content(f"if({conditional}) begin")
+        if regwidth < self.exp.cpuif.data_width:
+            self.add_content(f"    {var}[{regwidth - 1}:0] = {data};")
+        else:
+            self.add_content(f"    {var} = {data};")
+        self.add_content("end")
+
+    def process_cdc_cell_reg(self, node: RegNode) -> None:
+        clk = get_cdc_clk(node)
+        assert clk is not None
+        pfx = f"cdc_{kwf(clk.inst_name)}"
+        addr = self._get_address_str(node)
+        regwidth = node.get_property("regwidth")
+        key = cdc_reg_domain_key(node)
+        domain = self.ds.cdc_domains[key]
+        slot = domain.slot_for_reg(node)
+        conditional = self.get_addr_compare_conditional(addr)
+        var = self.get_readback_data_var(addr)
+        self.add_content(f"if({conditional}) begin")
+        from ..cdc.model import CdcSlotKind
+
+        if (
+            slot is not None
+            and slot.kind == CdcSlotKind.READ_GROUP
+            and len(slot.regs) > 1
+        ):
+            offset = 0
+            for reg in sorted(slot.regs, key=lambda r: r.raw_absolute_address):
+                if reg is node:
+                    hi = offset + regwidth - 1
+                    self.add_content(
+                        f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{hi}:{offset}];"
+                    )
+                    break
+                offset += reg.get_property("regwidth")
+        elif regwidth < self.exp.cpuif.data_width:
+            self.add_content(
+                f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{regwidth - 1}:0];"
+            )
+        else:
+            self.add_content(f"    {var} = {pfx}_rd_data[{regwidth - 1}:0];")
+        self.add_content("end")
 
     def process_external_reg(self, node: RegNode) -> None:
         accesswidth = node.get_property("accesswidth")

@@ -1,0 +1,30 @@
+addrmap top {
+    default regwidth = 32;
+    default accesswidth = 32;
+    default sw = rw;
+    default hw = na;
+
+    signal {} sync_clk_slow;
+    signal {} sync_clk_fast;
+    signal { cdc_fast = true; } sync_clk_fast_en;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        field { sw = rw; hw = r; } gain[7:0] = 0x49;
+    } lane_cfg @0x00;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        field { sw = r; hw = w; } live[7:0] = 0x82;
+    } lane_sts @0x04;
+
+    reg {
+        cdc_clk = sync_clk_fast;
+        field { sw = rw; hw = r; } cfg[15:0] = 0x364;
+    } fast_cfg @0x08;
+
+    reg {
+        cdc_clk = sync_clk_fast;
+        field { sw = r; hw = w; } sts[15:0] = 0x527;
+    } fast_sts @0x0c;
+};

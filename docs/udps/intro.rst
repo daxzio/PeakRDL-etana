@@ -83,3 +83,18 @@ To enable these UDPs, compile this RDL file prior to the rest of your design:
         - If set on an external memory, read requests are issued during the
           CPUIF address/SETUP phase for one-cycle-latency external slaves.
           See: :ref:`early_external_read`.
+
+    *   - cdc_clk
+        - reg
+        - reference
+        - Places register storage in another clock domain with a generated
+          handshake crossing.
+
+          See: :ref:`cdc`.
+
+    *   - cdc_fast / cdc_nstages
+        - signal
+        - boolean / integer
+        - Optional handshake tuning on a CDC clock signal.
+
+          See: :ref:`cdc`.

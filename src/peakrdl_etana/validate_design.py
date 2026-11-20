@@ -51,6 +51,9 @@ class DesignValidator(RDLListener):
                     self.top_node.inst.def_src_ref,
                 )
         RDLWalker().walk(self.top_node, self)
+        from .cdc.validate import CdcDesignValidator
+
+        CdcDesignValidator(self.exp).walk()
         if self.msg.had_error:
             self.msg.fatal("Unable to export due to previous errors")
 

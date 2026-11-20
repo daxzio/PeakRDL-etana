@@ -6,6 +6,11 @@ supported properties, see the appropriate property listing page in the following
 sections.
 
 
+CDC register arrays
+-------------------
+``cdc_clk`` registers cannot be instantiated as arrays in the current release.
+See :ref:`cdc` for other CDC restrictions.
+
 Alias Registers
 ---------------
 Registers instantiated using the ``alias`` keyword are not supported yet.

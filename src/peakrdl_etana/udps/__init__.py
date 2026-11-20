@@ -1,3 +1,4 @@
+from .cdc import CdcClk, CdcFast, CdcNstages
 from .early_external_read import EarlyExternalRead
 from .extended_swacc import ReadSwacc, WriteSwacc
 from .reg_only import VerilogRegOnly
@@ -12,4 +13,7 @@ ALL_UDPS = [
     WriteSwacc,
     VerilogRegOnly,
     EarlyExternalRead,
+    CdcClk,
+    CdcFast,
+    CdcNstages,
 ]
