@@ -44,7 +44,6 @@ class CdcDomain:
     idx_width: int = 1
     # Width of the widest crossing register
     data_width: int = 1
-    reset_signal: SignalNode | None = None
 
     def reg(self, node: RegNode) -> CdcReg:
         for cdc_reg in self.regs:

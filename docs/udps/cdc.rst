@@ -204,19 +204,21 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
 
 * The bus-side flops of the handshake (state, request toggle, pending slot) use
   the block's reset style, as the other flops of the block do.
-* The handshake resets from one net. That net is the bus reset, ORed with the
-  field ``resetsignal`` of the domain if its fields name one. All fields of a
-  domain must name the same ``resetsignal`` or none.
-* The synchronizers use an asynchronous, active-high reset derived from that
-  net. For ``rst`` and ``rst_n`` the net is registered once on ``clk``, because
-  a synchronous reset can glitch between clock edges.
+* The bus reset is the only reset of a domain. A field of a CDC register must
+  not set ``resetsignal``.
+* The synchronizers use an asynchronous, active-high reset derived from the bus
+  reset. For ``rst`` and ``rst_n`` it is registered once on ``clk``, because a
+  synchronous reset can glitch between clock edges.
 * The domain reset, ``cdc_<clk>_dst_rst``, is active high in every style. It
-  asserts at the same time as the bus-side reset, with the domain clock stopped
-  or running, and releases ``cdc_nstages`` domain clock edges later.
+  asserts with the domain clock stopped or running: at the same time as the
+  bus-side reset in ``arst`` and ``arst_n``, and one ``clk`` cycle later in
+  ``rst`` and ``rst_n``. Its release needs ``cdc_nstages`` domain clock edges
+  after the bus-side reset releases.
 * The flops in the domain (storage, snapshots, read data, acknowledge toggle)
   reset asynchronously from the domain reset.
-* The bus-side copies of write members reset as a field does: from the field's
-  ``resetsignal`` if it has one, else from the default reset.
+* The bus-side copies of write members reset from the bus reset, in the
+  block's reset style. A bus reset therefore resets the copy and the domain
+  storage of a member to the field's reset value.
 
 With ``cdc_fast_mode_en`` and the input at 1, wait for the domain reset to
 release before the first access.
@@ -246,6 +248,48 @@ one cell serves all four. The generated module sets ``NSTAGES`` from
 ``cdc_nstages`` of the domain. Add the cell to the file list of the simulator
 or synthesis tool together with the generated module.
 
+Crossings
+---------
+
+Each domain, with ``<clk>`` the clock signal name, has three synchronizers.
+Each carries one bit. With inline synchronizers the flops of each are named
+``<name>_ff``; with ``--sync-cell`` each is an instance named ``<name>``.
+
+``cdc_<clk>_rst_sync``
+    Clocked by ``<clk>``, ``d`` is ``1'b1``, reset asynchronously by
+    ``cdc_<clk>_arst`` from the bus side. Its output releases
+    ``cdc_<clk>_dst_rst``.
+
+``cdc_<clk>_req_sync``
+    Carries the request toggle ``cdc_<clk>_req_tgl`` from ``clk`` to ``<clk>``.
+
+``cdc_<clk>_ack_sync``
+    Carries the acknowledge toggle ``cdc_<clk>_ack_tgl`` from ``<clk>`` to
+    ``clk``.
+
+The signals below cross without a synchronizer. The handshake holds each one
+stable while the receiving clock samples it; in fast mode this rests on the
+timing bound under `Fast mode`_. Use the names to write max-delay or
+false-path constraints, or CDC lint waivers.
+
+From ``clk`` to ``<clk>``:
+
+* ``cdc_<clk>_idx``, ``cdc_<clk>_is_wr``, ``cdc_<clk>_wr_data`` and
+  ``cdc_<clk>_wr_biten``: the request index, the write flag, the write data and
+  the bit enables. They are flops on the bus side.
+* ``cdc_shadow_<field path>``: the bus-side copy of a write member field. The
+  domain storage ``cdc_dst_<field path>_value`` loads it on a trigger write.
+
+From ``<clk>`` to ``clk``:
+
+* ``cdc_<clk>_rdata``: the read data, a flop in the domain. The readback logic
+  reads it through ``cdc_<clk>_rd_data``.
+* ``cdc_snap_<reg path>``: the snapshot of a read member, a flop in the domain.
+  The readback logic reads it on a member read.
+
+``<field path>`` and ``<reg path>`` are the hierarchical names below the top
+addrmap, joined with ``_``, for example ``cdc_shadow_thr_lo_v``.
+
 Rules
 -----
 
@@ -257,16 +301,27 @@ Export stops with an error for each of these.
 * A plain register, or a trigger, wider than ``accesswidth``.
 * A wide member with an ``msb0`` field.
 * A trigger that is not a register, is not in the same domain, does not set the
-  buffering property, or is an array element.
+  buffering property, is itself a member of another group, or is an array
+  element.
 * A field access other than the config and status combinations above, a status
   field in a write member, and a config field in a read member.
 * ``onread``, ``onwrite``, ``intr``, ``singlepulse``, ``paritycheck``,
-  ``hwset``, ``hwclr``, ``swacc`` and ``swmod`` on a field of a CDC register.
-* Two different ``resetsignal`` values among the fields of one domain.
+  ``hwset``, ``hwclr``, ``swacc``, ``swmod``, ``counter``, ``we``, ``wel``,
+  ``swwe``, ``swwel``, ``anded``, ``ored``, ``xored``, ``hwenable``,
+  ``hwmask``, ``sticky``, ``stickybit``, ``rclr``, ``rset`` and ``next`` on a
+  field of a CDC register.
+* A ``reset`` of a CDC field that is a reference instead of a constant.
+* A ``resetsignal`` on a field of a CDC register.
 * A property outside a CDC register that references a field of one, such as
   ``x.f->next = cdc_reg.f``. Such a reference would let bus clock logic sample
   a domain flop with no synchronizer.
 * A clock signal that breaks the rules under ``cdc_clk``, or that carries
   ``cdc_nstages`` or ``cdc_fast_mode_en`` without being a domain clock.
+* A clock signal declared inside an arrayed regfile or addrmap.
+* Two clock signals with the same instance name, for example one signal
+  declared in each of two instances of a regfile. Both would become the same
+  port.
+* A clock signal named like an existing port: ``clk``, the bus reset port, or a
+  CPU interface port.
 * A port that collides with a name generated for a domain, for example an
   existing port named ``<clk>_fast_mode_en`` or ``cdc_<clk>_*``.

@@ -42,28 +42,9 @@ class CdcImplementationGenerator:
         self.handshake = exp.jj_env.get_template("cdc/templates/handshake.sv")
 
     def _domain_context(self, domain: CdcDomain) -> dict:
-        deref = self.exp.dereferencer
         ds = self.exp.ds
         prefix = f"cdc_{domain.inst_name}"
-
-        if domain.reset_signal is None:
-            net = deref.default_resetsignal_name
-            bus_rst_expr = None
-            bus_rst_ah = deref.get_resetsignal(None)
-            ff_event = deref.get_always_ff_event(None)
-        else:
-            # Block polarity, so the flops see the same reset style as the rest of the block
-            net = f"{prefix}_bus_rst"
-            bus_ah = deref.get_resetsignal(None)
-            soft_ah = deref.get_resetsignal(domain.reset_signal)
-            combined = f"({bus_ah}) | ({soft_ah})"
-            bus_rst_expr = f"~({combined})" if ds.default_reset_activelow else combined
-            bus_rst_ah = f"~{net}" if ds.default_reset_activelow else net
-            if not ds.default_reset_async:
-                ff_event = "@(posedge clk)"
-            else:
-                edge = "negedge" if ds.default_reset_activelow else "posedge"
-                ff_event = f"@(posedge clk or {edge} {net})"
+        deref = self.exp.dereferencer
 
         np_bits = ["0"] * domain.n_slots
         for cdc_reg in domain.regs:
@@ -96,9 +77,8 @@ class CdcImplementationGenerator:
             "wr_width": wr_width,
             "fast_mode_en": domain.fast_mode_en,
             "np_mask": np_mask,
-            "bus_rst_expr": bus_rst_expr,
-            "bus_rst_ah": bus_rst_ah,
-            "ff_event": ff_event,
+            "bus_rst_ah": deref.get_resetsignal(None),
+            "ff_event": deref.get_always_ff_event(None),
             "arst_registered": not ds.default_reset_async,
         }
 
@@ -258,24 +238,25 @@ class CdcRegisterGenerator(RDLForLoopGenerator):
     def _write_member(self, cdc_reg: CdcReg) -> None:
         node = cdc_reg.node
         top = self.exp.ds.top_node
-        deref = self.exp.dereferencer
         domain = self.exp.ds.cdc_domains[cdc_reg_domain_key(node)]
         pfx = f"cdc_{domain.inst_name}"
         assert cdc_reg.trigger is not None
         trig_slot = cdc_slot_expr(domain, cdc_reg.trigger)
+        deref = self.exp.dereferencer
+        reset_cond = deref.get_resetsignal(None)
+        ff_event = deref.get_always_ff_event(None)
         for field in node.fields():
             if not field.is_sw_writable:
                 continue
             shadow = cdc_shadow_name(top, field)
             self._decl(shadow, field.width, field)
-            resetsignal = field.get_property("resetsignal")
             self.add_content(
                 self.group.render(
                     {
                         "kind": "shadow",
                         "name": shadow,
-                        "ff_event": deref.get_always_ff_event(resetsignal),
-                        "reset_cond": deref.get_resetsignal(resetsignal),
+                        "ff_event": ff_event,
+                        "reset_cond": reset_cond,
                         "reset": self._reset_value(field),
                         "segments": self._segments(node, field, shadow),
                     }

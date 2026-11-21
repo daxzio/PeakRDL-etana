@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from systemrdl.node import FieldNode, Node, RegNode, SignalNode
 from systemrdl.rdltypes import AccessType, PropertyReference
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
@@ -26,6 +28,21 @@ BANNED_FIELD_PROPS = (
     "hwclr",
     "swacc",
     "swmod",
+    "counter",
+    "we",
+    "wel",
+    "swwe",
+    "swwel",
+    "anded",
+    "ored",
+    "xored",
+    "hwenable",
+    "hwmask",
+    "sticky",
+    "stickybit",
+    "rclr",
+    "rset",
+    "next",
 )
 TRIGGER_CLASSES = (CdcRegClass.WRITE_TRIGGER, CdcRegClass.READ_TRIGGER)
 MEMBER_CLASSES = (CdcRegClass.WRITE_MEMBER, CdcRegClass.READ_MEMBER)
@@ -38,6 +55,16 @@ def _in_array(node: Node) -> bool:
             return True
         cur = cur.parent
     return False
+
+
+def _port_names(declaration: str) -> list[str]:
+    """Port names in a CPU interface port declaration: the last identifier of each entry."""
+    names = []
+    for entry in declaration.split(","):
+        match = re.search(r"(\w+)\s*(?:\[[^\]]*\]\s*)*$", entry.strip())
+        if match:
+            names.append(match.group(1))
+    return names
 
 
 def _field_kind(node: FieldNode) -> str | None:
@@ -55,7 +82,6 @@ class CdcDesignValidator(RDLListener):
     def __init__(self, exp) -> None:
         self.exp = exp
         self.msg = exp.ds.top_node.env.msg
-        self._domain_resets: dict[str, set[str | None]] = {}
 
     @property
     def top_node(self):
@@ -178,6 +204,12 @@ class CdcDesignValidator(RDLListener):
                 f"(trigger '{trigger.inst_name}' of '{node.inst_name}')",
                 node.inst.inst_src_ref,
             )
+        elif cdc_reg_class(trigger) not in TRIGGER_CLASSES:
+            self.msg.error(
+                f"CDC {kind}-buffer trigger must be its own trigger "
+                f"(trigger '{trigger.inst_name}' of '{node.inst_name}' is a group member)",
+                node.inst.inst_src_ref,
+            )
 
     def enter_Field(self, node: FieldNode) -> None:
         if not is_cdc_reg(node.parent):
@@ -229,31 +261,37 @@ class CdcDesignValidator(RDLListener):
                     f"Property '{prop}' is not supported on CDC fields",
                     node.inst.inst_src_ref,
                 )
+        reset = node.get_property("reset")
+        if reset is not None and not isinstance(reset, int):
+            self.msg.error(
+                f"reset of CDC field '{node.inst_name}' must be a constant",
+                node.inst.property_src_ref.get("reset", node.inst.inst_src_ref),
+            )
 
-        rs = node.get_property("resetsignal")
-        key = cdc_reg_domain_key(node.parent)
-        self._domain_resets.setdefault(key, set()).add(
-            rs.get_path() if rs is not None else None
-        )
+        if node.get_property("resetsignal") is not None:
+            self.msg.error(
+                f"resetsignal is not supported on CDC field '{node.inst_name}'",
+                node.inst.property_src_ref.get("resetsignal", node.inst.inst_src_ref),
+            )
 
     def exit_Addrmap(self, node) -> None:
         if node != self.top_node:
             return
-        for resets in self._domain_resets.values():
-            if len(resets) > 1:
-                self.msg.error(
-                    "All fields in a CDC domain must share the same resetsignal (or none)",
-                    self.top_node.inst.def_src_ref,
-                )
         for clk in self.exp.ds.cdc_clock_signals.values():
             self._check_clock(clk)
         self._check_collisions()
 
     def _check_clock(self, clk: SignalNode) -> None:
         src_ref = clk.inst.inst_src_ref
-        if (clk.width or 1) > 1 or getattr(clk, "is_array", False):
+        if (clk.width or 1) > 1:
             self.msg.error(
                 f"cdc_clk signal must be a single bit (signal '{clk.inst_name}')",
+                src_ref,
+            )
+        if _in_array(clk):
+            self.msg.error(
+                f"cdc_clk signal cannot be declared inside an arrayed component "
+                f"(signal '{clk.get_path()}')",
                 src_ref,
             )
         assigned = clk.list_properties()
@@ -265,11 +303,33 @@ class CdcDesignValidator(RDLListener):
                 )
 
     def _check_collisions(self) -> None:
-        """Reject module ports that equal a generated port or begin a generated prefix."""
+        """Reject clock ports that repeat a port name, and ports that equal a generated port
+        or begin a generated prefix."""
         ds = self.exp.ds
-        ports: dict[str, str] = {"clk": "the bus clock"}
+        ports: dict[str, str] = {
+            "clk": "the bus clock",
+            self.exp.dereferencer.default_resetsignal_name: "the bus reset",
+        }
+        for name in _port_names(self.exp.cpuif.port_declaration):
+            ports.setdefault(name, "a CPU interface port")
         for sig in ds.out_of_hier_signals.values():
             ports[kwf(sig.inst_name)] = f"signal '{sig.inst_name}'"
+
+        # Domains are keyed by signal path but named by instance name
+        clocks: dict[str, list[SignalNode]] = {}
+        for domain in ds.cdc_domains.values():
+            clocks.setdefault(domain.inst_name, []).append(domain.clk_signal)
+        for name, signals in clocks.items():
+            src_ref = signals[0].inst.inst_src_ref
+            if len(signals) > 1:
+                paths = ", ".join(f"'{sig.get_path()}'" for sig in signals)
+                self.msg.error(
+                    f"cdc_clk signals {paths} have the same port name '{name}'", src_ref
+                )
+            if name in ports:
+                self.msg.error(
+                    f"cdc_clk port '{name}' collides with {ports[name]}", src_ref
+                )
         for domain in ds.cdc_domains.values():
             ports[domain.inst_name] = f"signal '{domain.clk_signal.inst_name}'"
 

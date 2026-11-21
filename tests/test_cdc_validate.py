@@ -155,6 +155,58 @@ def test_cdc_rejects_banned_property(tmp_path, prop):
     )
 
 
+_UNSUPPORTED = [
+    ("counter", "sw=rw; hw=na; counter", ""),
+    ("we", "sw=r; hw=w; we", ""),
+    ("wel", "sw=r; hw=w; wel", ""),
+    ("swwe", "sw=rw; hw=r; swwe", ""),
+    ("swwel", "sw=rw; hw=r; swwel", ""),
+    ("anded", "sw=rw; hw=r; anded", ""),
+    ("ored", "sw=rw; hw=r; ored", ""),
+    ("xored", "sw=rw; hw=r; xored", ""),
+    ("sticky", "sw=r; hw=w; sticky", ""),
+    ("stickybit", "sw=r; hw=w; stickybit", ""),
+    ("rclr", "sw=r; hw=w; rclr", ""),
+    ("rset", "sw=r; hw=w; rset", ""),
+    ("hwenable", "sw=r; hw=w", "rg.f->hwenable = rg.m;"),
+    ("hwmask", "sw=r; hw=w", "rg.f->hwmask = rg.m;"),
+    ("next", "sw=r; hw=w", "rg.f->next = rg.m;"),
+]
+
+
+@pytest.mark.parametrize(
+    ("access", "after", "message"),
+    [
+        (access, after, f"Property '{prop}' is not supported on CDC fields")
+        for prop, access, after in _UNSUPPORTED
+    ]
+    + [
+        (
+            "sw=rw; hw=r",
+            "rg.f->reset = n.v;",
+            "reset of CDC field 'f' must be a constant",
+        )
+    ],
+    ids=[prop for prop, _, _ in _UNSUPPORTED] + ["reset"],
+)
+def test_cdc_rejects_unsupported_field_property(tmp_path, access, after, message):
+    _export_expect_error(
+        _top(f"""
+            reg {{
+                cdc_clk = sync_clk;
+                field {{ {access}; }} f[0:0];
+                field {{ sw=rw; hw=r; }} m[1:1] = 0;
+            }} rg @0x0;
+            reg {{
+                field {{ sw=rw; hw=r; }} v[0:0] = 1;
+            }} n @0x4;
+            {after}
+            """),
+        message,
+        tmp_path,
+    )
+
+
 def test_cdc_accepts_default_property_value(tmp_path):
     ds = _scan(
         _top("""
@@ -168,7 +220,7 @@ def test_cdc_accepts_default_property_value(tmp_path):
     assert list(ds.cdc_domains) == ["top.sync_clk"]
 
 
-def test_cdc_rejects_two_resetsignals(tmp_path):
+def test_cdc_rejects_resetsignal(tmp_path):
     _export_expect_error(
         _top(
             """
@@ -176,14 +228,10 @@ def test_cdc_rejects_two_resetsignals(tmp_path):
                 cdc_clk = sync_clk;
                 field { sw=rw; hw=r; resetsignal = rst_a; } f[7:0] = 0;
             } rg @0x0;
-            reg {
-                cdc_clk = sync_clk;
-                field { sw=rw; hw=r; resetsignal = rst_b; } f[7:0] = 0;
-            } s @0x4;
             """,
-            "signal {} sync_clk; signal { activehigh; } rst_a; signal { activehigh; } rst_b;",
+            "signal {} sync_clk; signal { activehigh; } rst_a;",
         ),
-        "share the same resetsignal",
+        "resetsignal is not supported on CDC field 'f'",
         tmp_path,
     )
 
@@ -505,6 +553,77 @@ def test_cdc_rejects_domain_signal_collision(tmp_path):
             "signal {} sync_clk; signal {} cdc_sync_clk_req;",
         ),
         "collides with",
+        tmp_path,
+    )
+
+
+@pytest.mark.parametrize(
+    ("make", "buf", "trig"),
+    [
+        (_cfg, "buffer_writes", "wbuffer_trigger"),
+        (_sts, "buffer_reads", "rbuffer_trigger"),
+    ],
+)
+def test_cdc_rejects_member_as_trigger(tmp_path, make, buf, trig):
+    _export_expect_error(
+        _top(
+            make(f"{buf};", "a", 0x0)
+            + make(f"{buf};", "b", 0x4)
+            + make(f"{buf};", "c", 0x8)
+            + f"a->{trig} = b; b->{trig} = c;"
+        ),
+        "must be its own trigger (trigger 'b' of 'a' is a group member)",
+        tmp_path,
+    )
+
+
+def test_cdc_rejects_duplicate_clock_name(tmp_path):
+    rf = """
+        regfile {
+            signal {} lclk;
+            reg {
+                cdc_clk = lclk;
+                field { sw=rw; hw=r; } f[7:0] = 0;
+            } rg @0x0;
+        }"""
+    _export_expect_error(
+        _top(f"{rf} rfa @0x0; {rf} rfb @0x10;", ""),
+        "cdc_clk signals 'top.rfa.lclk', 'top.rfb.lclk' have the same port name 'lclk'",
+        tmp_path,
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "what"),
+    [
+        ("clk", "the bus clock"),
+        ("rst", "the bus reset"),
+        ("s_apb_psel", "a CPU interface port"),
+    ],
+)
+def test_cdc_rejects_clock_port_collision(tmp_path, name, what):
+    _export_expect_error(
+        _top(_cfg().replace("sync_clk", name), f"signal {{}} {name};"),
+        f"cdc_clk port '{name}' collides with {what}",
+        tmp_path,
+    )
+
+
+def test_cdc_rejects_clock_in_arrayed_regfile(tmp_path):
+    _export_expect_error(
+        _top(
+            """
+            regfile {
+                signal {} lclk;
+                reg {
+                    cdc_clk = lclk;
+                    field { sw=rw; hw=r; } f[7:0] = 0;
+                } rg @0x0;
+            } rf[2] @0x0 += 4;
+            """,
+            "",
+        ),
+        "cdc_clk signal cannot be declared inside an arrayed component",
         tmp_path,
     )
 

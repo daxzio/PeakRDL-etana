@@ -4,7 +4,7 @@ import math
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-from systemrdl.node import AddrmapNode, RegNode, SignalNode
+from systemrdl.node import AddrmapNode, RegNode
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
 from ..identifier_filter import kw_filter as kwf
@@ -83,13 +83,6 @@ class CdcScanner(RDLListener):
                     slot += cdc_reg.n_elems
                 regs.append(cdc_reg)
 
-            reset_signal: SignalNode | None = None
-            for node in nodes:
-                for fld in node.fields():
-                    rs = fld.get_property("resetsignal")
-                    if isinstance(rs, SignalNode):
-                        reset_signal = reset_signal or rs
-
             crossing = [r for r in regs if r.crossing]
             self.ds.cdc_domains[key] = CdcDomain(
                 clk_signal=clk,
@@ -102,7 +95,6 @@ class CdcScanner(RDLListener):
                 data_width=max(
                     (r.node.get_property("regwidth") for r in crossing), default=1
                 ),
-                reset_signal=reset_signal,
             )
 
         if self.ds.cdc_domains:
