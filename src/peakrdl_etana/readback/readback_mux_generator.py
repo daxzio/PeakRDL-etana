@@ -123,25 +123,7 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
 
             if is_cdc_write_trigger(node):
                 self.process_cdc_member_reg(node)
-            elif is_cdc_read_trigger(node):
-                if self.ds.cdc_emit_cells:
-                    self.process_cdc_cell_reg(node)
-                else:
-                    from ..utils import IndexedPath
-
-                    p = IndexedPath(self.ds.top_node, node)
-                    pack = f"cdc_pack_{p.path}{p.index_str}"
-                    addr = self._get_address_str(node)
-                    regwidth = node.get_property("regwidth")
-                    conditional = self.get_addr_compare_conditional(addr)
-                    var = self.get_readback_data_var(addr)
-                    self.add_content(f"if({conditional}) begin")
-                    if regwidth < self.exp.cpuif.data_width:
-                        self.add_content(f"    {var}[{regwidth - 1}:0] = {pack};")
-                    else:
-                        self.add_content(f"    {var} = {pack};")
-                    self.add_content("end")
-            elif cdc_uses_cell_access(node):
+            elif is_cdc_read_trigger(node) or cdc_uses_cell_access(node):
                 self.process_cdc_cell_reg(node)
             elif is_cdc_group_member(node):
                 self.process_cdc_member_reg(node)
@@ -195,6 +177,20 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
     def get_readback_data_var(self, addr: str) -> str:
         return "readback_data_var"
 
+    def _cdc_read_span(self, reg: RegNode) -> tuple[int, int]:
+        """Lowest bit and width of the fields packed into a read-group payload."""
+        lo = reg.get_property("regwidth")
+        hi = 0
+        found = False
+        for field in reg.fields():
+            if field.is_sw_readable or field.is_hw_readable:
+                found = True
+                lo = min(lo, field.low)
+                hi = max(hi, field.high)
+        if not found:
+            return 0, reg.get_property("regwidth")
+        return lo, hi - lo + 1
+
     def _cdc_shadow_name(self, reg: RegNode) -> str:
         from ..utils import IndexedPath
 
@@ -208,20 +204,31 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         return f"cdc_snap_{p.path}{p.index_str}"
 
     def process_cdc_member_reg(self, node: RegNode) -> None:
-        addr = self._get_address_str(node)
         regwidth = node.get_property("regwidth")
-        if node.get_property("buffer_writes", default=False):
-            data = self._cdc_shadow_name(node)
-        else:
-            data = self._cdc_snapshot_name(node)
-        conditional = self.get_addr_compare_conditional(addr)
-        var = self.get_readback_data_var(addr)
-        self.add_content(f"if({conditional}) begin")
-        if regwidth < self.exp.cpuif.data_width:
-            self.add_content(f"    {var}[{regwidth - 1}:0] = {data};")
-        else:
-            self.add_content(f"    {var} = {data};")
-        self.add_content("end")
+        accesswidth = node.get_property("accesswidth")
+        is_write = node.get_property("buffer_writes", default=False)
+        base = (
+            self._cdc_shadow_name(node) if is_write else self._cdc_snapshot_name(node)
+        )
+        n_subwords = max(regwidth // accesswidth, 1)
+        for subword in range(n_subwords):
+            addr = self._get_address_str(
+                node, subword_offset=subword * (accesswidth // 8)
+            )
+            width = min(regwidth, accesswidth)
+            if n_subwords == 1:
+                data = base
+            else:
+                low = subword * accesswidth
+                data = f"{base}[{low + accesswidth - 1}:{low}]"
+            conditional = self.get_addr_compare_conditional(addr)
+            var = self.get_readback_data_var(addr)
+            self.add_content(f"if({conditional}) begin")
+            if width < self.exp.cpuif.data_width:
+                self.add_content(f"    {var}[{width - 1}:0] = {data};")
+            else:
+                self.add_content(f"    {var} = {data};")
+            self.add_content("end")
 
     def process_cdc_cell_reg(self, node: RegNode) -> None:
         clk = get_cdc_clk(node)
@@ -242,17 +249,20 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             and slot.kind == CdcSlotKind.READ_GROUP
             and len(slot.regs) > 1
         ):
+            # The handshake returns fields packed by address, not full regwidth slots.
             offset = 0
             node_path = node.get_path()
             for reg in sorted(slot.regs, key=lambda r: r.raw_absolute_address):
+                field_lo, span = self._cdc_read_span(reg)
+                elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
                 if reg.get_path() == node_path:
-                    hi = offset + regwidth - 1
+                    hi = field_lo + span - 1
                     self.add_content(
-                        f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{hi}:{offset}];"
+                        f"    {var}[{hi}:{field_lo}] = "
+                        f"{pfx}_rd_data[{offset + span - 1}:{offset}];"
                     )
                     break
-                elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
-                offset += reg.get_property("regwidth") * elems
+                offset += span * elems
         elif regwidth < self.exp.cpuif.data_width:
             self.add_content(
                 f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{regwidth - 1}:0];"

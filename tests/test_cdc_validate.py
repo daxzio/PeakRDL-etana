@@ -901,8 +901,8 @@ def test_ports(tmp_path):
     for clk in ("clk", "sync_clk", "other_clk"):
         assert ports.count(f"input wire {clk},") == 1
         assert not re.search(rf"hwif_in_{clk}\b", text)
-    # Fast mode is elaboration-time (cdc_fast / cdc_fast_mode_en on the clock signal).
-    assert "sync_clk_fast_mode_en" not in text
+    # cdc_fast_mode_en on the clock adds a runtime pin. A clock without it does not.
+    assert "input wire sync_clk_fast_mode_en," in text
     assert "other_clk_fast_mode_en" not in text
 
 

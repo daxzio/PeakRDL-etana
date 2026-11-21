@@ -12,6 +12,9 @@ module {{ds.module_name}}
 
         {%- for domain in ds.cdc_domains.values() %}
         input wire {{domain.inst_name}},
+        {%- if domain.fast_mode_en %}
+        input wire {{domain.inst_name}}_fast_mode_en,
+        {%- endif %}
         {%- endfor %}
 
         {%- for signal in ds.out_of_hier_signals.values() %}

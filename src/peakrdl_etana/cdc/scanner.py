@@ -94,12 +94,10 @@ class CdcScanner(RDLListener):
         for key, regs in self._regs_by_domain.items():
             clk = self.ds.cdc_clock_signals[key]
             nstages = clk.get_property("cdc_nstages", default=2)
-            fast = clk.get_property("cdc_fast", default=False) or clk.get_property(
-                "cdc_fast_mode_en", default=False
-            )
+            fast = clk.get_property("cdc_fast_mode_en", default=False)
             if fast:
                 self.top_node.env.msg.warning(
-                    f"CDC fast mode is enabled on signal '{clk.inst_name}'. "
+                    f"cdc_fast_mode_en is enabled on signal '{clk.inst_name}'. "
                     "Destination clock must be fast enough that "
                     "(NSTAGES+1)*T_dst plus path delay fits in one bus cycle.",
                     clk.inst.def_src_ref,

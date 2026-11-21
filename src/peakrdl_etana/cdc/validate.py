@@ -19,7 +19,7 @@ CLOCK_FORBIDDEN_PROPS = (
     "sync",
     "async",
 )
-CLOCK_ONLY_PROPS = ("cdc_nstages", "cdc_fast", "cdc_fast_mode_en")
+CLOCK_ONLY_PROPS = ("cdc_nstages", "cdc_fast_mode_en")
 BANNED_FIELD_PROPS = (
     "intr",
     "singlepulse",

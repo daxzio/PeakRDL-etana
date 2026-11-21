@@ -454,14 +454,14 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
             if self.addr_decode.exp.ds.err_if_bad_rw:
                 self.add_content(f"is_valid_rw |= {rhs};")
 
-            # For external registers, mark as external
-            if (
+            # A write trigger's read returns the shadow on the bus clock. Only the
+            # write crosses, so only the write is external.
+            if is_cdc_write_trigger(node):
+                self.add_content(f"is_external |= {rhs} & cpuif_req_is_wr;")
+            elif (
                 self.policy.is_external(node)
                 or cdc_uses_cell_access(node)
-                or (
-                    self.addr_decode.exp.ds.cdc_emit_cells
-                    and (is_cdc_read_trigger(node) or is_cdc_write_trigger(node))
-                )
+                or is_cdc_read_trigger(node)
             ):
                 self.add_content(f"is_external |= {rhs};")
         else:

@@ -92,9 +92,8 @@ To enable these UDPs, compile this RDL file prior to the rest of your design:
 
           See: :ref:`cdc`.
 
-    *   - cdc_fast / cdc_nstages
+    *   - cdc_fast_mode_en / cdc_nstages
         - signal
         - boolean / integer
-        - Optional handshake tuning on a CDC clock signal.
-
-          See: :ref:`cdc`.
+        - Optional handshake tuning on a CDC clock signal. Fast mode adds a
+          runtime ``<clock>_fast_mode_en`` input. See :ref:`cdc`.

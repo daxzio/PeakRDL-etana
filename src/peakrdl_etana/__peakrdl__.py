@@ -240,10 +240,9 @@ class Exporter(ExporterSubcommandPlugin):
         )
 
         arg_group.add_argument(
-            "--cdc-emit-cells",
-            action="store_true",
-            default=False,
-            help="""Copy the CDC cells for this design's reset (etana_cdc_<rst>.sv and etana_cdc_sync_<rst>.sv) into the output directory""",
+            "--sync-cell",
+            default=None,
+            help="""Module instantiated for each CDC synchronizer. Ports: q, d, clk, rst (active-high clear), parameter NSTAGES. Default is inline flops in the generated module.""",
         )
 
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
@@ -317,5 +316,5 @@ class Exporter(ExporterSubcommandPlugin):
             generate_template=options.generate_template,
             err_if_bad_addr=options.err_if_bad_addr,
             err_if_bad_rw=options.err_if_bad_rw,
-            cdc_emit_cells=options.cdc_emit_cells,
+            sync_cell=options.sync_cell,
         )

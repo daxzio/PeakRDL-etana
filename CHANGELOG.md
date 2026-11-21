@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CDC registers (``cdc_clk``)**: Cross-domain storage with the toggle handshake
+  written into the generated module. UDPs ``cdc_clk``, ``cdc_fast_mode_en``,
+  and ``cdc_nstages`` on the destination clock; write/read
+  atomic groups via ``buffer_writes`` / ``buffer_reads`` and triggers; register and
+  regfile arrays with scalar triggers. Group members may be wider than
+  ``accesswidth``. ``cdc_fast_mode_en`` on the clock adds a runtime
+  ``<clock>_fast_mode_en`` input. ``--sync-cell NAME`` instantiates a project
+  synchronizer (ports ``q``, ``d``, ``clk``, ``rst``, parameter ``NSTAGES``);
+  otherwise the synchronizer flops are inline. Cocotb suites under
+  ``tests/test_cdc*``; elaboration rules in ``tests/test_cdc_validate.py``. Documented
+  in ``docs/udps/cdc.rst``.
 - **CPU Interface Error Response Testing**: New `test_cpuif_err_rsp` test suite validating error signaling for:
   - Unmapped address access
   - Forbidden read/write operations (read-only, write-only registers)

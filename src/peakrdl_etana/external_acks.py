@@ -3,7 +3,12 @@ from typing import TYPE_CHECKING
 from systemrdl.node import AddrmapNode, MemNode, RegfileNode, RegNode
 from systemrdl.walker import WalkerAction
 
-from .cdc.util import cdc_uses_cell_access, get_cdc_clk
+from .cdc.util import (
+    cdc_uses_cell_access,
+    get_cdc_clk,
+    is_cdc_read_trigger,
+    is_cdc_write_trigger,
+)
 from .forloop_generator import RDLForLoopGenerator
 from .identifier_filter import kw_filter as kwf
 from .utils import (
@@ -65,7 +70,9 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node) and node.has_sw_writable:
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
-        elif cdc_uses_cell_access(node) and node.has_sw_writable:
+        elif (
+            cdc_uses_cell_access(node) or is_cdc_write_trigger(node)
+        ) and node.has_sw_writable:
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
@@ -138,7 +145,9 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node) and node.has_sw_readable:
             x = self.exp.hwif.get_external_rd_ack(node, True)
             self.ext_racks.append(x)
-        elif cdc_uses_cell_access(node) and node.has_sw_readable:
+        elif (
+            cdc_uses_cell_access(node) or is_cdc_read_trigger(node)
+        ) and node.has_sw_readable:
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"

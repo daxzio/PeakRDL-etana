@@ -232,6 +232,8 @@ class CdcImplementationGenerator:
         clk = domain.inst_name
 
         lines.append(f"    // CDC domain: {clk}")
+        lines.append("    /* verilator lint_off UNUSED */")
+        lines.append("    /* verilator lint_off UNUSEDSIGNAL */")
         lines.append(f"    logic {pfx}_req;")
         lines.append(f"    logic {pfx}_req_is_wr;")
         lines.append(f"    logic {pfx}_req_np;")
@@ -250,34 +252,28 @@ class CdcImplementationGenerator:
         lines.append(f"    logic [{data_w - 1}:0] {pfx}_dst_wr_data;")
         lines.append(f"    logic [{data_w - 1}:0] {pfx}_dst_wr_biten;")
 
-        rst_name = self.exp.dereferencer.default_resetsignal_name
         bus_rst_ah = self.exp.dereferencer.get_resetsignal(None)
-        soft_rst = "'0"
+        bus_ff = self.exp.dereferencer.get_always_ff_event(None)
+        reset_ah = bus_rst_ah
         if domain.soft_reset_signals:
             path = next(iter(domain.soft_reset_signals))
             sig = self.exp.ds.out_of_hier_signals.get(path)
             if sig is not None:
                 soft_rst = self.exp.dereferencer.get_resetsignal(sig)
-        if soft_rst == "'0":
-            rst_conn = rst_name
-        else:
-            lines.append(f"    logic {pfx}_bus_rst;")
-            if self.exp.ds.default_reset_activelow:
-                combined = f"~(({bus_rst_ah}) | ({soft_rst}))"
-            else:
-                combined = f"({bus_rst_ah}) | ({soft_rst})"
-            lines.append(f"    assign {pfx}_bus_rst = {combined};")
-            rst_conn = f"{pfx}_bus_rst"
+                reset_ah = f"(({bus_rst_ah}) | ({soft_rst}))"
 
-        lines.append(
-            f"    etana_cdc_sync_{rst_name} #(.G_STAGES({nstages})) {pfx}_u_rst_sync ("
+        lines.extend(
+            self._sync(
+                f"{pfx}_u_rst_sync",
+                f"{pfx}_rst_sync_q",
+                "1'b1",
+                clk,
+                reset_ah,
+                bus_ff,
+                nstages,
+            )
         )
-        lines.append(f"        .q    ({pfx}_rst_sync_q),")
-        lines.append("        .d    ('1),")
-        lines.append(f"        .clk  ({clk}),")
-        lines.append(f"        .{rst_name} ({rst_conn})")
-        lines.append("    );")
-        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {bus_rst_ah};")
+        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {reset_ah};")
 
         n_slots = domain.n_slots
         slot_msb = max(n_slots - 1, 0)
@@ -340,35 +336,248 @@ class CdcImplementationGenerator:
         lines.append("        end")
         lines.append("    end")
 
-        lines.append(f"    etana_cdc_{rst_name} #(")
-        lines.append(f"        .G_STAGES    ({nstages}),")
-        lines.append(f"        .G_INDEX     ({idx_w}),")
-        lines.append(f"        .G_DATAWIDTH ({data_w}),")
-        lines.append(f"        .G_FAST      ({fast_s})")
-        lines.append(f"    ) {pfx}_u_cdc (")
-        lines.append(f"        .dst_acc_en   ({pfx}_dst_acc_en),")
-        lines.append(f"        .dst_is_wr    ({pfx}_dst_is_wr),")
-        lines.append(f"        .dst_idx      ({pfx}_dst_idx),")
-        lines.append(f"        .dst_wr_data  ({pfx}_dst_wr_data),")
-        lines.append(f"        .dst_wr_biten ({pfx}_dst_wr_biten),")
-        lines.append(f"        .dst_rd_data  ({pfx}_dst_rd_data),")
-        lines.append(f"        .dst_clk      ({clk}),")
-        lines.append(f"        .dst_rst      ({pfx}_dst_rst),")
-        lines.append(f"        .rd_ack       ({pfx}_rd_ack),")
-        lines.append(f"        .wr_ack       ({pfx}_wr_ack),")
-        lines.append(f"        .rd_data      ({pfx}_rd_data),")
-        lines.append(f"        .req          ({pfx}_req),")
-        lines.append(f"        .req_is_wr    ({pfx}_req_is_wr),")
-        lines.append(f"        .req_np       ({pfx}_req_np),")
-        lines.append(f"        .req_idx      ({pfx}_req_idx),")
-        lines.append(f"        .req_wr_data  ({pfx}_req_wr_data),")
-        lines.append(f"        .req_wr_biten ({pfx}_req_wr_biten),")
-        lines.append("        .clk          (clk),")
-        port = f"{rst_name:<13}"
-        lines.append(f"        .{port}({rst_conn})")
-        lines.append("    );")
+        lines.extend(
+            self._handshake(
+                pfx,
+                clk,
+                reset_ah,
+                bus_ff,
+                nstages,
+                idx_w,
+                data_w,
+                fast_s,
+            )
+        )
+        lines.append("    /* verilator lint_on UNUSED */")
+        lines.append("    /* verilator lint_on UNUSEDSIGNAL */")
 
         return "\n".join(lines)
+
+    def _sync(
+        self,
+        inst: str,
+        q: str,
+        d: str,
+        clk: str,
+        rst: str,
+        event: str,
+        nstages: int,
+    ) -> list[str]:
+        """Toggle synchronizer: --sync-cell, or inline flops cleared while rst is high."""
+        cell = self.exp.ds.sync_cell
+        if cell:
+            return [
+                f"    {cell} #(.NSTAGES({nstages})) {inst} (",
+                f"        .q   ({q}),",
+                f"        .d   ({d}),",
+                f"        .clk ({clk}),",
+                f"        .rst ({rst})",
+                "    );",
+            ]
+        ff = f"{inst}_ff"
+        if nstages <= 1:
+            shift = d
+        else:
+            shift = f"{{{ff}[{nstages - 2}:0], {d}}}"
+        return [
+            f"    logic [{max(nstages, 1) - 1}:0] {ff};",
+            f"    always_ff {event} begin",
+            f"        if ({rst}) begin",
+            f"            {ff} <= '0;",
+            "        end else begin",
+            f"            {ff} <= {shift};",
+            "        end",
+            "    end",
+            f"    assign {q} = {ff}[{max(nstages, 1) - 1}];",
+        ]
+
+    def _handshake(
+        self,
+        pfx: str,
+        clk: str,
+        reset_ah: str,
+        bus_ff: str,
+        nstages: int,
+        idx_w: int,
+        data_w: int,
+        fast_s: str,
+    ) -> list[str]:
+        """Inline toggle handshake. Synchronizers follow _sync."""
+        dst_ev = f"@(posedge {clk} or posedge {pfx}_dst_rst)"
+        lines: list[str] = [
+            f"    logic {pfx}_req_tgl;",
+            f"    logic {pfx}_is_wr;",
+            f"    logic {pfx}_is_np;",
+            f"    logic [{idx_w - 1}:0] {pfx}_idx;",
+            f"    logic [{data_w - 1}:0] {pfx}_wr_data;",
+            f"    logic [{data_w - 1}:0] {pfx}_wr_biten;",
+            f"    logic {pfx}_ack_tgl;",
+            f"    logic [{data_w - 1}:0] {pfx}_rdata;",
+            f"    logic {pfx}_req_sync;",
+            f"    logic {pfx}_ack_sync;",
+        ]
+        lines.extend(
+            self._sync(
+                f"{pfx}_u_req_sync",
+                f"{pfx}_req_sync",
+                f"{pfx}_req_tgl",
+                clk,
+                f"{pfx}_dst_rst",
+                dst_ev,
+                nstages,
+            )
+        )
+        lines += [
+            f"    always_ff {dst_ev} begin",
+            f"        if ({pfx}_dst_rst) begin",
+            f"            {pfx}_ack_tgl <= '0;",
+            "        end else begin",
+            f"            {pfx}_ack_tgl <= {pfx}_req_sync;",
+            "        end",
+            "    end",
+            f"    assign {pfx}_dst_acc_en = {pfx}_req_sync ^ {pfx}_ack_tgl;",
+            f"    always_ff {dst_ev} begin",
+            f"        if ({pfx}_dst_rst) begin",
+            f"            {pfx}_rdata <= '0;",
+            "        end else begin",
+            f"            if ({pfx}_dst_acc_en & ~{pfx}_is_wr) begin",
+            f"                {pfx}_rdata <= {pfx}_dst_rd_data;",
+            "            end",
+            "        end",
+            "    end",
+            f"    assign {pfx}_dst_is_wr = {pfx}_is_wr;",
+            f"    assign {pfx}_dst_idx = {pfx}_idx;",
+            f"    assign {pfx}_dst_wr_data = {pfx}_wr_data;",
+            f"    assign {pfx}_dst_wr_biten = {pfx}_wr_biten;",
+        ]
+        lines.extend(
+            self._sync(
+                f"{pfx}_u_ack_sync",
+                f"{pfx}_ack_sync",
+                f"{pfx}_ack_tgl",
+                "clk",
+                reset_ah,
+                bus_ff,
+                nstages,
+            )
+        )
+        lines += [
+            f"    localparam logic [1:0] {pfx}_IDLE = 2'd0;",
+            f"    localparam logic [1:0] {pfx}_BUSY = 2'd1;",
+            f"    localparam logic [1:0] {pfx}_FULL = 2'd2;",
+            f"    logic [1:0] {pfx}_state;",
+            f"    logic [1:0] {pfx}_nxt_state;",
+            f"    logic {pfx}_ack_ok;",
+            f"    logic {pfx}_acc_issue_en;",
+            f"    logic {pfx}_acc_done_en;",
+            f"    logic {pfx}_pend_ld;",
+            (
+                f"    assign {pfx}_ack_ok = ({clk}_fast_mode_en) | "
+                f"({pfx}_ack_sync == {pfx}_req_tgl);"
+                if fast_s == "'1"
+                else f"    assign {pfx}_ack_ok = ({pfx}_ack_sync == {pfx}_req_tgl);"
+            ),
+            "    always @(*) begin",
+            f"        {pfx}_nxt_state = {pfx}_state;",
+            f"        {pfx}_acc_issue_en = '0;",
+            f"        {pfx}_acc_done_en = '0;",
+            f"        {pfx}_pend_ld = '0;",
+            f"        case ({pfx}_state)",
+            f"            {pfx}_IDLE: begin",
+            f"                if ({pfx}_req) begin",
+            f"                    {pfx}_acc_issue_en = '1;",
+            f"                    {pfx}_nxt_state = {pfx}_BUSY;",
+            "                end",
+            "            end",
+            f"            {pfx}_BUSY: begin",
+            f"                if ({pfx}_ack_ok) begin",
+            f"                    {pfx}_acc_done_en = '1;",
+            f"                    {pfx}_acc_issue_en = {pfx}_req;",
+            f"                    {pfx}_nxt_state = {pfx}_req ? {pfx}_BUSY : {pfx}_IDLE;",
+            f"                end else if ({pfx}_req) begin",
+            f"                    {pfx}_pend_ld = '1;",
+            f"                    {pfx}_nxt_state = {pfx}_FULL;",
+            "                end",
+            "            end",
+            f"            {pfx}_FULL: begin",
+            f"                if ({pfx}_ack_ok) begin",
+            f"                    {pfx}_acc_done_en = '1;",
+            f"                    {pfx}_acc_issue_en = '1;",
+            f"                    {pfx}_nxt_state = {pfx}_BUSY;",
+            "                end",
+            "            end",
+            "            default: begin",
+            f"                {pfx}_nxt_state = {pfx}_IDLE;",
+            "            end",
+            "        endcase",
+            "    end",
+            f"    always_ff {bus_ff} begin",
+            f"        if ({reset_ah}) begin",
+            f"            {pfx}_state <= {pfx}_IDLE;",
+            "        end else begin",
+            f"            {pfx}_state <= {pfx}_nxt_state;",
+            "        end",
+            "    end",
+            f"    logic {pfx}_pend_is_wr;",
+            f"    logic {pfx}_pend_np;",
+            f"    logic [{idx_w - 1}:0] {pfx}_pend_idx;",
+            f"    logic [{data_w - 1}:0] {pfx}_pend_wr_data;",
+            f"    logic [{data_w - 1}:0] {pfx}_pend_wr_biten;",
+            f"    always_ff {bus_ff} begin",
+            f"        if ({reset_ah}) begin",
+            f"            {pfx}_pend_is_wr <= '0;",
+            f"            {pfx}_pend_np <= '0;",
+            f"            {pfx}_pend_idx <= '0;",
+            f"            {pfx}_pend_wr_data <= '0;",
+            f"            {pfx}_pend_wr_biten <= '0;",
+            "        end else begin",
+            f"            if ({pfx}_pend_ld) begin",
+            f"                {pfx}_pend_is_wr <= {pfx}_req_is_wr;",
+            f"                {pfx}_pend_np <= {pfx}_req_np;",
+            f"                {pfx}_pend_idx <= {pfx}_req_idx;",
+            f"                {pfx}_pend_wr_data <= {pfx}_req_wr_data;",
+            f"                {pfx}_pend_wr_biten <= {pfx}_req_wr_biten;",
+            "            end",
+            "        end",
+            "    end",
+            f"    logic {pfx}_pend_vld;",
+            f"    logic {pfx}_nxt_is_wr;",
+            f"    logic {pfx}_nxt_np;",
+            f"    logic [{idx_w - 1}:0] {pfx}_nxt_idx;",
+            f"    logic [{data_w - 1}:0] {pfx}_nxt_wr_data;",
+            f"    logic [{data_w - 1}:0] {pfx}_nxt_wr_biten;",
+            f"    assign {pfx}_pend_vld = ({pfx}_state == {pfx}_FULL);",
+            f"    assign {pfx}_nxt_is_wr = {pfx}_pend_vld ? {pfx}_pend_is_wr : {pfx}_req_is_wr;",
+            f"    assign {pfx}_nxt_np = {pfx}_pend_vld ? {pfx}_pend_np : {pfx}_req_np;",
+            f"    assign {pfx}_nxt_idx = {pfx}_pend_vld ? {pfx}_pend_idx : {pfx}_req_idx;",
+            f"    assign {pfx}_nxt_wr_data = {pfx}_pend_vld ? {pfx}_pend_wr_data : {pfx}_req_wr_data;",
+            f"    assign {pfx}_nxt_wr_biten = {pfx}_pend_vld ? {pfx}_pend_wr_biten : {pfx}_req_wr_biten;",
+            f"    always_ff {bus_ff} begin",
+            f"        if ({reset_ah}) begin",
+            f"            {pfx}_req_tgl <= '0;",
+            f"            {pfx}_is_wr <= '0;",
+            f"            {pfx}_is_np <= '0;",
+            f"            {pfx}_idx <= '0;",
+            f"            {pfx}_wr_data <= '0;",
+            f"            {pfx}_wr_biten <= '0;",
+            "        end else begin",
+            f"            if ({pfx}_acc_issue_en) begin",
+            f"                {pfx}_req_tgl <= ~{pfx}_req_tgl;",
+            f"                {pfx}_is_wr <= {pfx}_nxt_is_wr;",
+            f"                {pfx}_is_np <= {pfx}_nxt_np;",
+            f"                {pfx}_idx <= {pfx}_nxt_idx;",
+            f"                {pfx}_wr_data <= {pfx}_nxt_wr_data;",
+            f"                {pfx}_wr_biten <= {pfx}_nxt_wr_biten;",
+            "            end",
+            "        end",
+            "    end",
+            f"    logic {pfx}_posted_ack;",
+            f"    assign {pfx}_posted_ack = {pfx}_acc_issue_en & {pfx}_nxt_is_wr & ~{pfx}_nxt_np;",
+            f"    assign {pfx}_wr_ack = {pfx}_posted_ack | ({pfx}_acc_done_en & {pfx}_is_wr & {pfx}_is_np);",
+            f"    assign {pfx}_rd_ack = {pfx}_acc_done_en & ~{pfx}_is_wr;",
+            f"    assign {pfx}_rd_data = {pfx}_rdata;",
+        ]
+        return lines
 
     def _reg_offset_in_concat(self, regs: list[RegNode], target: RegNode) -> int:
         ordered = sorted(regs, key=lambda r: r.raw_absolute_address)
@@ -470,10 +679,8 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
         w = field.width
         dims = unpacked_array_suffix(p.array_dimensions)
         base = f"cdc_dst_{p.path}_value"
-        reset_v = self.impl._reset_value(field)
         packed = f" [{w - 1}:0]" if w > 1 else ""
-        init = "" if dims else f" = {reset_v}"
-        self.push_top(f"logic{packed} {base}{dims}{init};")
+        self.push_top(f"logic{packed} {base}{dims};")
 
     def emit(self, top) -> str | None:
         self.start()
@@ -521,22 +728,48 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
 
         if slot.kind == CdcSlotKind.WRITE_GROUP:
             sh = self.impl.shadow_ref(node)
-            stb = self.impl.reg_strobe(node)
-            reset = f"{node.get_property('regwidth')}'d0"
+            rw = node.get_property("regwidth")
+            aw = node.get_property("accesswidth")
+            reset = f"{rw}'d0"
             for field in node.fields():
                 if field.get_property("reset", default=None) is not None:
                     reset = self.impl._concat_reg_reset(node)
                     break
+            if rw <= aw:
+                segments = [
+                    (
+                        self.impl.reg_strobe(node),
+                        sh,
+                        "decoded_wr_biten",
+                        "decoded_wr_data",
+                    )
+                ]
+            else:
+                stb = self.exp.dereferencer.get_access_strobe(
+                    node, reduce_substrobes=False
+                )
+                segments = []
+                for word in range(rw // aw):
+                    lo = word * aw
+                    hi = lo + aw - 1
+                    segments.append(
+                        (
+                            f"{stb.path}{stb.index_str}[{word}]",
+                            f"{sh}[{hi}:{lo}]",
+                            f"decoded_wr_biten[{aw - 1}:0]",
+                            f"decoded_wr_data[{aw - 1}:0]",
+                        )
+                    )
             self.add_content(f"    always_ff {self.bus_ff} begin")
             self.add_content(f"        if({self.bus_rst}) begin")
             self.add_content(f"            {sh} <= {reset};")
-            self.add_content("        end")
-            self.add_content(
-                f"        else if({stb} & decoded_req & decoded_req_is_wr) begin"
-            )
-            self.add_content(
-                f"            {sh} <= ({sh} & ~decoded_wr_biten) | (decoded_wr_data & decoded_wr_biten);"
-            )
+            for strobe, target, biten, data in segments:
+                self.add_content(
+                    f"        end else if({strobe} & decoded_req & decoded_req_is_wr) begin"
+                )
+                self.add_content(
+                    f"            {target} <= ({target} & ~{biten}) | ({data} & {biten});"
+                )
             self.add_content("        end")
             self.add_content("    end")
 
