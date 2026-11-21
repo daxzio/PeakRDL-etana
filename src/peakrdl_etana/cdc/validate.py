@@ -1,29 +1,113 @@
 from __future__ import annotations
 
-from systemrdl.node import FieldNode, RegNode, SignalNode
-from systemrdl.rdltypes import AccessType
-from systemrdl.walker import RDLListener, WalkerAction
+from systemrdl.node import FieldNode, Node, RegNode, SignalNode
+from systemrdl.rdltypes import AccessType, PropertyReference
+from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
+from ..identifier_filter import kw_filter as kwf
 from ..utils import external_policy
-from .util import get_cdc_clk, is_cdc_reg
+from .model import CdcRegClass
+from .util import cdc_reg_domain_key, get_cdc_clk, is_cdc_reg
+
+CLOCK_FORBIDDEN_PROPS = (
+    "cpuif_reset",
+    "field_reset",
+    "activelow",
+    "activehigh",
+    "sync",
+    "async",
+)
+CLOCK_ONLY_PROPS = ("cdc_nstages", "cdc_fast_mode_en")
+BANNED_FIELD_PROPS = (
+    "intr",
+    "singlepulse",
+    "paritycheck",
+    "hwset",
+    "hwclr",
+    "swacc",
+    "swmod",
+)
+TRIGGER_CLASSES = (CdcRegClass.WRITE_TRIGGER, CdcRegClass.READ_TRIGGER)
+
+
+def _in_array(node: Node) -> bool:
+    cur: Node | None = node
+    while cur is not None:
+        if getattr(cur, "is_array", False):
+            return True
+        cur = cur.parent
+    return False
+
+
+def _field_kind(node: FieldNode) -> str | None:
+    """'config', 'status', or None for an unsupported sw/hw combination."""
+    sw = node.get_property("sw")
+    hw = node.get_property("hw")
+    if sw in (AccessType.rw, AccessType.w) and hw in (AccessType.r, AccessType.na):
+        return "config"
+    if sw == AccessType.r and hw == AccessType.w:
+        return "status"
+    return None
 
 
 class CdcDesignValidator(RDLListener):
     def __init__(self, exp) -> None:
         self.exp = exp
         self.msg = exp.ds.top_node.env.msg
-        self._domain_resets: dict[str, set[SignalNode | None]] = {}
+        self._domain_resets: dict[str, set[str | None]] = {}
 
     @property
     def top_node(self):
         return self.exp.ds.top_node
 
     def walk(self) -> None:
+        RDLWalker().walk(self.top_node, self)
+
+    def _cdc_reg(self, node: RegNode):
+        return self.exp.ds.cdc_domains[cdc_reg_domain_key(node)].reg(node)
+
+    def enter_Component(self, node: Node) -> None:
         if not self.exp.ds.has_cdc_regs:
             return
-        from systemrdl.walker import RDLWalker
+        for prop in node.list_properties():
+            target = node.get_property(prop)
+            if isinstance(target, PropertyReference):
+                target = target.node
+            if not isinstance(target, Node):
+                continue
+            src_ref = node.inst.property_src_ref.get(prop, node.inst.inst_src_ref)
+            self._check_reference(node, prop, target, src_ref)
 
-        RDLWalker().walk(self.top_node, self)
+    def _check_reference(self, node: Node, prop: str, target: Node, src_ref) -> None:
+        if (
+            isinstance(target, SignalNode)
+            and target.get_path() in self.exp.ds.cdc_clock_signals
+            and prop != "cdc_clk"
+        ):
+            self.msg.error(
+                f"cdc_clk signal cannot be referenced by '{prop}' "
+                f"(signal '{target.inst_name}')",
+                src_ref,
+            )
+        if isinstance(target, FieldNode) and is_cdc_reg(target.parent):
+            owner = node.parent if isinstance(node, FieldNode) else node
+            if owner != target.parent:
+                self.msg.error(
+                    f"Property '{prop}' cannot reference a field of a CDC register "
+                    f"('{target.get_path()}') from outside that register",
+                    src_ref,
+                )
+
+    def enter_Signal(self, node: SignalNode) -> None:
+        for prop in CLOCK_ONLY_PROPS:
+            if prop in node.list_properties() and (
+                node.get_path() not in self.exp.ds.cdc_clock_signals
+            ):
+                self.msg.error(
+                    f"Signal '{node.inst_name}' sets {prop} but is not used as cdc_clk "
+                    "by any register",
+                    node.inst.property_src_ref.get(prop, node.inst.inst_src_ref),
+                )
 
     def enter_Reg(self, node: RegNode) -> WalkerAction | None:
         if not is_cdc_reg(node):
@@ -44,9 +128,10 @@ class CdcDesignValidator(RDLListener):
 
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
-        if regwidth != accesswidth:
+        if regwidth > accesswidth:
             self.msg.error(
-                "CDC registers require regwidth == accesswidth",
+                f"CDC register '{node.inst_name}' is wider than accesswidth "
+                f"(regwidth {regwidth}, accesswidth {accesswidth})",
                 node.inst.inst_src_ref,
             )
 
@@ -56,52 +141,73 @@ class CdcDesignValidator(RDLListener):
                 node.inst.inst_src_ref,
             )
 
-        if self.exp.ds.retime_external_reg and is_cdc_reg(node):
+        if self.exp.ds.retime_external_reg:
             self.msg.error(
                 "cdc_clk cannot be combined with --rt-external reg",
                 node.inst.inst_src_ref,
             )
 
-        clk = get_cdc_clk(node)
-        assert clk is not None
+        for kind, buf, trig in (
+            ("write", "buffer_writes", "wbuffer_trigger"),
+            ("read", "buffer_reads", "rbuffer_trigger"),
+        ):
+            if node.get_property(buf, default=False):
+                self._check_trigger(node, kind, buf, node.get_property(trig))
 
-        if node.get_property("buffer_writes", default=False):
-            trigger = node.get_property("wbuffer_trigger")
-            if isinstance(trigger, RegNode) and (
-                not is_cdc_reg(trigger) or get_cdc_clk(trigger) != clk
-            ):
-                self.msg.error(
-                    "CDC write-buffer trigger must be a CDC register in the same domain",
-                    node.inst.inst_src_ref,
-                )
-
-        if node.get_property("buffer_reads", default=False):
-            trigger = node.get_property("rbuffer_trigger")
-            if isinstance(trigger, RegNode) and (
-                not is_cdc_reg(trigger) or get_cdc_clk(trigger) != clk
-            ):
-                self.msg.error(
-                    "CDC read-buffer trigger must be a CDC register in the same domain",
-                    node.inst.inst_src_ref,
-                )
+        if self._cdc_reg(node).cls in TRIGGER_CLASSES and _in_array(node):
+            self.msg.error(
+                "CDC trigger cannot be an array element or inside an arrayed regfile",
+                node.inst.inst_src_ref,
+            )
 
         return WalkerAction.Continue
+
+    def _check_trigger(self, node: RegNode, kind: str, buf: str, trigger) -> None:
+        if not isinstance(trigger, RegNode):
+            self.msg.error(
+                f"CDC {kind}-buffer trigger must be a register "
+                f"(register '{node.inst_name}' names a field, signal or property reference)",
+                node.inst.property_src_ref.get(
+                    f"{kind[0]}buffer_trigger", node.inst.inst_src_ref
+                ),
+            )
+            return
+        if not is_cdc_reg(trigger) or get_cdc_clk(trigger) != get_cdc_clk(node):
+            self.msg.error(
+                f"CDC {kind}-buffer trigger must be a CDC register in the same domain",
+                node.inst.inst_src_ref,
+            )
+        elif not trigger.get_property(buf, default=False):
+            self.msg.error(
+                f"CDC {kind}-buffer trigger must set {buf} "
+                f"(trigger '{trigger.inst_name}' of '{node.inst_name}')",
+                node.inst.inst_src_ref,
+            )
 
     def enter_Field(self, node: FieldNode) -> None:
         if not is_cdc_reg(node.parent):
             return
 
-        hw = node.get_property("hw")
-        if not (node.is_sw_readable or node.is_sw_writable):
+        kind = _field_kind(node)
+        if kind is None:
             self.msg.error(
-                f"CDC field '{node.inst_name}' has unsupported sw access",
+                f"unsupported access for a CDC field '{node.inst_name}' "
+                f"(sw={node.get_property('sw').name}, hw={node.get_property('hw').name}); "
+                "allowed: config (sw=rw|w, hw=r|na) and status (sw=r, hw=w)",
                 node.inst.inst_src_ref,
             )
-        if hw not in {AccessType.r, AccessType.w, AccessType.na}:
-            self.msg.error(
-                f"CDC field '{node.inst_name}' has unsupported hw access",
-                node.inst.inst_src_ref,
-            )
+        else:
+            cls = self._cdc_reg(node.parent).cls
+            if cls == CdcRegClass.WRITE_MEMBER and kind == "status":
+                self.msg.error(
+                    f"CDC write-group member cannot have status field '{node.inst_name}'",
+                    node.inst.inst_src_ref,
+                )
+            if cls == CdcRegClass.READ_MEMBER and kind == "config":
+                self.msg.error(
+                    f"CDC read-group member cannot have config field '{node.inst_name}'",
+                    node.inst.inst_src_ref,
+                )
 
         if (
             node.get_property("onread") is not None
@@ -111,36 +217,18 @@ class CdcDesignValidator(RDLListener):
                 "onread/onwrite are not supported on CDC fields",
                 node.inst.inst_src_ref,
             )
-        banned = [
-            "intr",
-            "singlepulse",
-            "paritycheck",
-            "hwset",
-            "hwclr",
-            "swacc",
-            "swmod",
-        ]
-        for prop in banned:
+        for prop in BANNED_FIELD_PROPS:
             if node.get_property(prop, default=False):
                 self.msg.error(
                     f"Property '{prop}' is not supported on CDC fields",
                     node.inst.inst_src_ref,
                 )
 
-        if node.get_property("buffer_writes", default=False) and hw == AccessType.w:
-            trig = node.parent.get_property("wbuffer_trigger")
-            if isinstance(trig, RegNode) and trig != node.parent:
-                self.msg.error(
-                    "CDC write-group members cannot contain hw=w fields",
-                    node.inst.inst_src_ref,
-                )
-
-        clk = get_cdc_clk(node.parent)
-        assert clk is not None
-        key = clk.get_path()
         rs = node.get_property("resetsignal")
-        bucket = self._domain_resets.setdefault(key, set())
-        bucket.add(rs.get_path() if rs is not None else None)
+        key = cdc_reg_domain_key(node.parent)
+        self._domain_resets.setdefault(key, set()).add(
+            rs.get_path() if rs is not None else None
+        )
 
     def exit_Addrmap(self, node) -> None:
         if node != self.top_node:
@@ -151,3 +239,43 @@ class CdcDesignValidator(RDLListener):
                     "All fields in a CDC domain must share the same resetsignal (or none)",
                     self.top_node.inst.def_src_ref,
                 )
+        for clk in self.exp.ds.cdc_clock_signals.values():
+            self._check_clock(clk)
+        self._check_collisions()
+
+    def _check_clock(self, clk: SignalNode) -> None:
+        src_ref = clk.inst.inst_src_ref
+        if (clk.width or 1) > 1 or getattr(clk, "is_array", False):
+            self.msg.error(
+                f"cdc_clk signal must be a single bit (signal '{clk.inst_name}')",
+                src_ref,
+            )
+        assigned = clk.list_properties()
+        for prop in CLOCK_FORBIDDEN_PROPS:
+            if prop in assigned:
+                self.msg.error(
+                    f"cdc_clk signal cannot set '{prop}' (signal '{clk.inst_name}')",
+                    clk.inst.property_src_ref.get(prop, src_ref),
+                )
+
+    def _check_collisions(self) -> None:
+        """Reject module ports that equal a generated port or begin a generated prefix."""
+        ds = self.exp.ds
+        ports: dict[str, str] = {"clk": "the bus clock"}
+        for sig in ds.out_of_hier_signals.values():
+            ports[kwf(sig.inst_name)] = f"signal '{sig.inst_name}'"
+        for domain in ds.cdc_domains.values():
+            ports[domain.inst_name] = f"signal '{domain.clk_signal.inst_name}'"
+
+        for domain in ds.cdc_domains.values():
+            reserved = f"{domain.inst_name}_fast_mode_en"
+            prefix = f"cdc_{domain.inst_name}_"
+            for name, what in ports.items():
+                if (domain.fast_mode_en and name == reserved) or name.startswith(
+                    prefix
+                ):
+                    self.msg.error(
+                        f"Port '{name}' ({what}) collides with a name generated for "
+                        f"the domain of '{domain.clk_signal.inst_name}'",
+                        domain.clk_signal.inst.inst_src_ref,
+                    )
