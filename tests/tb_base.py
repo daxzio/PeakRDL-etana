@@ -31,14 +31,12 @@ class testbench:
             from interfaces.ahb_wrapper import AHBMasterDX
 
             self.ahb_bus = AHBBus.from_prefix(dut, "s_ahb")
-            # Reset is held for 100 clocks, and the master counts every cycle
-            # HREADY stays low, including a transfer that starts during reset
-            # and then waits out a CDC round trip.
+            # The master waits for reset release before it starts a transfer.
             self.intf = AHBMasterDX(
                 self.ahb_bus,
                 getattr(dut, "clk"),
                 getattr(dut, resetname),
-                timeout=500,
+                reset_sense=reset_sense,
             )
 
             # self.intf = AHBMaster(ahb_bus, getattr(dut, "clk"), getattr(dut, "rst"))
