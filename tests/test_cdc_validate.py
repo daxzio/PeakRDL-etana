@@ -140,7 +140,18 @@ def test_cdc_rejects_onread_onwrite(tmp_path, prop):
 
 
 @pytest.mark.parametrize(
-    "prop", ["intr", "singlepulse", "paritycheck", "hwset", "hwclr", "swacc", "swmod"]
+    "prop",
+    [
+        "intr",
+        "singlepulse",
+        "paritycheck",
+        "hwset",
+        "hwclr",
+        "swacc",
+        "swmod",
+        "rd_swacc",
+        "wr_swacc",
+    ],
 )
 def test_cdc_rejects_banned_property(tmp_path, prop):
     _export_expect_error(
@@ -510,6 +521,24 @@ def test_cdc_rejects_wide_member_msb0(tmp_path):
     _export_expect_error(
         _top(_wide_group("write", "[0:63]")),
         "msb0",
+        tmp_path,
+    )
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["field { sw=rw; hw=r; } f[0:7] = 0;", "field { sw=r; hw=w; } f[8:15];"],
+    ids=["config", "status"],
+)
+def test_cdc_rejects_msb0(tmp_path, field):
+    _export_expect_error(
+        _top(f"""
+            reg {{
+                cdc_clk = sync_clk;
+                {field}
+            }} rg @0x0;
+            """),
+        "msb0 field 'f' is not supported in a CDC register",
         tmp_path,
     )
 
@@ -902,3 +931,47 @@ def test_non_cdc_unchanged(tmp_path):
             "CDC_REF_SRC is not set; point it at the src directory of the dk_cdc tree"
         )
     assert _non_cdc_hash(_REPO / "src", tmp_path) == _non_cdc_hash(Path(ref), tmp_path)
+
+
+_EXT_CHILD = """
+    external addrmap {
+        reg {
+            cdc_clk = sync_clk;
+            field { sw=rw; hw=r; } f[7:0] = 0;
+        } r1 @0x0;
+    } sub @0x100;
+    """
+
+
+def test_cdc_skips_reg_in_external_block(tmp_path):
+    ds = _scan(_top(_cfg() + _EXT_CHILD), tmp_path)
+    (domain,) = ds.cdc_domains.values()
+    assert domain.n_slots == 1
+    assert [r.node.inst_name for r in domain.regs] == ["rg"]
+
+
+def test_cdc_only_in_external_block(tmp_path):
+    plain = "reg { field { sw=rw; hw=r; } f[7:0] = 0; } r0 @0x0;"
+    rdl = _top(plain + _EXT_CHILD, signals="signal { cdc_nstages = 3; } sync_clk;")
+    ds = _scan(rdl, tmp_path)
+    assert not ds.has_cdc_regs
+    (sv,) = [p for p in (tmp_path / "out").rglob("*.sv") if "pkg" not in p.name]
+    text = sv.read_text()
+    assert "cdc_" not in text
+    # An unreferenced signal is an ordinary hwif input
+    assert "input wire hwif_in_sync_clk" in text
+
+
+def test_cdc_clock_outside_top(tmp_path):
+    rdl = """
+        signal {} dclk;
+        addrmap top {
+            reg {
+                cdc_clk = dclk;
+                field { sw=rw; hw=r; } f[7:0] = 0;
+            } r0 @0x0;
+        };
+        """
+    out = _export(rdl, tmp_path)
+    (sv,) = [p for p in out.rglob("*.sv") if "pkg" not in p.name]
+    assert len(re.findall(r"input wire dclk\b", sv.read_text())) == 1

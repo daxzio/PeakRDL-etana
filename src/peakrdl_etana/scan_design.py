@@ -82,7 +82,9 @@ class DesignScanner(RDLListener):
                 path = value.get_path()
                 rel_path = value.get_rel_path(self.top_node)
                 if rel_path.startswith("^"):
-                    self.ds.out_of_hier_signals[path] = value
+                    # A domain clock gets its port from the CDC domain
+                    if prop_name != "cdc_clk":
+                        self.ds.out_of_hier_signals[path] = value
                 else:
                     self.ds.in_hier_signal_paths.add(path)
 

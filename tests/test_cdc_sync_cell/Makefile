@@ -13,3 +13,4 @@ PEAKRDL_ARGS+=--sync-cell cdc_tb_sync
 
 include ../tests.mak
 VERILOG_SOURCES+=./cdc_tb_sync.sv
+YOSYS_EXTRA_SOURCES=./cdc_tb_sync.sv

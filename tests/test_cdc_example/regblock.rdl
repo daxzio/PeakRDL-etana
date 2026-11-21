@@ -1,0 +1,99 @@
+addrmap top {
+    default regwidth = 32;
+    default accesswidth = 32;
+
+    signal { cdc_fast_mode_en; } a_clk;
+    signal { cdc_nstages = 3; } b_clk;
+
+    //--------------------------------------------------------------------------
+    // a_clk domain: a plain register and a write group; fast mode
+    //--------------------------------------------------------------------------
+
+    // Plain register: every read and write crosses to a_clk
+    reg {
+        cdc_clk = a_clk;
+        field { sw = rw; hw = r; } cfg[7:0] = 0;
+        field { sw = r; hw = w; } sts[15:8] = 0;
+    } a_plain @0x00;
+
+    // Write member, register array: a write updates only the bus-side copy
+    reg {
+        cdc_clk = a_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } cfg[15:0] = 0;
+    } a_wr_member[4] @0x10 += 0x4;
+
+    // Write trigger: a write loads itself and every member on one a_clk edge
+    reg {
+        cdc_clk = a_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } cfg[15:0] = 1000;
+    } a_wr_trigger @0x20;
+
+    // Wide write member: 64 bits, written as two 32-bit subwords
+    reg {
+        cdc_clk = a_clk;
+        buffer_writes;
+        regwidth = 64;
+        field { sw = rw; hw = r; } cfg[47:0] = 0;
+    } a_wr_member_wide @0x30;
+
+    // Write members in an arrayed regfile: two banks of two registers
+    regfile {
+        reg {
+            cdc_clk = a_clk;
+            buffer_writes;
+            field { sw = rw; hw = r; } cfg[15:0] = 0;
+        } wr_member[2] @0x0 += 0x4;
+    } a_bank[2] @0x40 += 0x8;
+
+    a_wr_member->wbuffer_trigger = a_wr_trigger;
+    a_wr_member_wide->wbuffer_trigger = a_wr_trigger;
+    a_bank.wr_member->wbuffer_trigger = a_wr_trigger;
+
+    //--------------------------------------------------------------------------
+    // b_clk domain: a plain register and a read group; three synchronizer stages
+    //--------------------------------------------------------------------------
+
+    // Plain register: every read and write crosses to b_clk
+    reg {
+        cdc_clk = b_clk;
+        field { sw = rw; hw = r; } cfg[7:0] = 0;
+        field { sw = r; hw = w; } sts[15:8] = 0;
+    } b_plain @0x80;
+
+    // Read member, register array: a read returns the snapshot and does not cross
+    reg {
+        cdc_clk = b_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } sts[11:0] = 0;
+    } b_rd_member[4] @0x90 += 0x4;
+
+    // Read trigger: a read captures itself and every member on one b_clk edge
+    reg {
+        cdc_clk = b_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } sts[15:0] = 0;
+    } b_rd_trigger @0xA0;
+
+    // Wide read member: 64 bits, read as two 32-bit subwords of one snapshot
+    reg {
+        cdc_clk = b_clk;
+        buffer_reads;
+        regwidth = 64;
+        field { sw = r; hw = w; } sts[47:0] = 0;
+    } b_rd_member_wide @0xB0;
+
+    // Read members in an arrayed regfile: two banks of two registers
+    regfile {
+        reg {
+            cdc_clk = b_clk;
+            buffer_reads;
+            field { sw = r; hw = w; } sts[11:0] = 0;
+        } rd_member[2] @0x0 += 0x4;
+    } b_bank[2] @0xC0 += 0x8;
+
+    b_rd_member->rbuffer_trigger = b_rd_trigger;
+    b_rd_member_wide->rbuffer_trigger = b_rd_trigger;
+    b_bank.rd_member->rbuffer_trigger = b_rd_trigger;
+};
