@@ -19,7 +19,7 @@ jobs:
       - name: Setup Yosys
         uses: daxzio/setup-yosys@v1
         with:
-          version: latest
+          version: "0.71"
       # 0.67+ includes read_slang; setup-yosys picks yosys-ubuntu-26.04.tar.gz on this runner.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
