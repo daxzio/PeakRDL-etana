@@ -1,4 +1,5 @@
 UDPS?=../regblock_udps.rdl ../../hdl-src/etana_udps.rdl
+PEAKRDL_ARGS+=--cdc-emit-cells
 
 CDC_RESET?=
 CDC_NSTAGES3?=

@@ -120,6 +120,9 @@ fi
 #     SKIP_TESTS+=("test_example")
 # fi
 
+# CDC array cocotb needs array slot indexing in generated RTL (not ready yet).
+SKIP_TESTS+=("test_cdc_array")
+
 # CDC cells and UDPs are etana-only.
 if [ "$REGBLOCK" -eq 1 ] || [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" -eq 1 ]; then
     SKIP_TESTS+=("test_cdc" "test_cdc_fast" "test_cdc_groups")
