@@ -80,7 +80,9 @@ class CdcScanner(RDLListener):
         return regs, slot, data_w
 
     def _reg_data_width(self, reg: RegNode) -> int:
-        return reg.get_property("regwidth")
+        rw = reg.get_property("regwidth")
+        elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
+        return rw * elems
 
     def _unique_regs(self, members: list[RegNode]) -> list[RegNode]:
         uniq: dict[str, RegNode] = {}
@@ -167,8 +169,7 @@ class CdcScanner(RDLListener):
                 slots.append(CdcSlot(CdcSlotKind.SINGLE, idx, [reg], data_width=w))
                 idx += 1
 
-            n_slots = len(slots)
-            idx_w = max(1, clog2(n_slots)) if n_slots > 1 else 1
+            idx_w = max(1, clog2(n_crossing_slots)) if n_crossing_slots > 1 else 1
 
             soft_resets: set[str] = set()
             for reg in regs:

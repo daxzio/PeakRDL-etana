@@ -67,13 +67,15 @@ class CdcDomain:
         return self.fast
 
     def slot_for_reg(self, reg: RegNode) -> CdcSlot | None:
+        path = reg.get_path()
         for slot in self.slots:
-            if reg in slot.regs:
+            if any(r.get_path() == path for r in slot.regs):
                 return slot
         return None
 
     def reg(self, node: RegNode) -> CdcReg:
+        path = node.get_path()
         for cdc_reg in self.regs:
-            if cdc_reg.node == node:
+            if cdc_reg.node.get_path() == path:
                 return cdc_reg
-        raise KeyError(node.get_path())
+        raise KeyError(path)

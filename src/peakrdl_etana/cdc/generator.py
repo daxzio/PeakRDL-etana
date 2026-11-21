@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
-from systemrdl.node import FieldNode, RegNode
+from systemrdl.node import AddressableNode, FieldNode, RegNode
+from systemrdl.walker import RDLWalker, WalkerAction
 
+from ..forloop_generator import RDLForLoopGenerator
 from ..sv_int import SVInt
-from ..utils import IndexedPath
-from .model import CdcDomain, CdcSlotKind
+from ..utils import IndexedPath, unpacked_array_suffix
+from .model import CdcDomain, CdcRegClass, CdcSlotKind
+from .util import (
+    cdc_array_dims,
+    cdc_reg_domain_key,
+    cdc_slot_expr,
+    is_cdc_read_trigger,
+    is_cdc_reg,
+    is_cdc_write_trigger,
+)
 
 if TYPE_CHECKING:
     from ..exporter import RegblockExporter
@@ -110,9 +121,33 @@ class CdcImplementationGenerator:
     def _pack_reg_read(self, reg: RegNode) -> str:
         return self._reg_read_pack_name(reg)
 
+    def _static_array_suffixes(self, node: RegNode) -> list[str]:
+        dims = cdc_array_dims(node)
+        if not dims:
+            return [""]
+        out: list[str] = []
+
+        def rec(level: int, suffix: str) -> None:
+            if level == len(dims):
+                out.append(suffix)
+                return
+            for i in range(dims[level]):
+                rec(level + 1, suffix + f"[{i}]")
+
+        rec(0, "")
+        return out
+
+    def _vectored_name(self, basename: str, node: RegNode) -> str:
+        p = IndexedPath(self.exp.ds.top_node, node)
+        suffixes = self._static_array_suffixes(node)
+        if len(suffixes) == 1:
+            return f"{basename}{p.path}{suffixes[0]}"
+        elems = [f"{basename}{p.path}{sfx}" for sfx in reversed(suffixes)]
+        return "{" + ", ".join(elems) + "}"
+
     def _concat_member_shadows(self, regs: list[RegNode]) -> str:
         regs = sorted(regs, key=lambda r: r.raw_absolute_address, reverse=True)
-        parts = [self.shadow_name(r) for r in regs]
+        parts = [self._vectored_name("cdc_shadow_", r) for r in regs]
         if len(parts) == 1:
             return parts[0]
         return "{" + ", ".join(parts) + "}"
@@ -121,11 +156,12 @@ class CdcImplementationGenerator:
         regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
         parts: list[str] = []
         for reg in regs:
-            sh = self.shadow_name(reg)
+            sh = self._vectored_name("cdc_shadow_", reg)
             rw = reg.get_property("regwidth")
             if reg is trigger:
+                trig = self._vectored_name("cdc_shadow_", reg)
                 parts.append(
-                    f"(({sh} & ~decoded_wr_biten[{rw - 1}:0]) | "
+                    f"(({trig} & ~decoded_wr_biten[{rw - 1}:0]) | "
                     f"(decoded_wr_data[{rw - 1}:0] & decoded_wr_biten[{rw - 1}:0]))"
                 )
             else:
@@ -138,7 +174,48 @@ class CdcImplementationGenerator:
         regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
         pieces: list[str] = []
         for reg in regs:
-            pieces.append(self._pack_reg_read(reg))
+            pieces.append(self._vectored_name("cdc_pack_", reg))
+        if len(pieces) == 1:
+            return pieces[0]
+        return "{" + ", ".join(pieces) + "}"
+
+    def _hwif_vectored_reg(self, reg: RegNode) -> str:
+        for field in reg.fields():
+            if not (field.is_hw_readable or field.is_hw_writable):
+                continue
+            ident = str(self.exp.hwif.get_input_identifier(field))
+            root = ident.split("[", 1)[0]
+            suffixes = self._static_array_suffixes(reg)
+            if len(suffixes) == 1:
+                return root + suffixes[0]
+            elems = [root + sfx for sfx in reversed(suffixes)]
+            return "{" + ", ".join(elems) + "}"
+        return self._pack_reg_expr(reg)
+
+    def _reg_read_span(self, reg: RegNode) -> int:
+        lo = reg.get_property("regwidth")
+        hi = 0
+        found = False
+        for field in reg.fields():
+            if field.is_sw_readable or field.is_hw_readable:
+                found = True
+                lo = min(lo, field.low)
+                hi = max(hi, field.high)
+        if not found:
+            return reg.get_property("regwidth")
+        return hi - lo + 1
+
+    def _group_read_concat_width(self, slot_regs: list[RegNode]) -> int:
+        elems = lambda r: math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
+        return sum(self._reg_read_span(r) * elems(r) for r in slot_regs)
+
+    def _group_write_concat_width(self, slot_regs: list[RegNode]) -> int:
+        elems = lambda r: math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
+        return sum(r.get_property("regwidth") * elems(r) for r in slot_regs)
+
+    def _concat_slot_read_live(self, slot_regs: list[RegNode]) -> str:
+        regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
+        pieces = [self._hwif_vectored_reg(reg) for reg in regs]
         if len(pieces) == 1:
             return pieces[0]
         return "{" + ", ".join(pieces) + "}"
@@ -175,7 +252,6 @@ class CdcImplementationGenerator:
 
         rst_name = self.exp.dereferencer.default_resetsignal_name
         bus_rst_ah = self.exp.dereferencer.get_resetsignal(None)
-        bus_ff = self.exp.dereferencer.get_always_ff_event(None)
         soft_rst = "'0"
         if domain.soft_reset_signals:
             path = next(iter(domain.soft_reset_signals))
@@ -203,228 +279,65 @@ class CdcImplementationGenerator:
         lines.append("    );")
         lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {bus_rst_ah};")
 
-        # Shadows and snapshots on bus clock
-        for slot in domain.slots:
-            for reg in slot.regs:
-                rw = reg.get_property("regwidth")
-                if slot.kind == CdcSlotKind.WRITE_GROUP:
-                    lines.append(f"    logic [{rw - 1}:0] {self.shadow_name(reg)};")
-                if slot.kind == CdcSlotKind.READ_GROUP:
-                    lines.append(f"    logic [{rw - 1}:0] {self.snapshot_name(reg)};")
+        n_slots = domain.n_slots
+        slot_msb = max(n_slots - 1, 0)
+        lines.append(f"    logic [{slot_msb}:0] {pfx}_slot_req;")
+        lines.append(f"    logic [{data_w - 1}:0] {pfx}_slot_wr_data[{n_slots}];")
+        lines.append(f"    logic [{data_w - 1}:0] {pfx}_slot_wr_biten[{n_slots}];")
+        lines.append(f"    logic [{data_w - 1}:0] {pfx}_slot_rd_data[{n_slots}];")
 
-        # Destination storage (software-writable config only; status samples hwif directly)
-        for slot in domain.slots:
-            for reg in slot.regs:
-                for field in reg.fields():
-                    if not field.is_sw_writable:
-                        continue
-                    w = field.width
-                    ident = self.dst_storage_name(field)
-                    reset_v = self._reset_value(field)
-                    if w == 1:
-                        lines.append(f"    logic {ident} = {reset_v};")
-                    else:
-                        lines.append(f"    logic [{w - 1}:0] {ident} = {reset_v};")
+        reg_body = CdcRegLogicGenerator(self, domain).emit(self.exp.ds.top_node)
+        if reg_body:
+            lines.append(reg_body)
 
-        # hwif outputs from destination storage
-        for slot in domain.slots:
-            for reg in slot.regs:
-                for field in reg.fields():
-                    if not field.is_hw_readable or not field.is_sw_writable:
-                        continue
-                    out = self.exp.hwif.get_output_identifier(field)
-                    lines.append(f"    assign {out} = {self.dst_storage_name(field)};")
+        np_bits = ["0"] * n_slots
+        for cdc_reg in domain.regs:
+            if cdc_reg.crossing and cdc_reg.cls == CdcRegClass.WRITE_TRIGGER:
+                assert cdc_reg.slot_base is not None
+                np_bits[cdc_reg.slot_base] = "1"
+        np_mask = f"{n_slots}'b{''.join(reversed(np_bits))}"
 
-        # Bus-side shadow / snapshot flops
-        for slot in domain.slots:
-            if slot.kind == CdcSlotKind.WRITE_GROUP:
-                for reg in slot.regs:
-                    sh = self.shadow_name(reg)
-                    stb = self.reg_strobe(reg)
-                    reset = f"{reg.get_property('regwidth')}'d0"
-                    for field in reg.fields():
-                        if field.get_property("reset", default=None) is not None:
-                            reset = self._concat_reg_reset(reg)
-                            break
-                    lines.append(f"    always_ff {bus_ff} begin")
-                    lines.append(f"        if({bus_rst_ah}) begin")
-                    lines.append(f"            {sh} <= {reset};")
-                    lines.append("        end")
-                    lines.append(
-                        f"        else if({stb} & decoded_req & decoded_req_is_wr) begin"
-                    )
-                    lines.append(
-                        f"            {sh} <= ({sh} & ~decoded_wr_biten) | (decoded_wr_data & decoded_wr_biten);"
-                    )
-                    lines.append("        end")
-                    lines.append("    end")
-        # Destination loads
-        for slot in domain.slots:
-            slot_idx = slot.idx
-            for reg in slot.regs:
-                for field in reg.fields():
-                    if not field.is_sw_writable:
-                        continue
-                    ident = self.dst_storage_name(field)
-                    # SW writable storage in dst domain
-                    slice_lo = field.low
-                    slice_hi = field.high
-                    lines.append(
-                        f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-                    )
-                    lines.append(f"        if({pfx}_dst_rst) begin")
-                    lines.append(f"            {ident} <= {self._reset_value(field)};")
-                    lines.append("        end")
-                    if slot.kind == CdcSlotKind.SINGLE:
-                        biten = (
-                            f"{pfx}_dst_wr_biten[{slice_hi}:{slice_lo}]"
-                            if field.width > 1
-                            else f"{pfx}_dst_wr_biten[{slice_hi}]"
-                        )
-                        data = (
-                            f"{pfx}_dst_wr_data[{slice_hi}:{slice_lo}]"
-                            if field.width > 1
-                            else f"{pfx}_dst_wr_data[{slice_hi}]"
-                        )
-                        lines.append(
-                            f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & ({pfx}_dst_idx == {idx_w}'d{slot_idx}) & ({biten} != '0)) begin"
-                        )
-                        if field.width == 1:
-                            lines.append(
-                                f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
-                            )
-                        else:
-                            lines.append(
-                                f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
-                            )
-                        lines.append("        end")
-                    elif slot.kind == CdcSlotKind.WRITE_GROUP:
-                        # load from concatenated write data — slice per reg offset in concat
-                        off = self._reg_offset_in_concat(slot.regs, reg)
-                        lo = off + slice_lo
-                        fhi = off + slice_hi
-                        lines.append(
-                            f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & ({pfx}_dst_idx == {idx_w}'d{slot_idx})) begin"
-                        )
-                        if field.width == 1:
-                            lines.append(
-                                f"            {ident} <= {pfx}_dst_wr_data[{fhi}];"
-                            )
-                        else:
-                            lines.append(
-                                f"            {ident} <= {pfx}_dst_wr_data[{fhi}:{lo}];"
-                            )
-                        lines.append("        end")
-                    lines.append("    end")
-
-        packed_regs: set[str] = set()
-        for slot in domain.slots:
-            for reg in slot.regs:
-                key = reg.get_path()
-                if key not in packed_regs:
-                    packed_regs.add(key)
-                    self._emit_reg_read_pack(reg, lines)
-
-        # dst_rd_data mux
+        lines.append(f"    logic [{slot_msb}:0] {pfx}_dst_slot_en;")
+        lines.append(
+            f"    for (genvar k = 0; k < {n_slots}; k++) begin : {pfx}_gen_dst_slot_en"
+        )
+        lines.append(
+            f"        assign {pfx}_dst_slot_en[k] = {pfx}_dst_acc_en & "
+            f"({pfx}_dst_idx == {idx_w}'(k));"
+        )
+        lines.append("    end")
         lines.append("    always @(*) begin")
         lines.append(f"        {pfx}_dst_rd_data = {data_w}'d0;")
-        lines.append(f"        case({pfx}_dst_idx)")
-        for slot in domain.slots:
-            val = (
-                self._concat_slot_read(slot.regs)
-                if len(slot.regs) > 1
-                else self._pack_reg_read(slot.regs[0])
-            )
-            if slot.data_width < data_w:
-                val = f"{{{data_w - slot.data_width}'d0, {val}}}"
-            lines.append(f"            {idx_w}'d{slot.idx}: {pfx}_dst_rd_data = {val};")
-        lines.append("            default: ;")
-        lines.append("        endcase")
+        lines.append(f"        for (int k = 0; k < {n_slots}; k++) begin")
+        widen = "{" + f"{data_w}" + "{" + f"{pfx}_dst_slot_en[k]" + "}}"
+        lines.append(
+            f"            {pfx}_dst_rd_data |= {pfx}_slot_rd_data[k] & {widen};"
+        )
+        lines.append("        end")
         lines.append("    end")
 
-        # Snapshots in the crossing domain; capture only on a trigger read.
-        for slot in domain.slots:
-            if slot.kind != CdcSlotKind.READ_GROUP:
-                continue
-            assert slot.trigger is not None
-            lines.append(
-                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-            )
-            lines.append(f"        if({pfx}_dst_rst) begin")
-            for reg in slot.regs:
-                if reg is slot.trigger:
-                    continue
-                sn = self.snapshot_name(reg)
-                rw = reg.get_property("regwidth")
-                lines.append(f"            {sn} <= {rw}'d0;")
-            lines.append(
-                f"        end else if({pfx}_dst_acc_en & ~{pfx}_dst_is_wr & ({pfx}_dst_idx == {idx_w}'d{slot.idx})) begin"
-            )
-            for reg in slot.regs:
-                if reg is slot.trigger:
-                    continue
-                sn = self.snapshot_name(reg)
-                pack_expr = self._pack_reg_expr(reg)
-                lines.append(f"            {sn} <= {pack_expr};")
-            lines.append("        end")
-            lines.append("    end")
-
-        # Request mux
+        lines.append(f"    localparam logic [{slot_msb}:0] {pfx}_NP_MASK = {np_mask};")
+        lines.append(f"    assign {pfx}_req = |{pfx}_slot_req;")
         lines.append("    always @(*) begin")
-        lines.append(f"        {pfx}_req = '0;")
-        lines.append(f"        {pfx}_req_is_wr = '0;")
-        lines.append(f"        {pfx}_req_np = '0;")
         lines.append(f"        {pfx}_req_idx = {idx_w}'d0;")
+        lines.append(f"        for (int k = {n_slots - 1}; k >= 0; k--) begin")
+        lines.append(f"            if ({pfx}_slot_req[k]) {pfx}_req_idx = {idx_w}'(k);")
+        lines.append("        end")
+        lines.append("    end")
+        lines.append(f"    assign {pfx}_req_is_wr = decoded_req_is_wr;")
+        lines.append(
+            f"    assign {pfx}_req_np = decoded_req_is_wr & "
+            f"(|({pfx}_slot_req & {pfx}_NP_MASK));"
+        )
+        lines.append("    always @(*) begin")
         lines.append(f"        {pfx}_req_wr_data = {data_w}'d0;")
         lines.append(f"        {pfx}_req_wr_biten = {data_w}'d0;")
-        for slot in domain.slots:
-            if slot.kind == CdcSlotKind.SINGLE:
-                reg = slot.regs[0]
-                rw = reg.get_property("regwidth")
-                stb = self.reg_strobe(reg)
-                pad_w = data_w - rw
-                if pad_w > 0:
-                    wr_data = f"{{{pad_w}'d0, decoded_wr_data[{rw - 1}:0]}}"
-                    wr_biten = f"{{{pad_w}'d0, decoded_wr_biten[{rw - 1}:0]}}"
-                else:
-                    wr_data = f"decoded_wr_data[{rw - 1}:0]"
-                    wr_biten = f"decoded_wr_biten[{rw - 1}:0]"
-                lines.append(f"        if({stb} & decoded_req) begin")
-                lines.append(f"            {pfx}_req = '1;")
-                lines.append(f"            {pfx}_req_is_wr = decoded_req_is_wr;")
-                lines.append(f"            {pfx}_req_np = '0;")
-                lines.append(f"            {pfx}_req_idx = {idx_w}'d{slot.idx};")
-                lines.append(f"            {pfx}_req_wr_data = {wr_data};")
-                lines.append(f"            {pfx}_req_wr_biten = {wr_biten};")
-                lines.append("        end")
-            elif slot.kind == CdcSlotKind.WRITE_GROUP:
-                assert slot.trigger is not None
-                stb = self.reg_strobe(slot.trigger)
-                lines.append(
-                    f"        if({stb} & decoded_req & decoded_req_is_wr) begin"
-                )
-                lines.append(f"            {pfx}_req = '1;")
-                lines.append(f"            {pfx}_req_is_wr = '1;")
-                lines.append(f"            {pfx}_req_np = '1;")
-                lines.append(f"            {pfx}_req_idx = {idx_w}'d{slot.idx};")
-                concat = self._write_group_payload(slot.regs, slot.trigger)
-                pad_w = data_w - slot.data_width
-                if pad_w > 0:
-                    concat = f"{{{pad_w}'d0, {concat}}}"
-                lines.append(f"            {pfx}_req_wr_data = {concat};")
-                lines.append(f"            {pfx}_req_wr_biten = {{{data_w}{{1'b1}}}};")
-                lines.append("        end")
-            elif slot.kind == CdcSlotKind.READ_GROUP:
-                assert slot.trigger is not None
-                stb = self.reg_strobe(slot.trigger)
-                lines.append(
-                    f"        if({stb} & decoded_req & ~decoded_req_is_wr) begin"
-                )
-                lines.append(f"            {pfx}_req = '1;")
-                lines.append(f"            {pfx}_req_is_wr = '0;")
-                lines.append(f"            {pfx}_req_np = '0;")
-                lines.append(f"            {pfx}_req_idx = {idx_w}'d{slot.idx};")
-                lines.append("        end")
+        lines.append(f"        for (int k = 0; k < {n_slots}; k++) begin")
+        lines.append(f"            if ({pfx}_slot_req[k]) begin")
+        lines.append(f"                {pfx}_req_wr_data = {pfx}_slot_wr_data[k];")
+        lines.append(f"                {pfx}_req_wr_biten = {pfx}_slot_wr_biten[k];")
+        lines.append("            end")
+        lines.append("        end")
         lines.append("    end")
 
         lines.append(f"    etana_cdc_{rst_name} #(")
@@ -461,10 +374,32 @@ class CdcImplementationGenerator:
         ordered = sorted(regs, key=lambda r: r.raw_absolute_address)
         off = 0
         for reg in ordered:
-            if reg is target:
+            if reg.get_path() == target.get_path():
                 return off
-            off += reg.get_property("regwidth")
+            elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
+            off += reg.get_property("regwidth") * elems
         return 0
+
+    def _write_group_bit_offset(self, slot_regs: list[RegNode], reg: RegNode) -> str:
+        """SV expression for the reg's base bit index inside a write-group concat."""
+        ordered = sorted(slot_regs, key=lambda r: r.raw_absolute_address)
+        off = 0
+        rw = reg.get_property("regwidth")
+        for r in ordered:
+            if r.get_path() == reg.get_path():
+                dims = cdc_array_dims(reg)
+                if not dims:
+                    return str(off)
+                terms = [str(off)]
+                for level, _ in enumerate(dims):
+                    stride = rw
+                    for dim in dims[level + 1 :]:
+                        stride *= dim
+                    terms.append(f"i{level}*{stride}" if stride > 1 else f"i{level}")
+                return "(" + " + ".join(terms) + ")"
+            elems = math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
+            off += r.get_property("regwidth") * elems
+        return "0"
 
     def _concat_reg_reset(self, reg: RegNode) -> str:
         width = reg.get_property("regwidth")
@@ -475,8 +410,289 @@ class CdcImplementationGenerator:
                 val |= reset << field.low
         return str(SVInt(val, width))
 
+    def _path_indexed(self, node: RegNode | FieldNode) -> IndexedPath:
+        return IndexedPath(self.exp.ds.top_node, node)
+
+    def shadow_ref(self, reg: RegNode) -> str:
+        p = self._path_indexed(reg)
+        return f"cdc_shadow_{p.path}{p.index_str}"
+
+    def snapshot_ref(self, reg: RegNode) -> str:
+        p = self._path_indexed(reg)
+        return f"cdc_snap_{p.path}{p.index_str}"
+
+    def dst_field_ref(self, field: FieldNode) -> str:
+        p = self._path_indexed(field)
+        return f"cdc_dst_{p.path}_value{p.index_str}"
+
+    def pack_ref(self, reg: RegNode) -> str:
+        p = self._path_indexed(reg)
+        return f"cdc_pack_{p.path}{p.index_str}"
+
     def get_implementation(self) -> str:
         if not self.exp.ds.has_cdc_regs:
             return ""
         chunks = [self.gen_domain(d) for d in self.exp.ds.cdc_domains.values()]
         return "\n".join(chunks)
+
+
+class CdcRegLogicGenerator(RDLForLoopGenerator):
+    i_type = "genvar"
+
+    def __init__(self, impl: CdcImplementationGenerator, domain: CdcDomain) -> None:
+        super().__init__()
+        self.impl = impl
+        self.domain = domain
+        self.exp = impl.exp
+        self.domain_key = domain.clk_signal.get_path()
+        self.pfx = impl.domain_prefix(domain)
+        self.idx_w = domain.idx_width
+        self.data_w = max(
+            (slot.data_width for slot in domain.slots), default=domain.data_width
+        )
+        self.clk = domain.inst_name
+        self.bus_rst = self.exp.dereferencer.get_resetsignal(None)
+        self.bus_ff = self.exp.dereferencer.get_always_ff_event(None)
+        self._packed: set[str] = set()
+
+    def _path_indexed(self, node: RegNode | FieldNode) -> IndexedPath:
+        return self.impl._path_indexed(node)
+
+    def _decl_vec(self, node: RegNode, basename: str) -> None:
+        p = self._path_indexed(node)
+        rw = node.get_property("regwidth")
+        dims = unpacked_array_suffix(p.array_dimensions)
+        packed = f" [{rw - 1}:0]" if rw > 1 else ""
+        self.push_top(f"logic{packed} {basename}{dims};")
+
+    def _decl_field(self, field: FieldNode) -> None:
+        p = self._path_indexed(field)
+        w = field.width
+        dims = unpacked_array_suffix(p.array_dimensions)
+        base = f"cdc_dst_{p.path}_value"
+        reset_v = self.impl._reset_value(field)
+        packed = f" [{w - 1}:0]" if w > 1 else ""
+        init = "" if dims else f" = {reset_v}"
+        self.push_top(f"logic{packed} {base}{dims}{init};")
+
+    def emit(self, top) -> str | None:
+        self.start()
+        RDLWalker().walk(top, self, skip_top=True)
+        return self.finish()
+
+    def enter_AddressableComponent(self, node: AddressableNode) -> WalkerAction | None:
+        if node.external:
+            return WalkerAction.SkipDescendants
+        return super().enter_AddressableComponent(node)
+
+    def enter_Reg(self, node: RegNode) -> WalkerAction | None:
+        super().enter_Reg(node)
+        if node.external or not is_cdc_reg(node):
+            return WalkerAction.Continue
+        if cdc_reg_domain_key(node) != self.domain_key:
+            return WalkerAction.Continue
+
+        slot = self.domain.slot_for_reg(node)
+        if slot is None:
+            return WalkerAction.Continue
+
+        cdc_reg = self.domain.reg(node)
+        if cdc_reg.crossing:
+            slot_expr = cdc_slot_expr(self.domain, node)
+        else:
+            assert cdc_reg.trigger is not None
+            slot_expr = cdc_slot_expr(self.domain, cdc_reg.trigger)
+        pfx = self.pfx
+        clk = self.clk
+
+        if slot.kind == CdcSlotKind.WRITE_GROUP:
+            self._decl_vec(node, f"cdc_shadow_{self._path_indexed(node).path}")
+        if slot.kind == CdcSlotKind.READ_GROUP:
+            self._decl_vec(node, f"cdc_snap_{self._path_indexed(node).path}")
+
+        for field in node.fields():
+            if field.is_sw_writable:
+                self._decl_field(field)
+            if field.is_hw_readable and field.is_sw_writable:
+                out = self.exp.hwif.get_output_identifier(field)
+                self.add_content(
+                    f"    assign {out} = {self.impl.dst_field_ref(field)};"
+                )
+
+        if slot.kind == CdcSlotKind.WRITE_GROUP:
+            sh = self.impl.shadow_ref(node)
+            stb = self.impl.reg_strobe(node)
+            reset = f"{node.get_property('regwidth')}'d0"
+            for field in node.fields():
+                if field.get_property("reset", default=None) is not None:
+                    reset = self.impl._concat_reg_reset(node)
+                    break
+            self.add_content(f"    always_ff {self.bus_ff} begin")
+            self.add_content(f"        if({self.bus_rst}) begin")
+            self.add_content(f"            {sh} <= {reset};")
+            self.add_content("        end")
+            self.add_content(
+                f"        else if({stb} & decoded_req & decoded_req_is_wr) begin"
+            )
+            self.add_content(
+                f"            {sh} <= ({sh} & ~decoded_wr_biten) | (decoded_wr_data & decoded_wr_biten);"
+            )
+            self.add_content("        end")
+            self.add_content("    end")
+
+        for field in node.fields():
+            if not field.is_sw_writable:
+                continue
+            ident = self.impl.dst_field_ref(field)
+            slice_lo = field.low
+            slice_hi = field.high
+            self.add_content(
+                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
+            )
+            self.add_content(f"        if({pfx}_dst_rst) begin")
+            self.add_content(f"            {ident} <= {self.impl._reset_value(field)};")
+            self.add_content("        end")
+            if slot.kind == CdcSlotKind.SINGLE:
+                biten = (
+                    f"{pfx}_dst_wr_biten[{slice_hi}:{slice_lo}]"
+                    if field.width > 1
+                    else f"{pfx}_dst_wr_biten[{slice_hi}]"
+                )
+                data = (
+                    f"{pfx}_dst_wr_data[{slice_hi}:{slice_lo}]"
+                    if field.width > 1
+                    else f"{pfx}_dst_wr_data[{slice_hi}]"
+                )
+                self.add_content(
+                    f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & "
+                    f"({pfx}_dst_idx == {slot_expr}) & ({biten} != '0)) begin"
+                )
+                self.add_content(
+                    f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
+                )
+            elif slot.kind == CdcSlotKind.WRITE_GROUP:
+                base = self.impl._write_group_bit_offset(slot.regs, node)
+                lo = f"({base})+{slice_lo}"
+                fhi = f"({base})+{slice_hi}"
+                self.add_content(
+                    f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & "
+                    f"({pfx}_dst_idx == {slot_expr})) begin"
+                )
+                if field.width == 1:
+                    self.add_content(
+                        f"            {ident} <= {pfx}_dst_wr_data[{fhi}];"
+                    )
+                else:
+                    self.add_content(
+                        f"            {ident} <= {pfx}_dst_wr_data[{fhi}:{lo}];"
+                    )
+            self.add_content("        end")
+            self.add_content("    end")
+
+        key = node.get_path()
+        if key not in self._packed:
+            self._packed.add(key)
+            p = self._path_indexed(node)
+            rw = node.get_property("regwidth")
+            dims = unpacked_array_suffix(p.array_dimensions)
+            packed_ty = f" [{rw - 1}:0]" if rw > 1 else ""
+            self.push_top(f"logic{packed_ty} cdc_pack_{p.path}{dims};")
+            pack = self.impl.pack_ref(node)
+            if slot.kind == CdcSlotKind.READ_GROUP:
+                self.add_content(f"    assign {pack} = {self.impl.snapshot_ref(node)};")
+            elif slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node):
+                self.add_content(f"    assign {pack} = {self.impl.shadow_ref(node)};")
+            else:
+                self.add_content(
+                    f"    assign {pack} = {self.impl._pack_reg_expr(node)};"
+                )
+
+        if slot.kind == CdcSlotKind.READ_GROUP and slot.trigger is not None:
+            sn = self.impl.snapshot_ref(node)
+            rw = node.get_property("regwidth")
+            self.add_content(
+                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
+            )
+            self.add_content(f"        if({pfx}_dst_rst) begin")
+            self.add_content(f"            {sn} <= {rw}'d0;")
+            self.add_content(
+                f"        end else if({pfx}_dst_acc_en & ~{pfx}_dst_is_wr & "
+                f"({pfx}_dst_idx == {slot_expr})) begin"
+            )
+            self.add_content(f"            {sn} <= {self.impl._pack_reg_expr(node)};")
+            self.add_content("        end")
+            self.add_content("    end")
+
+        if node.has_sw_readable and (
+            slot.kind == CdcSlotKind.SINGLE
+            or (slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node))
+            or (slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node))
+        ):
+            if slot.kind == CdcSlotKind.SINGLE:
+                pack = self.impl.pack_ref(node)
+                val = pack
+                payload_w = node.get_property("regwidth")
+            elif slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node):
+                val = (
+                    self.impl._concat_slot_read_live(slot.regs)
+                    if len(slot.regs) > 1
+                    else self.impl._pack_reg_expr(slot.regs[0])
+                )
+                payload_w = self.impl._group_read_concat_width(slot.regs)
+            else:
+                val = (
+                    self.impl._concat_slot_read(slot.regs)
+                    if len(slot.regs) > 1
+                    else self.impl._pack_reg_read(slot.regs[0])
+                )
+                payload_w = self.impl._group_write_concat_width(slot.regs)
+            pad_w = self.data_w - payload_w
+            if pad_w > 0:
+                val = f"{{{pad_w}'d0, {val}}}"
+            rd_slot = (
+                cdc_slot_expr(self.domain, node) if cdc_reg.crossing else slot_expr
+            )
+            self.add_content(f"    assign {pfx}_slot_rd_data[{rd_slot}] = {val};")
+
+        if slot.kind == CdcSlotKind.SINGLE:
+            rw = node.get_property("regwidth")
+            stb = self.impl.reg_strobe(node)
+            pad_w = self.data_w - rw
+            if pad_w > 0:
+                wr_data = f"{{{pad_w}'d0, decoded_wr_data[{rw - 1}:0]}}"
+                wr_biten = f"{{{pad_w}'d0, decoded_wr_biten[{rw - 1}:0]}}"
+            else:
+                wr_data = f"decoded_wr_data[{rw - 1}:0]"
+                wr_biten = f"decoded_wr_biten[{rw - 1}:0]"
+            self.add_content(
+                f"    assign {pfx}_slot_req[{slot_expr}] = {stb} & decoded_req;"
+            )
+            self.add_content(f"    assign {pfx}_slot_wr_data[{slot_expr}] = {wr_data};")
+            self.add_content(
+                f"    assign {pfx}_slot_wr_biten[{slot_expr}] = {wr_biten};"
+            )
+        elif slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node):
+            assert slot.trigger is not None
+            stb = self.impl.reg_strobe(node)
+            trig_slot = cdc_slot_expr(self.domain, node)
+            self.add_content(
+                f"    assign {pfx}_slot_req[{trig_slot}] = "
+                f"{stb} & decoded_req & decoded_req_is_wr;"
+            )
+            concat = self.impl._write_group_payload(slot.regs, slot.trigger)
+            pad_w = self.data_w - slot.data_width
+            if pad_w > 0:
+                concat = f"{{{pad_w}'d0, {concat}}}"
+            self.add_content(f"    assign {pfx}_slot_wr_data[{trig_slot}] = {concat};")
+            self.add_content(
+                f"    assign {pfx}_slot_wr_biten[{trig_slot}] = {{{self.data_w}{{1'b1}}}};"
+            )
+        elif slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node):
+            stb = self.impl.reg_strobe(node)
+            trig_slot = cdc_slot_expr(self.domain, node)
+            self.add_content(
+                f"    assign {pfx}_slot_req[{trig_slot}] = "
+                f"{stb} & decoded_req & ~decoded_req_is_wr;"
+            )
+
+        return WalkerAction.Continue

@@ -52,7 +52,6 @@ jobs:
             test_early_external_read
             test_early_external_mixed
             test_ahb5
-            test_cdc_array
           )
           if [ "$cpuif" != "ahb-flat" ]; then
             skip+=(test_ahb_pipeline)

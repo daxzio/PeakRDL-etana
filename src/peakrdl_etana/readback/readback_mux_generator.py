@@ -1,3 +1,4 @@
+import math
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ from systemrdl.node import (
 from systemrdl.walker import WalkerAction
 
 from ..cdc.util import (
+    cdc_array_dims,
     cdc_reg_domain_key,
     cdc_uses_cell_access,
     get_cdc_clk,
@@ -122,20 +124,23 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             if is_cdc_write_trigger(node):
                 self.process_cdc_member_reg(node)
             elif is_cdc_read_trigger(node):
-                from ..utils import IndexedPath
-
-                p = IndexedPath(self.ds.top_node, node)
-                pack = f"cdc_pack_{p.path}{p.index_str}"
-                addr = self._get_address_str(node)
-                regwidth = node.get_property("regwidth")
-                conditional = self.get_addr_compare_conditional(addr)
-                var = self.get_readback_data_var(addr)
-                self.add_content(f"if({conditional}) begin")
-                if regwidth < self.exp.cpuif.data_width:
-                    self.add_content(f"    {var}[{regwidth - 1}:0] = {pack};")
+                if self.ds.cdc_emit_cells:
+                    self.process_cdc_cell_reg(node)
                 else:
-                    self.add_content(f"    {var} = {pack};")
-                self.add_content("end")
+                    from ..utils import IndexedPath
+
+                    p = IndexedPath(self.ds.top_node, node)
+                    pack = f"cdc_pack_{p.path}{p.index_str}"
+                    addr = self._get_address_str(node)
+                    regwidth = node.get_property("regwidth")
+                    conditional = self.get_addr_compare_conditional(addr)
+                    var = self.get_readback_data_var(addr)
+                    self.add_content(f"if({conditional}) begin")
+                    if regwidth < self.exp.cpuif.data_width:
+                        self.add_content(f"    {var}[{regwidth - 1}:0] = {pack};")
+                    else:
+                        self.add_content(f"    {var} = {pack};")
+                    self.add_content("end")
             elif cdc_uses_cell_access(node):
                 self.process_cdc_cell_reg(node)
             elif is_cdc_group_member(node):
@@ -238,14 +243,16 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             and len(slot.regs) > 1
         ):
             offset = 0
+            node_path = node.get_path()
             for reg in sorted(slot.regs, key=lambda r: r.raw_absolute_address):
-                if reg is node:
+                if reg.get_path() == node_path:
                     hi = offset + regwidth - 1
                     self.add_content(
                         f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{hi}:{offset}];"
                     )
                     break
-                offset += reg.get_property("regwidth")
+                elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
+                offset += reg.get_property("regwidth") * elems
         elif regwidth < self.exp.cpuif.data_width:
             self.add_content(
                 f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{regwidth - 1}:0];"

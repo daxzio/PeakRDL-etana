@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from systemrdl.node import FieldNode, RegNode
 from systemrdl.walker import RDLWalker, WalkerAction
 
-from .cdc.util import cdc_uses_cell_access
+from .cdc.util import cdc_uses_cell_access, is_cdc_read_trigger, is_cdc_write_trigger
 from .forloop_generator import RDLForLoopGenerator
 from .sv_int import SVInt
 from .utils import (
@@ -455,7 +455,14 @@ class DecodeLogicGenerator(RDLForLoopGenerator):
                 self.add_content(f"is_valid_rw |= {rhs};")
 
             # For external registers, mark as external
-            if self.policy.is_external(node) or cdc_uses_cell_access(node):
+            if (
+                self.policy.is_external(node)
+                or cdc_uses_cell_access(node)
+                or (
+                    self.addr_decode.exp.ds.cdc_emit_cells
+                    and (is_cdc_read_trigger(node) or is_cdc_write_trigger(node))
+                )
+            ):
                 self.add_content(f"is_external |= {rhs};")
         else:
             # Register is wide. Create a substrobe for each subword
