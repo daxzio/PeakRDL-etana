@@ -43,7 +43,9 @@ class testbench:
         elif hasattr(dut, "s_axil_awvalid"):
             from interfaces.axi_wrapper import AxiWrapper
 
-            self.intf = AxiWrapper(dut, "s_axil", "clk", resetname)
+            self.intf = AxiWrapper(
+                dut, "s_axil", "clk", resetname, reset_active_level=reset_sense != 0
+            )
         elif hasattr(dut, "s_obi_req"):
             from cocotbext.obi import ObiBus, ObiMaster
 
