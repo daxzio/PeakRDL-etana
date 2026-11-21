@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import random
 from pathlib import Path
@@ -10,10 +11,12 @@ from pathlib import Path
 from cocotb import start_soon
 from cocotb.clock import Clock
 from cocotb.triggers import (
+    ClockCycles,
     FallingEdge,
     ReadOnly,
     RisingEdge,
     SimTimeoutError,
+    Timer,
     ValueChange,
     with_timeout,
 )
@@ -42,8 +45,11 @@ def _bit(sig) -> int:
 
 
 class CdcTB(testbench):
-    def __init__(self, dut, clocks: dict[str, int]):
-        style = os.environ.get("CDC_RESET", "rst")
+    def __init__(
+        self, dut, clocks: dict[str, int], phases: dict[str, int] | None = None
+    ):
+        """Start the clocks; phases delays the start of a clock by the given ps."""
+        style = os.environ.get("CDC_RESET") or "rst"
         sense, name = _RESETS[style]
         super().__init__(dut, reset_sense=sense, resetname=name)
         self.dut = dut
@@ -53,19 +59,65 @@ class CdcTB(testbench):
         self.has_latency = hasattr(dut, "s_apb_psel")
 
         t_dst = os.environ.get("CDC_T_DST_PS")
+        self.nstages = 3 if os.environ.get("CDC_NSTAGES3") else 2
+        self.fast_mode = os.environ.get("CDC_FAST_MODE") == "1"
         self.clocks: dict[str, Clock] = {}
+        self.periods: dict[str, int] = {}
         for clk_name, period_ps in clocks.items():
-            if t_dst is not None:
+            if t_dst:
                 period_ps = int(t_dst)
             clk = Clock(getattr(dut, clk_name), period_ps, unit="ps")
-            clk.start()
+            delay = (phases or {}).get(clk_name, 0)
+            if delay:
+                start_soon(self._start_later(clk, delay))
+            else:
+                clk.start()
             self.clocks[clk_name] = clk
+            self.periods[clk_name] = period_ps
 
         fast_mode = os.environ.get("CDC_FAST_MODE")
-        if fast_mode is not None:
+        if fast_mode:
             for attr in dir(dut):
                 if attr.endswith("_fast_mode_en"):
                     getattr(dut, attr).value = int(fast_mode)
+
+    @staticmethod
+    async def _start_later(clk: Clock, delay_ps: int) -> None:
+        await Timer(delay_ps, "ps")
+        clk.start()
+
+    def read_bounds(self, clk_name: str) -> tuple[int, int]:
+        """Bus cycles of a default-mode read or trigger write, overhead excluded."""
+        n = self.nstages
+        low = n + 2
+        return low, low + math.ceil(low * self.periods[clk_name] / BUS_PERIOD_PS)
+
+    async def calibrate(self, addr: int) -> tuple[int, int]:
+        """Return the (read, write) overhead of the bus, measured on a bus-domain register."""
+        if not self.has_latency:
+            return 0, 0
+        data, rd = await self.read(addr)
+        wr = await self.write(addr, data)
+        return rd - 1, wr - 1
+
+    def check_latency(
+        self, clk_name: str, cycles: int, overhead: int, what: str
+    ) -> None:
+        """Assert a default-mode read or trigger write is within the bounds; 2 in fast mode."""
+        if not self.has_latency:
+            return
+        net = cycles - overhead
+        if self.fast_mode:
+            assert net == 2, f"{what}: {net} bus cycles in fast mode, expected 2"
+            return
+        low, high = self.read_bounds(clk_name)
+        assert low <= net <= high, f"{what}: {net} bus cycles, bounds {low}..{high}"
+
+    async def settle(self, *clk_names: str) -> None:
+        """Wait long enough for a posted write or an input change to cross the domains."""
+        for name in clk_names:
+            await ClockCycles(getattr(self.dut, name), 2 * self.nstages + 8)
+        await ClockCycles(self.dut.clk, 4)
 
     def stop_clock(self, name: str) -> None:
         self.clocks[name].stop()
@@ -95,7 +147,13 @@ class CdcTB(testbench):
                 f"bus access not complete after {timeout_cycles} bus cycles"
             ) from err
 
-    async def write(self, addr: int, data: int, strb: int = -1) -> int:
+    async def write(
+        self,
+        addr: int,
+        data: int,
+        strb: int = -1,
+        timeout_cycles: int | None = None,
+    ) -> int:
         counter = start_soon(self._count_cycles()) if self.has_latency else None
 
         async def op():
@@ -106,10 +164,36 @@ class CdcTB(testbench):
             return await counter if counter else 0
 
         try:
-            return await op()
+            return await self._timed(op(), timeout_cycles)
         finally:
             if counter:
                 counter.cancel()
+
+    async def _apb_read_sampled_at_edge(self, addr: int) -> int:
+        """Read over APB sampling pready and prdata just before the clock edge.
+
+        The APB master of the cocotbext package samples at the falling edge, half a bus
+        cycle early. In fast mode the data is valid up to one bus cycle after the request,
+        so that master reads stale data when the domain clock is slow.
+        """
+        dut = self.dut
+        await RisingEdge(dut.clk)
+        dut.s_apb_paddr.value = addr
+        dut.s_apb_pwrite.value = 0
+        dut.s_apb_psel.value = 1
+        dut.s_apb_penable.value = 0
+        await RisingEdge(dut.clk)
+        dut.s_apb_penable.value = 1
+        while True:
+            await Timer(BUS_PERIOD_PS - 1, "ps")
+            if _bit(dut.s_apb_pready):
+                data = int(dut.s_apb_prdata.value)
+                break
+            await RisingEdge(dut.clk)
+        await RisingEdge(dut.clk)
+        dut.s_apb_psel.value = 0
+        dut.s_apb_penable.value = 0
+        return data
 
     async def read(
         self, addr: int, timeout_cycles: int | None = None
@@ -117,7 +201,10 @@ class CdcTB(testbench):
         counter = start_soon(self._count_cycles()) if self.has_latency else None
 
         async def op():
-            raw = await self.intf.read(addr)
+            if self.fast_mode and hasattr(self.dut, "s_apb_penable"):
+                raw = await self._apb_read_sampled_at_edge(addr)
+            else:
+                raw = await self.intf.read(addr)
             data = (
                 int.from_bytes(raw, byteorder="little")
                 if isinstance(raw, (bytes, bytearray))

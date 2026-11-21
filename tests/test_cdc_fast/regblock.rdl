@@ -6,6 +6,8 @@ addrmap top {
     // issues the transfer. fast mode acks in that same cycle, so the destination
     // capture has to land inside that half-cycle: (cdc_nstages + 1) * 1 ns.
     signal { cdc_fast_mode_en = true; cdc_nstages = 2; } sync_clk;
+    // No cdc_fast_mode_en: the module has no sync_clk_one_fast_mode_en port.
+    signal { cdc_nstages = 2; } sync_clk_one;
 
     reg {
         cdc_clk = sync_clk;
@@ -16,4 +18,27 @@ addrmap top {
         cdc_clk = sync_clk;
         field { sw = rw; hw = r; } v[15:0] = 0x5A5A;
     } beta @0x04;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[15:0] = 0x1111;
+    } gw_mem @0x08;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[15:0] = 0x2222;
+    } gw_trg @0x0C;
+
+    gw_mem->wbuffer_trigger = gw_trg;
+
+    reg {
+        cdc_clk = sync_clk_one;
+        field { sw = rw; hw = r; } v[15:0] = 0xC0DE;
+    } one_cfg @0x10;
+
+    reg {
+        field { sw = rw; hw = r; } v[15:0] = 0xB005;
+    } bus_cfg @0x14;
 };
