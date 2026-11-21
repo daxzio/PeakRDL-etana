@@ -73,6 +73,18 @@ class CdcImplementationGenerator:
                     np_bits[k] = "1"
         np_mask = f"{domain.n_slots}'b{''.join(reversed(np_bits))}"
 
+        # Only bits that a writable field uses are carried; the rest would be unused flops
+        wr_width = max(
+            [
+                field.high + 1
+                for cdc_reg in domain.regs
+                if cdc_reg.crossing
+                for field in cdc_reg.node.fields()
+                if field.is_sw_writable
+            ],
+            default=1,
+        )
+
         return {
             "P": prefix,
             "clk": domain.inst_name,
@@ -81,6 +93,7 @@ class CdcImplementationGenerator:
             "nslots": domain.n_slots,
             "idx_width": domain.idx_width,
             "data_width": domain.data_width,
+            "wr_width": wr_width,
             "fast_mode_en": domain.fast_mode_en,
             "np_mask": np_mask,
             "bus_rst_expr": bus_rst_expr,

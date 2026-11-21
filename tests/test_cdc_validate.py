@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -623,3 +628,158 @@ def test_scan_slots_of_arrays(tmp_path):
     # Element [1][2] is row 1 * 3 columns + 2 = 5 past the base
     assert cdc_slot_expr(dom, rf_cfg.node) == "(10 + i0*3 + i1)"
     assert 10 + 1 * 3 + 2 == 15
+
+
+# Generated RTL checks
+
+_REPO = Path(__file__).resolve().parent.parent
+_STYLES = {
+    "rst": {},
+    "arst_n": {"default_reset_activelow": True, "default_reset_async": True},
+}
+_NON_CDC_RDL = """
+    addrmap top {
+        default regwidth = 32;
+        default accesswidth = 32;
+        reg {
+            field { sw=rw; hw=r; } ctl[15:0] = 0x1234;
+            field { sw=rw; hw=r; swmod; } mode[19:16] = 3;
+        } cfg @0x0;
+        reg {
+            field { sw=r; hw=w; } status[7:0] = 0;
+            field { sw=rw; hw=r; singlepulse; } kick[8:8] = 0;
+        } sts[4] @0x10;
+        reg {
+            field { sw=rw; hw=r; counter; } cnt[11:0] = 0;
+        } ctr @0x40;
+    };
+    """
+
+
+def _export(rdl: str, tmp_path: Path, **opts) -> Path:
+    out = tmp_path / "out"
+    RegblockExporter().export(
+        _compile(rdl, tmp_path, _CapturePrinter()), str(out), **opts
+    )
+    return out
+
+
+def _cdc_section_lines(text: str) -> tuple[int, int]:
+    """First and last line (1-based) of the CDC section, banner lines included."""
+    lines = text.splitlines()
+    title = next(i for i, ln in enumerate(lines) if "// CDC register domains" in ln)
+    start = title - 1
+    end = next(
+        (
+            i
+            for i in range(title + 2, len(lines))
+            if lines[i].strip().startswith("//----")
+        ),
+        len(lines),
+    )
+    return start + 1, end
+
+
+def _lint_cdc_section(sv: Path) -> list[str]:
+    """Verilator -Wall findings on lines of the CDC section."""
+    proc = subprocess.run(
+        ["verilator", "--lint-only", "-Wall", "--top-module", "top", str(sv)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert "%Error:" not in proc.stderr.replace(
+        "%Error: Exiting due to", ""
+    ), proc.stderr
+    first, last = _cdc_section_lines(sv.read_text())
+    found = []
+    for m in re.finditer(
+        r"^%Warning-\w+: \S+?:(\d+):\d+: (.*)$", proc.stderr, re.MULTILINE
+    ):
+        if first <= int(m.group(1)) <= last:
+            found.append(f"line {m.group(1)}: {m.group(2)}")
+    return found
+
+
+def test_one_module(tmp_path):
+    out = _export(Path("tests/test_cdc_groups/regblock.rdl").read_text(), tmp_path)
+    files = [p for p in out.rglob("*") if p.is_file()]
+    assert [p.suffix for p in files] == [".sv"]
+    assert len(re.findall(r"^\s*module\s", files[0].read_text(), re.MULTILINE)) == 1
+
+
+def test_ports(tmp_path):
+    rdl = _top(
+        _cfg(name="a", addr=0)
+        + _cfg(name="b", addr=4).replace("sync_clk", "other_clk"),
+        "signal { cdc_fast_mode_en = true; } sync_clk; signal {} other_clk;",
+    )
+    out = _export(rdl, tmp_path)
+    text = (out / "top.sv").read_text()
+    header = text[text.index("module top (") : text.index(");")]
+    ports = [ln.strip() for ln in header.splitlines()]
+    for clk in ("clk", "sync_clk", "other_clk"):
+        assert ports.count(f"input wire {clk},") == 1
+        assert not re.search(rf"hwif_in_{clk}\b", text)
+    at = ports.index("input wire sync_clk,")
+    assert ports[at + 1] == "input wire sync_clk_fast_mode_en,"
+    assert "other_clk_fast_mode_en" not in text
+
+
+@pytest.mark.parametrize("style", sorted(_STYLES))
+def test_lint(tmp_path, style):
+    rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
+    out = _export(rdl, tmp_path, **_STYLES[style])
+    assert _lint_cdc_section(out / "top.sv") == []
+
+
+@pytest.mark.parametrize("style", sorted(_STYLES))
+def test_keywords(tmp_path, style):
+    rdl = _top(
+        r"""
+        reg {
+            cdc_clk = \logic ;
+            field { sw=rw; hw=r; } \input [7:0] = 0;
+        } \reg @0x0;
+        """,
+        r"signal {} \logic ;",
+    )
+    out = _export(rdl, tmp_path, **_STYLES[style])
+    assert _lint_cdc_section(out / "top.sv") == []
+
+
+def _non_cdc_hash(src: Path, tmp_path: Path) -> str:
+    rdl = tmp_path / "plain.rdl"
+    rdl.write_text(_NON_CDC_RDL)
+    out = tmp_path / f"out_{src.parent.name}"
+    env = {**os.environ, "PYTHONPATH": str(src)}
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "peakrdl",
+            "etana",
+            str(_REPO / REGBLOCK_UDPS),
+            str(src.parent / ETANA_UDPS),
+            str(rdl),
+            "-o",
+            str(out),
+            "--cpuif",
+            "apb4-flat",
+        ],
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return hashlib.sha256((out / "top.sv").read_bytes()).hexdigest()
+
+
+def test_non_cdc_unchanged(tmp_path):
+    ref = os.environ.get("CDC_REF_SRC")
+    if not ref:
+        pytest.skip(
+            "CDC_REF_SRC is not set; point it at the src directory of the dk_cdc tree"
+        )
+    assert _non_cdc_hash(_REPO / "src", tmp_path) == _non_cdc_hash(Path(ref), tmp_path)

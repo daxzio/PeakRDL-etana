@@ -22,16 +22,16 @@ logic {{P}}_req;
 logic {{P}}_req_is_wr;
 logic {{P}}_req_np;
 logic [{{idx_width-1}}:0] {{P}}_req_idx;
-logic [{{data_width-1}}:0] {{P}}_req_wr_data;
-logic [{{data_width-1}}:0] {{P}}_req_wr_biten;
+logic [{{wr_width-1}}:0] {{P}}_req_wr_data;
+logic [{{wr_width-1}}:0] {{P}}_req_wr_biten;
 logic {{P}}_wr_ack;
 logic {{P}}_rd_ack;
 logic [{{data_width-1}}:0] {{P}}_rd_data;
 logic {{P}}_dst_acc_en;
 logic {{P}}_dst_is_wr;
 logic [{{idx_width-1}}:0] {{P}}_dst_idx;
-logic [{{data_width-1}}:0] {{P}}_dst_wr_data;
-logic [{{data_width-1}}:0] {{P}}_dst_wr_biten;
+logic [{{wr_width-1}}:0] {{P}}_dst_wr_data;
+logic [{{wr_width-1}}:0] {{P}}_dst_wr_biten;
 logic [{{data_width-1}}:0] {{P}}_dst_rd_data;
 logic [{{nslots-1}}:0] {{P}}_dst_slot_en;
 logic [{{data_width-1}}:0] {{P}}_slot_rd_data [{{nslots}}];
@@ -47,8 +47,8 @@ always @(*) begin
 end
 assign {{P}}_req_is_wr = decoded_req_is_wr;
 assign {{P}}_req_np = decoded_req_is_wr & (|({{P}}_slot_req & {{P}}_NP_MASK));
-assign {{P}}_req_wr_data = decoded_wr_data[{{data_width-1}}:0];
-assign {{P}}_req_wr_biten = decoded_wr_biten[{{data_width-1}}:0];
+assign {{P}}_req_wr_data = decoded_wr_data[{{wr_width-1}}:0];
+assign {{P}}_req_wr_biten = decoded_wr_biten[{{wr_width-1}}:0];
 
 // Destination domain
 logic {{P}}_req_tgl;
@@ -58,8 +58,8 @@ logic {{P}}_ack_sync_q;
 logic {{P}}_is_wr;
 logic {{P}}_is_np;
 logic [{{idx_width-1}}:0] {{P}}_idx;
-logic [{{data_width-1}}:0] {{P}}_wr_data;
-logic [{{data_width-1}}:0] {{P}}_wr_biten;
+logic [{{wr_width-1}}:0] {{P}}_wr_data;
+logic [{{wr_width-1}}:0] {{P}}_wr_biten;
 logic [{{data_width-1}}:0] {{P}}_rdata;
 {{macros.sync(P ~ "_req_sync", P ~ "_req_sync_q", P ~ "_req_tgl", clk, P ~ "_dst_rst", nstages, sync_cell)}}
 
@@ -91,7 +91,12 @@ assign {{P}}_dst_wr_biten = {{P}}_wr_biten;
 for(genvar k = 0; k < {{nslots}}; k++) begin : {{P}}_gen_slot_en
     assign {{P}}_dst_slot_en[k] = {{P}}_dst_acc_en & ({{P}}_dst_idx == {{idx_width}}'(k));
 end
-assign {{P}}_dst_rd_data = {{P}}_slot_rd_data[{{P}}_dst_idx];
+always @(*) begin
+    {{P}}_dst_rd_data = '0;
+    for(int k = 0; k < {{nslots}}; k++) begin
+        {{P}}_dst_rd_data |= {{P}}_slot_rd_data[k] & {{'{'}}{{data_width}}{{'{'}}{{P}}_dst_slot_en[k]{{'}'}}{{'}'}};
+    end
+end
 
 // Bus domain
 {{macros.sync(P ~ "_ack_sync", P ~ "_ack_sync_q", P ~ "_ack_tgl", "clk", P ~ "_arst", nstages, sync_cell)}}
@@ -158,8 +163,8 @@ end
 logic {{P}}_pend_is_wr;
 logic {{P}}_pend_np;
 logic [{{idx_width-1}}:0] {{P}}_pend_idx;
-logic [{{data_width-1}}:0] {{P}}_pend_wr_data;
-logic [{{data_width-1}}:0] {{P}}_pend_wr_biten;
+logic [{{wr_width-1}}:0] {{P}}_pend_wr_data;
+logic [{{wr_width-1}}:0] {{P}}_pend_wr_biten;
 
 always_ff {{ff_event}} begin
     if({{bus_rst_ah}}) begin
@@ -183,8 +188,8 @@ logic {{P}}_pend_vld;
 logic {{P}}_nxt_is_wr;
 logic {{P}}_nxt_np;
 logic [{{idx_width-1}}:0] {{P}}_nxt_idx;
-logic [{{data_width-1}}:0] {{P}}_nxt_wr_data;
-logic [{{data_width-1}}:0] {{P}}_nxt_wr_biten;
+logic [{{wr_width-1}}:0] {{P}}_nxt_wr_data;
+logic [{{wr_width-1}}:0] {{P}}_nxt_wr_biten;
 
 assign {{P}}_pend_vld = ({{P}}_state == {{P}}_FULL);
 assign {{P}}_nxt_is_wr = {{P}}_pend_vld ? {{P}}_pend_is_wr : {{P}}_req_is_wr;
