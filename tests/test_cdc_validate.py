@@ -394,18 +394,69 @@ def test_cdc_rejects_wide_reg(tmp_path):
     )
 
 
-def test_cdc_rejects_wide_trigger(tmp_path):
+@pytest.mark.parametrize(
+    "buf, trig, sw, hw",
+    [
+        ("buffer_writes", "wbuffer_trigger", "rw", "r"),
+        ("buffer_reads", "rbuffer_trigger", "r", "w"),
+    ],
+)
+def test_cdc_rejects_wide_trigger(tmp_path, buf, trig, sw, hw):
     _export_expect_error(
-        _top("""
-            reg {
+        _top(f"""
+            reg {{
                 cdc_clk = sync_clk;
-                buffer_writes;
+                {buf};
                 regwidth = 64;
                 accesswidth = 32;
-                field { sw=rw; hw=r; } f[31:0] = 0;
-            } rg @0x0;
+                field {{ sw={sw}; hw={hw}; }} f[31:0] = 0;
+            }} rg @0x0;
+            rg->{trig} = rg;
             """),
         "wider than accesswidth",
+        tmp_path,
+    )
+
+
+def _wide_group(kind: str, bits: str = "[63:0]") -> str:
+    buf, trig, sw, hw = (
+        ("buffer_writes", "wbuffer_trigger", "rw", "r")
+        if kind == "write"
+        else ("buffer_reads", "rbuffer_trigger", "r", "w")
+    )
+    return f"""
+        reg {{
+            cdc_clk = sync_clk;
+            {buf};
+            field {{ sw={sw}; hw={hw}; }} f[7:0] = 0;
+        }} t @0x8;
+        reg {{
+            cdc_clk = sync_clk;
+            {buf};
+            regwidth = 64;
+            accesswidth = 32;
+            field {{ sw={sw}; hw={hw}; }} f{bits} = 0;
+        }} m @0x0;
+        m->{trig} = t;
+        """
+
+
+@pytest.mark.parametrize(
+    "kind, cls",
+    [("write", CdcRegClass.WRITE_MEMBER), ("read", CdcRegClass.READ_MEMBER)],
+)
+def test_cdc_accepts_wide_member(tmp_path, kind, cls):
+    ds = _scan(_top(_wide_group(kind)), tmp_path)
+    domain = ds.cdc_domains["top.sync_clk"]
+    assert domain.reg(next(r.node for r in domain.regs if r.cls == cls)).cls == cls
+    assert {r.node.inst_name for r in domain.regs} == {"m", "t"}
+    assert domain.n_slots == 1
+
+
+def test_cdc_rejects_wide_member_msb0(tmp_path):
+    _export_expect_error(
+        _top(_wide_group("write", "[0:63]")),
+        "msb0",
         tmp_path,
     )
 

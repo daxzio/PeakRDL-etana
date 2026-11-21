@@ -116,11 +116,28 @@ def cdc_pack(width: int, pieces: list[tuple[int, int, str]]) -> str:
     return "{" + ", ".join(parts) + "}"
 
 
-def cdc_write_member_pack(top: Node, reg: RegNode) -> str:
-    """Read value of a write member: its readable bus-side copies."""
-    pieces = [
-        (f.high, f.low, cdc_shadow_name(top, f))
-        for f in reg.fields()
-        if f.is_sw_writable and f.is_sw_readable
-    ]
-    return cdc_pack(reg.get_property("regwidth"), pieces)
+def cdc_write_member_pack(top: Node, reg: RegNode, subword: int | None = None) -> str:
+    """Read value of a write member (or of one subword of it): its readable bus-side copies."""
+    regwidth = reg.get_property("regwidth")
+    if subword is None:
+        pieces = [
+            (f.high, f.low, cdc_shadow_name(top, f))
+            for f in reg.fields()
+            if f.is_sw_writable and f.is_sw_readable
+        ]
+        return cdc_pack(regwidth, pieces)
+    accesswidth = reg.get_property("accesswidth")
+    word_low = accesswidth * subword
+    word_high = word_low + accesswidth - 1
+    pieces = []
+    for f in reg.fields():
+        if not (f.is_sw_writable and f.is_sw_readable):
+            continue
+        high, low = min(f.high, word_high), max(f.low, word_low)
+        if high < low:
+            continue
+        ident = cdc_shadow_name(top, f)
+        if (high, low) != (f.high, f.low):
+            ident += f"[{high - f.low}:{low - f.low}]"
+        pieces.append((high - word_low, low - word_low, ident))
+    return cdc_pack(accesswidth, pieces)

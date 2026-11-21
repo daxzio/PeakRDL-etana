@@ -172,20 +172,36 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         return "readback_data_var"
 
     def process_cdc_member_reg(self, node: RegNode) -> None:
-        addr = self._get_address_str(node)
         regwidth = node.get_property("regwidth")
-        if node.get_property("buffer_writes", default=False):
-            data = cdc_write_member_pack(self.ds.top_node, node)
-        else:
-            data = cdc_snap_name(self.ds.top_node, node)
-        conditional = self.get_addr_compare_conditional(addr)
-        var = self.get_readback_data_var(addr)
-        self.add_content(f"if({conditional}) begin")
-        if regwidth < self.exp.cpuif.data_width:
-            self.add_content(f"    {var}[{regwidth - 1}:0] = {data};")
-        else:
-            self.add_content(f"    {var} = {data};")
-        self.add_content("end")
+        accesswidth = node.get_property("accesswidth")
+        is_write_member = node.get_property("buffer_writes", default=False)
+        top = self.ds.top_node
+        # Unrolled per subword, as for a wide external register
+        n_subwords = max(regwidth // accesswidth, 1)
+        for subword in range(n_subwords):
+            addr = self._get_address_str(
+                node, subword_offset=subword * (accesswidth // 8)
+            )
+            width = min(regwidth, accesswidth)
+            if n_subwords == 1:
+                data = (
+                    cdc_write_member_pack(top, node)
+                    if is_write_member
+                    else cdc_snap_name(top, node)
+                )
+            elif is_write_member:
+                data = cdc_write_member_pack(top, node, subword)
+            else:
+                low = subword * accesswidth
+                data = f"{cdc_snap_name(top, node)}[{low + accesswidth - 1}:{low}]"
+            conditional = self.get_addr_compare_conditional(addr)
+            var = self.get_readback_data_var(addr)
+            self.add_content(f"if({conditional}) begin")
+            if width < self.exp.cpuif.data_width:
+                self.add_content(f"    {var}[{width - 1}:0] = {data};")
+            else:
+                self.add_content(f"    {var} = {data};")
+            self.add_content("end")
 
     def process_cdc_cell_reg(self, node: RegNode) -> None:
         clk = get_cdc_clk(node)

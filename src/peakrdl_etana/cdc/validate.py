@@ -7,7 +7,7 @@ from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 from ..identifier_filter import kw_filter as kwf
 from ..utils import external_policy
 from .model import CdcRegClass
-from .util import cdc_reg_domain_key, get_cdc_clk, is_cdc_reg
+from .util import cdc_reg_class, cdc_reg_domain_key, get_cdc_clk, is_cdc_reg
 
 CLOCK_FORBIDDEN_PROPS = (
     "cpuif_reset",
@@ -28,6 +28,7 @@ BANNED_FIELD_PROPS = (
     "swmod",
 )
 TRIGGER_CLASSES = (CdcRegClass.WRITE_TRIGGER, CdcRegClass.READ_TRIGGER)
+MEMBER_CLASSES = (CdcRegClass.WRITE_MEMBER, CdcRegClass.READ_MEMBER)
 
 
 def _in_array(node: Node) -> bool:
@@ -122,7 +123,7 @@ class CdcDesignValidator(RDLListener):
 
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
-        if regwidth > accesswidth:
+        if regwidth > accesswidth and cdc_reg_class(node) not in MEMBER_CLASSES:
             self.msg.error(
                 f"CDC register '{node.inst_name}' is wider than accesswidth "
                 f"(regwidth {regwidth}, accesswidth {accesswidth})",
@@ -181,6 +182,17 @@ class CdcDesignValidator(RDLListener):
     def enter_Field(self, node: FieldNode) -> None:
         if not is_cdc_reg(node.parent):
             return
+
+        parent = node.parent
+        if (
+            parent.get_property("regwidth") > parent.get_property("accesswidth")
+            and node.msb < node.lsb
+        ):
+            self.msg.error(
+                f"msb0 field '{node.inst_name}' is not supported in a CDC register "
+                "wider than accesswidth",
+                node.inst.inst_src_ref,
+            )
 
         kind = _field_kind(node)
         if kind is None:

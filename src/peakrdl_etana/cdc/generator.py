@@ -28,6 +28,12 @@ def _slice(vec: str, field: FieldNode) -> str:
     return f"{vec}[{field.high}:{field.low}]"
 
 
+def _bits(vec: str, high: int, low: int) -> str:
+    if high == low:
+        return f"{vec}[{low}]"
+    return f"{vec}[{high}:{low}]"
+
+
 class CdcImplementationGenerator:
     """Renders the per-domain handshake, then the per-register logic."""
 
@@ -200,6 +206,42 @@ class CdcRegisterGenerator(RDLForLoopGenerator):
                 )
             )
 
+    def _segments(
+        self, node: RegNode, field: FieldNode, shadow: str
+    ) -> list[dict[str, str]]:
+        """One update per subword the field overlaps: strobe, copy slice, data, bit enable."""
+        regwidth = node.get_property("regwidth")
+        accesswidth = node.get_property("accesswidth")
+        if regwidth <= accesswidth:
+            return [
+                {
+                    "strobe": self._strobe(node),
+                    "target": shadow,
+                    "biten": _slice("decoded_wr_biten", field),
+                    "data": _slice("decoded_wr_data", field),
+                }
+            ]
+        stb = self.exp.dereferencer.get_access_strobe(node, reduce_substrobes=False)
+        segments = []
+        for word in range(field.low // accesswidth, field.high // accesswidth + 1):
+            word_low = accesswidth * word
+            high = min(field.high, word_low + accesswidth - 1)
+            low = max(field.low, word_low)
+            whole = (high, low) == (field.high, field.low)
+            segments.append(
+                {
+                    "strobe": f"{stb.path}{stb.index_str}[{word}]",
+                    "target": (
+                        shadow
+                        if whole
+                        else _bits(shadow, high - field.low, low - field.low)
+                    ),
+                    "biten": _bits("decoded_wr_biten", high - word_low, low - word_low),
+                    "data": _bits("decoded_wr_data", high - word_low, low - word_low),
+                }
+            )
+        return segments
+
     def _write_member(self, cdc_reg: CdcReg) -> None:
         node = cdc_reg.node
         top = self.exp.ds.top_node
@@ -214,7 +256,6 @@ class CdcRegisterGenerator(RDLForLoopGenerator):
             shadow = cdc_shadow_name(top, field)
             self._decl(shadow, field.width, field)
             resetsignal = field.get_property("resetsignal")
-            biten = _slice("decoded_wr_biten", field)
             self.add_content(
                 self.group.render(
                     {
@@ -223,9 +264,7 @@ class CdcRegisterGenerator(RDLForLoopGenerator):
                         "ff_event": deref.get_always_ff_event(resetsignal),
                         "reset_cond": deref.get_resetsignal(resetsignal),
                         "reset": self._reset_value(field),
-                        "strobe": self._strobe(node),
-                        "biten": biten,
-                        "data": _slice("decoded_wr_data", field),
+                        "segments": self._segments(node, field, shadow),
                     }
                 )
             )
