@@ -60,3 +60,54 @@ async def test_cdc_read_group(dut):
     b = rd_val(await tb.intf.read(0x0C))
     assert (a & 0xFF) == 0x12
     assert (b & 0xFF) == 0x34
+
+
+@test()
+async def test_d1_read_trigger_data(dut):
+    tb = DualClkTB(dut)
+    await tb.clk.wait_clkn(120)
+
+    dut.hwif_in_sts_cap_cap.value = 0xA5
+    for _ in range(10):
+        await RisingEdge(dut.sync_clk)
+    await tb.intf.read(0x14)
+    cap = rd_val(await tb.intf.read(0x10))
+    assert (cap & 0xFF) == 0xA5
+
+
+@test()
+async def test_d2_write_trigger_read(dut):
+    tb = DualClkTB(dut)
+    await tb.clk.wait_clkn(120)
+
+    data = rd_val(await tb.intf.read(0x04))
+    assert (data & 0xFFF) == 0xF00
+
+
+@test()
+async def test_d5_only_trigger_captures(dut):
+    tb = DualClkTB(dut)
+    await tb.clk.wait_clkn(120)
+
+    dut.hwif_in_sts_a_a.value = 0x12
+    dut.hwif_in_sts_b_b.value = 0x34
+    for _ in range(20):
+        await RisingEdge(dut.sync_clk)
+
+    await tb.intf.read(0x00)
+    await tb.intf.read(0x14)
+    await tb.intf.write(0x00, 0x123)
+    a = rd_val(await tb.intf.read(0x08))
+    b = rd_val(await tb.intf.read(0x0C))
+    assert (a & 0xFF, b & 0xFF) == (0, 0)
+
+    await tb.intf.read(0x10)
+    await tb.intf.read(0x00)
+    await tb.intf.read(0x14)
+    dut.hwif_in_sts_a_a.value = 0x56
+    dut.hwif_in_sts_b_b.value = 0x78
+    for _ in range(20):
+        await RisingEdge(dut.sync_clk)
+    a = rd_val(await tb.intf.read(0x08))
+    b = rd_val(await tb.intf.read(0x0C))
+    assert (a & 0xFF, b & 0xFF) == (0x12, 0x34)

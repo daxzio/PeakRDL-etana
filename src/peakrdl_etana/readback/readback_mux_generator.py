@@ -117,7 +117,26 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             return WalkerAction.SkipDescendants
 
         if is_cdc_reg(node):
-            if cdc_uses_cell_access(node):
+            from ..cdc.util import is_cdc_read_trigger, is_cdc_write_trigger
+
+            if is_cdc_write_trigger(node):
+                self.process_cdc_member_reg(node)
+            elif is_cdc_read_trigger(node):
+                from ..utils import IndexedPath
+
+                p = IndexedPath(self.ds.top_node, node)
+                pack = f"cdc_pack_{p.path}{p.index_str}"
+                addr = self._get_address_str(node)
+                regwidth = node.get_property("regwidth")
+                conditional = self.get_addr_compare_conditional(addr)
+                var = self.get_readback_data_var(addr)
+                self.add_content(f"if({conditional}) begin")
+                if regwidth < self.exp.cpuif.data_width:
+                    self.add_content(f"    {var}[{regwidth - 1}:0] = {pack};")
+                else:
+                    self.add_content(f"    {var} = {pack};")
+                self.add_content("end")
+            elif cdc_uses_cell_access(node):
                 self.process_cdc_cell_reg(node)
             elif is_cdc_group_member(node):
                 self.process_cdc_member_reg(node)

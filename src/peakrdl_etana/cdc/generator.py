@@ -45,14 +45,39 @@ class CdcImplementationGenerator:
         p = IndexedPath(self.exp.ds.top_node, reg)
         return f"cdc_pack_{p.path}{p.index_str}"
 
+    def _read_group_member(self, reg: RegNode) -> bool:
+        for domain in self.exp.ds.cdc_domains.values():
+            found = domain.slot_for_reg(reg)
+            if found is None:
+                continue
+            if found.kind != CdcSlotKind.READ_GROUP:
+                return False
+            return found.trigger is not reg
+        return False
+
+    def _write_group_trigger(self, reg: RegNode) -> bool:
+        for domain in self.exp.ds.cdc_domains.values():
+            found = domain.slot_for_reg(reg)
+            if found is None:
+                continue
+            if found.kind != CdcSlotKind.WRITE_GROUP:
+                return False
+            return found.trigger is reg
+        return False
+
     def _emit_reg_read_pack(self, reg: RegNode, lines: list[str]) -> str:
         rw = reg.get_property("regwidth")
         pack = self._reg_read_pack_name(reg)
         lines.append(f"    logic [{rw - 1}:0] {pack};")
-        # Continuous assign, not always @(*). Icarus drops RHS signals from the
-        # sensitivity list of a procedural slice assignment, so the pack stays
-        # X and a read of the reset value comes back as 0.
-        lines.append(f"    assign {pack} = {self._pack_reg_expr(reg)};")
+        if self._read_group_member(reg):
+            lines.append(f"    assign {pack} = {self.snapshot_name(reg)};")
+        elif self._write_group_trigger(reg):
+            lines.append(f"    assign {pack} = {self.shadow_name(reg)};")
+        else:
+            # Continuous assign, not always @(*). Icarus drops RHS signals from the
+            # sensitivity list of a procedural slice assignment, so the pack stays
+            # X and a read of the reset value comes back as 0.
+            lines.append(f"    assign {pack} = {self._pack_reg_expr(reg)};")
         return pack
 
     def _pack_reg_expr(self, reg: RegNode) -> str:
@@ -172,7 +197,7 @@ class CdcImplementationGenerator:
         lines.append(f"        .clk  ({clk}),")
         lines.append(f"        .{rst_name} ({rst_conn})")
         lines.append("    );")
-        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q;")
+        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {bus_rst_ah};")
 
         # Shadows and snapshots on bus clock
         for slot in domain.slots:
@@ -183,28 +208,28 @@ class CdcImplementationGenerator:
                 if slot.kind == CdcSlotKind.READ_GROUP:
                     lines.append(f"    logic [{rw - 1}:0] {self.snapshot_name(reg)};")
 
-        # Destination storage
+        # Destination storage (software-writable config only; status samples hwif directly)
         for slot in domain.slots:
             for reg in slot.regs:
                 for field in reg.fields():
-                    if field.is_sw_writable or field.is_hw_writable:
-                        w = field.width
-                        ident = self.dst_storage_name(field)
-                        reset_v = self._reset_value(field)
-                        if w == 1:
-                            lines.append(f"    logic {ident} = {reset_v};")
-                        else:
-                            lines.append(f"    logic [{w - 1}:0] {ident} = {reset_v};")
+                    if not field.is_sw_writable:
+                        continue
+                    w = field.width
+                    ident = self.dst_storage_name(field)
+                    reset_v = self._reset_value(field)
+                    if w == 1:
+                        lines.append(f"    logic {ident} = {reset_v};")
+                    else:
+                        lines.append(f"    logic [{w - 1}:0] {ident} = {reset_v};")
 
         # hwif outputs from destination storage
         for slot in domain.slots:
             for reg in slot.regs:
                 for field in reg.fields():
-                    if field.is_hw_readable:
-                        out = self.exp.hwif.get_output_identifier(field)
-                        lines.append(
-                            f"    assign {out} = {self.dst_storage_name(field)};"
-                        )
+                    if not field.is_hw_readable or not field.is_sw_writable:
+                        continue
+                    out = self.exp.hwif.get_output_identifier(field)
+                    lines.append(f"    assign {out} = {self.dst_storage_name(field)};")
 
         # Bus-side shadow / snapshot flops
         for slot in domain.slots:
@@ -234,26 +259,9 @@ class CdcImplementationGenerator:
             slot_idx = slot.idx
             for reg in slot.regs:
                 for field in reg.fields():
-                    if not field.is_sw_writable and not field.is_hw_writable:
+                    if not field.is_sw_writable:
                         continue
                     ident = self.dst_storage_name(field)
-                    if field.is_hw_writable and not field.is_sw_writable:
-                        hw_in = self.exp.hwif.get_input_identifier(field)
-                        lines.append(
-                            f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-                        )
-                        lines.append(f"        if({pfx}_dst_rst) begin")
-                        lines.append(
-                            f"            {ident} <= {self._reset_value(field)};"
-                        )
-                        lines.append("        end")
-                        lines.append(
-                            f"        else if({pfx}_dst_acc_en & ~{pfx}_dst_is_wr) begin"
-                        )
-                        lines.append(f"            {ident} <= {hw_in};")
-                        lines.append("        end")
-                        lines.append("    end")
-                        continue
                     # SW writable storage in dst domain
                     slice_lo = field.low
                     slice_hi = field.high
@@ -277,7 +285,14 @@ class CdcImplementationGenerator:
                         lines.append(
                             f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & ({pfx}_dst_idx == {idx_w}'d{slot_idx}) & ({biten} != '0)) begin"
                         )
-                        lines.append(f"            {ident} <= {data};")
+                        if field.width == 1:
+                            lines.append(
+                                f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
+                            )
+                        else:
+                            lines.append(
+                                f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
+                            )
                         lines.append("        end")
                     elif slot.kind == CdcSlotKind.WRITE_GROUP:
                         # load from concatenated write data — slice per reg offset in concat
@@ -323,21 +338,30 @@ class CdcImplementationGenerator:
         lines.append("        endcase")
         lines.append("    end")
 
-        # Snapshot capture on read ack (sample bus-side read packs at ack)
+        # Snapshots in the crossing domain; capture only on a trigger read.
         for slot in domain.slots:
             if slot.kind != CdcSlotKind.READ_GROUP:
                 continue
-            lines.append(f"    always_ff {bus_ff} begin")
-            lines.append(f"        if({bus_rst_ah}) begin")
+            assert slot.trigger is not None
+            lines.append(
+                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
+            )
+            lines.append(f"        if({pfx}_dst_rst) begin")
             for reg in slot.regs:
+                if reg is slot.trigger:
+                    continue
                 sn = self.snapshot_name(reg)
                 rw = reg.get_property("regwidth")
                 lines.append(f"            {sn} <= {rw}'d0;")
-            lines.append(f"        end else if({pfx}_rd_ack) begin")
+            lines.append(
+                f"        end else if({pfx}_dst_acc_en & ~{pfx}_dst_is_wr & ({pfx}_dst_idx == {idx_w}'d{slot.idx})) begin"
+            )
             for reg in slot.regs:
+                if reg is slot.trigger:
+                    continue
                 sn = self.snapshot_name(reg)
-                pack = self._reg_read_pack_name(reg)
-                lines.append(f"            {sn} <= {pack};")
+                pack_expr = self._pack_reg_expr(reg)
+                lines.append(f"            {sn} <= {pack_expr};")
             lines.append("        end")
             lines.append("    end")
 

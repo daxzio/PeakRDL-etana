@@ -6,7 +6,7 @@ sys.path.insert(0, str(test_dir))
 
 from cocotb import test
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 
 from tb_base import testbench
 
@@ -98,3 +98,26 @@ async def test_cdc_fast_reset(dut):
 
     await tb.intf.read(0x08, 0x364)
     await tb.intf.read(0x0C, 0x000)
+
+
+@test()
+async def test_d3_strobe_merge(dut):
+    tb = DualClkTB(dut)
+    await tb.clk.wait_clkn(120)
+    if not hasattr(dut, "s_apb_pstrb"):
+        return
+
+    await tb.intf.write(0x08, 0xFF, 0x1)
+    await ClockCycles(dut.sync_clk_fast, 20)
+    assert int(dut.hwif_out_fast_cfg_cfg.value) == 0x03FF
+    await tb.intf.write(0x08, 0xAB00, 0x2)
+    await ClockCycles(dut.sync_clk_fast, 20)
+    assert int(dut.hwif_out_fast_cfg_cfg.value) == 0xABFF
+
+
+@test()
+async def test_d7_no_status_storage(dut):
+    rtl = Path(__file__).parent / "etana-rtl" / "regblock.sv"
+    text = rtl.read_text()
+    assert "cdc_dst_lane_sts_live_value" not in text
+    assert "cdc_dst_fast_sts_sts_value" not in text

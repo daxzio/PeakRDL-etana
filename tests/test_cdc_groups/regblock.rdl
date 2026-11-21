@@ -38,4 +38,9 @@ addrmap top {
 
     sts_a->rbuffer_trigger = sts_cap;
     sts_b->rbuffer_trigger = sts_cap;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = r; hw = w; } v[7:0] = 0;
+    } plain_sts @0x14;
 };
