@@ -69,7 +69,7 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
-            self.ext_wacks.append(f"{pfx}_wr_ack")
+            self.ext_wacks.append(f"({pfx}_wr_ack & external_pending)")
         return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
@@ -141,7 +141,8 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
-            self.ext_racks.append(f"{pfx}_rd_ack")
+            # Domain rd_ack also pulses on trigger reads; only count it for cell reads.
+            self.ext_racks.append(f"({pfx}_rd_ack & external_pending)")
         return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:

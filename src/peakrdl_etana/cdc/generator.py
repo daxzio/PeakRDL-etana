@@ -376,18 +376,22 @@ class CdcImplementationGenerator:
         for slot in domain.slots:
             if slot.kind == CdcSlotKind.SINGLE:
                 reg = slot.regs[0]
+                rw = reg.get_property("regwidth")
                 stb = self.reg_strobe(reg)
+                pad_w = data_w - rw
+                if pad_w > 0:
+                    wr_data = f"{{{pad_w}'d0, decoded_wr_data[{rw - 1}:0]}}"
+                    wr_biten = f"{{{pad_w}'d0, decoded_wr_biten[{rw - 1}:0]}}"
+                else:
+                    wr_data = f"decoded_wr_data[{rw - 1}:0]"
+                    wr_biten = f"decoded_wr_biten[{rw - 1}:0]"
                 lines.append(f"        if({stb} & decoded_req) begin")
                 lines.append(f"            {pfx}_req = '1;")
                 lines.append(f"            {pfx}_req_is_wr = decoded_req_is_wr;")
                 lines.append(f"            {pfx}_req_np = '0;")
                 lines.append(f"            {pfx}_req_idx = {idx_w}'d{slot.idx};")
-                lines.append(
-                    f"            {pfx}_req_wr_data = decoded_wr_data[{reg.get_property('regwidth') - 1}:0];"
-                )
-                lines.append(
-                    f"            {pfx}_req_wr_biten = decoded_wr_biten[{reg.get_property('regwidth') - 1}:0];"
-                )
+                lines.append(f"            {pfx}_req_wr_data = {wr_data};")
+                lines.append(f"            {pfx}_req_wr_biten = {wr_biten};")
                 lines.append("        end")
             elif slot.kind == CdcSlotKind.WRITE_GROUP:
                 assert slot.trigger is not None
