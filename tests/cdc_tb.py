@@ -13,6 +13,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import (
     ClockCycles,
     FallingEdge,
+    First,
     ReadOnly,
     RisingEdge,
     SimTimeoutError,
@@ -226,12 +227,38 @@ class CdcTB(testbench):
         await RisingEdge(self.dut.clk)
 
 
+def signal(dut, name: str, shapes: dict[str, tuple[int, ...]] | None = None):
+    """Handle of a port or of one element of an unpacked array port, e.g. "port[1][2]".
+
+    Icarus presents a multi-dimensional unpacked port as one flat array in row-major order;
+    shapes maps such a port name to its dimensions.
+    """
+    base, *indices = name.replace("]", "").split("[")
+    handle = getattr(dut, base)
+    idx = [int(i) for i in indices]
+    shape = (shapes or {}).get(base)
+    if shape and len(idx) > 1 and len(handle) == math.prod(shape):
+        flat = 0
+        for i, dim in zip(idx, shape):
+            flat = flat * dim + i
+        return handle[flat]
+    for i in idx:
+        handle = handle[i]
+    return handle
+
+
 class ChangeRecord:
     """Records changes of signals with the time and the rising edge they follow."""
 
-    def __init__(self, dut, signals: dict[str, str]):
+    def __init__(
+        self,
+        dut,
+        signals: dict[str, str],
+        shapes: dict[str, tuple[int, ...]] | None = None,
+    ):
         self.dut = dut
         self.signals = signals
+        self.shapes = shapes
         self.changes: list[tuple[int, str, int]] = []
         self.violations: list[str] = []
         self.last_edge: dict[str, int | None] = {c: None for c in set(signals.values())}
@@ -243,19 +270,35 @@ class ChangeRecord:
             await RisingEdge(clk)
             self.last_edge[clk_name] = int(get_sim_time("ps"))
 
+    def _record(self, sig_name: str, clk_name: str, sig) -> None:
+        now = int(get_sim_time("ps"))
+        edge = self.last_edge[clk_name]
+        self.changes.append((now, sig_name, int(sig.value)))
+        if edge is None or not 0 <= now - edge <= 1:
+            msg = f"{sig_name} changed at {now} ps, last {clk_name} edge {edge} ps"
+            self.violations.append(msg)
+            raise AssertionError(msg)
+
     async def _watch(self, sig_name: str, clk_name: str) -> None:
-        sig = getattr(self.dut, sig_name)
+        sig = signal(self.dut, sig_name, self.shapes)
         while True:
             await ValueChange(sig)
             # Wait until every task of this time step has run, so the edge time is current.
             await ReadOnly()
-            now = int(get_sim_time("ps"))
-            edge = self.last_edge[clk_name]
-            self.changes.append((now, sig_name, int(sig.value)))
-            if edge is None or not 0 <= now - edge <= 1:
-                msg = f"{sig_name} changed at {now} ps, last {clk_name} edge {edge} ps"
-                self.violations.append(msg)
-                raise AssertionError(msg)
+            self._record(sig_name, clk_name, sig)
+
+    async def _poll(self, sig_name: str, clk_name: str) -> None:
+        """Sample an array element, which Icarus cannot watch, at every clock edge of both clocks."""
+        sig = signal(self.dut, sig_name, self.shapes)
+        clk = getattr(self.dut, clk_name)
+        last = int(sig.value)
+        while True:
+            await First(RisingEdge(clk), FallingEdge(clk), RisingEdge(self.dut.clk))
+            await ReadOnly()
+            cur = int(sig.value)
+            if cur != last:
+                last = cur
+                self._record(sig_name, clk_name, sig)
 
     def start(self) -> None:
         if self.started:
@@ -264,7 +307,8 @@ class ChangeRecord:
         for clk_name in self.last_edge:
             start_soon(self._edges(clk_name))
         for sig_name, clk_name in self.signals.items():
-            start_soon(self._watch(sig_name, clk_name))
+            watch = self._poll if "[" in sig_name else self._watch
+            start_soon(watch(sig_name, clk_name))
 
     def take(self) -> list[tuple[int, str, int]]:
         assert not self.violations, self.violations

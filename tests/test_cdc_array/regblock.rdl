@@ -1,0 +1,69 @@
+addrmap top {
+    default regwidth = 32;
+    default accesswidth = 32;
+
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = rw; hw = r; } v[31:0] = 0x100;
+    } cfg[4] @0x00 += 0x4;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = r; hw = w; } v[31:0] = 0;
+    } sts[4] @0x10 += 0x4;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[31:0] = 0x200;
+    } wmem[3] @0x20 += 0x4;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[31:0] = 0x300;
+    } wtrig @0x2C;
+
+    wmem->wbuffer_trigger = wtrig;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } v[31:0] = 0;
+    } rmem[3] @0x30 += 0x4;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } v[31:0] = 0;
+    } rtrig @0x3C;
+
+    rmem->rbuffer_trigger = rtrig;
+
+    regfile {
+        reg {
+            cdc_clk = sync_clk;
+            field { sw = rw; hw = r; } v[31:0] = 0x400;
+        } cfg @0x0;
+        reg {
+            cdc_clk = sync_clk;
+            field { sw = r; hw = w; } v[31:0] = 0;
+        } sts @0x4;
+    } rf[2][3] @0x40 += 0x8;
+
+    regfile {
+        reg {
+            cdc_clk = sync_clk;
+            field { sw = rw; hw = r; } v[31:0] = 0x500;
+        } cfg @0x0;
+    } plain_rf @0x70;
+};

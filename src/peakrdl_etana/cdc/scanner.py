@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,13 @@ from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 from ..identifier_filter import kw_filter as kwf
 from ..utils import clog2
 from .model import CdcDomain, CdcReg, CdcRegClass
-from .util import cdc_reg_class, cdc_reg_domain_key, get_cdc_clk, is_cdc_reg
+from .util import (
+    cdc_array_dims,
+    cdc_reg_class,
+    cdc_reg_domain_key,
+    get_cdc_clk,
+    is_cdc_reg,
+)
 
 if TYPE_CHECKING:
     from ..exporter import DesignState
@@ -69,7 +76,7 @@ class CdcScanner(RDLListener):
                     cls=cls,
                     trigger=self._trigger_of(node, cls),
                     slot_base=None,
-                    n_elems=1,
+                    n_elems=math.prod(cdc_array_dims(node)),
                 )
                 if cdc_reg.crossing:
                     cdc_reg.slot_base = slot

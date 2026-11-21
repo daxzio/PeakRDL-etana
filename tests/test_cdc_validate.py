@@ -11,6 +11,7 @@ from systemrdl import RDLCompiler
 from systemrdl.messages import MessagePrinter, RDLCompileError
 
 from peakrdl_etana.cdc.model import CdcRegClass
+from peakrdl_etana.cdc.util import cdc_slot_expr
 from peakrdl_etana.exporter import RegblockExporter
 from peakrdl_etana.udps import ALL_UDPS
 
@@ -545,3 +546,29 @@ def test_scan_slots_in_address_order(tmp_path):
         ("wide", 0),
         ("narrow", 1),
     ]
+
+
+def test_scan_slots_of_arrays(tmp_path):
+    ds = _scan(Path("tests/test_cdc_array/regblock.rdl").read_text(), tmp_path)
+    dom = ds.cdc_domains["top.sync_clk"]
+    slots = {
+        r.node.inst_name: (r.slot_base, r.n_elems)
+        for r in dom.regs
+        if r.node.parent.inst_name == "top"
+    }
+    # Address order: cfg[4] 0..3, sts[4] 4..7, wtrig 8, rtrig 9 (wmem and rmem do not cross),
+    # rf[2][3].cfg 10..15, rf[2][3].sts 16..21, plain_rf.cfg 22
+    assert slots["cfg"] == (0, 4)
+    assert slots["sts"] == (4, 4)
+    assert slots["wtrig"] == (8, 1)
+    assert slots["rtrig"] == (9, 1)
+    assert dom.n_slots == 23
+    rf_cfg = next(
+        r
+        for r in dom.regs
+        if r.node.inst_name == "cfg" and r.node.parent.inst_name == "rf"
+    )
+    assert (rf_cfg.slot_base, rf_cfg.n_elems) == (10, 6)
+    # Element [1][2] is row 1 * 3 columns + 2 = 5 past the base
+    assert cdc_slot_expr(dom, rf_cfg.node) == "(10 + i0*3 + i1)"
+    assert 10 + 1 * 3 + 2 == 15
