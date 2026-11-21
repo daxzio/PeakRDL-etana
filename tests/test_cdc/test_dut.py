@@ -7,7 +7,7 @@ sys.path.insert(0, str(test_dir))
 
 import cocotb
 from cocotb import test
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, with_timeout
 
 from cdc_tb import CdcTB, ChangeRecord, DstAccCount, rtl_text, seed
 
@@ -583,6 +583,46 @@ async def test_random(dut):
                 value |= inputs[name] << lsb
         return value
 
+    def apply_write(addr, data, strb):
+        nbytes = REG_BYTES.get(addr, 4)
+        for name, lsb, width, _ in CFG_REGS.get(addr, []):
+            model[name] = merged(model[name], data, strb, lsb, width, nbytes)
+
+    async def axi_batch(addrs):
+        """Issue several accesses at once; reads and writes use disjoint registers.
+
+        AXI4-Lite orders neither the read channel against the write channel nor a read
+        against a write of one register, so a read's expected value must not depend on
+        a write in the same batch.
+        """
+        shuffled = random.sample(addrs, len(addrs))
+        split = random.randrange(1, len(addrs))
+        wr_addrs, rd_addrs = shuffled[:split], shuffled[split:]
+        pending = []
+        for _ in range(random.randrange(2, 7)):
+            if random.random() < 0.5:
+                addr = random.choice(wr_addrs)
+                data = random.getrandbits(32)
+                tb.intf.write_nowait(addr, data, debug=False)
+                pending.append((addr, tb.intf.write_op, None))
+                apply_write(addr, data, 0xF)
+            else:
+                addr = random.choice(rd_addrs)
+                tb.intf.read_nowait(addr, debug=False)
+                pending.append((addr, tb.intf.read_op, expected_read(addr)))
+        for addr, op, expected in pending:
+            await with_timeout(op.wait(), 400 * len(pending) * 10, "ns")
+            result = op.data
+            if expected is None:
+                assert (
+                    int(result.resp) == 0
+                ), f"write {addr:#x}: resp {int(result.resp)}"
+            else:
+                data = int.from_bytes(bytes(result.data), "little")
+                assert (
+                    data == expected
+                ), f"read {addr:#x}: {data:#x}, expected {expected:#x}"
+
     def check_outputs():
         for name, value in model.items():
             if value is not None:
@@ -591,10 +631,15 @@ async def test_random(dut):
     await tb.write(NORESET_CFG, 0x6D)
     model["hwif_out_noreset_cfg_v"] = 0x6D
     addrs = list(CFG_REGS) + list(STS_REGS)
+    axi = getattr(tb.intf, "is_axi_lite", False)
+    if axi:
+        tb.intf.enable_backpressure(random.getrandbits(24))
     for step in range(300):
         addr = random.choice(addrs)
         action = random.choice(["write", "read", "read", "input"])
-        if action == "input":
+        if axi and action != "input":
+            await axi_batch(addrs)
+        elif action == "input":
             for name, lsb, width in STS_REGS.get(addr, []):
                 inputs[name] = random.randrange(1 << width)
                 getattr(dut, name).value = inputs[name]
@@ -605,9 +650,7 @@ async def test_random(dut):
             await tb.write(
                 addr, data, strb=strb if tb.has_strb else -1, timeout_cycles=400
             )
-            nbytes = REG_BYTES.get(addr, 4)
-            for name, lsb, width, _ in CFG_REGS.get(addr, []):
-                model[name] = merged(model[name], data, strb, lsb, width, nbytes)
+            apply_write(addr, data, strb)
         else:
             data, _ = await tb.read(addr, timeout_cycles=400)
             assert data == expected_read(

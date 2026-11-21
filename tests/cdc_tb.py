@@ -35,7 +35,7 @@ _RESETS = {
     "arst_n": (0, "arst_n"),
 }
 
-log = logging.getLogger("cdc_tb")
+log = logging.getLogger("cocotb.cdc_tb")
 
 
 def _bit(sig) -> int:
@@ -58,6 +58,7 @@ class CdcTB(testbench):
         self.reset_sig = getattr(dut, name)
         self.has_strb = hasattr(dut, "s_apb_pstrb")
         self.has_latency = hasattr(dut, "s_apb_psel")
+        self.overlaps = not hasattr(dut, "wb_cyc")  # the Wishbone master takes one access at a time
 
         t_dst = os.environ.get("CDC_T_DST_PS")
         self.nstages = 3 if os.environ.get("CDC_NSTAGES3") else 2

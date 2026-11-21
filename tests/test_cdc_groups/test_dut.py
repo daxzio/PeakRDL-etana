@@ -150,6 +150,8 @@ async def test_d1_read_trigger_data(dut):
 
     dut.hwif_in_sts_cap_cap.value = 0xA5
     await ClockCycles(dut.sync_clk, 10)
+    # The AHB master returns its first read without a bus transfer.
+    await tb.read(PLAIN_STS, timeout_cycles=400)
     data, _ = await tb.read(0x10)
     assert data & 0xFF == 0xA5
 
@@ -252,6 +254,8 @@ async def test_member_write_behind_trigger(dut):
     await tb.write(THR_LO, 0x111)
     trigger = start_soon(tb.write(THR_HI, 0x222))
     await ClockCycles(dut.clk, 2)
+    if not tb.overlaps:
+        await trigger
     await tb.write(THR_LO, 0x333)
     await trigger
     await tb.settle(SYNC)
@@ -656,6 +660,13 @@ async def test_random(dut):
 async def test_field_resetsignal(dut):
     tb = await start(dut)
     count = DstAccCount(dut, "cdc_sync_clk_c")
+
+    # The field reset leaves the shadow of c_mem unknown until it first asserts; the AHB master
+    # samples read data on every beat, so the first write to c_mem needs a known value.
+    dut.hwif_in_soft_rst.value = 1
+    await ClockCycles(dut.clk, 6)
+    dut.hwif_in_soft_rst.value = 0
+    await tb.settle(SYNC_C)
 
     await tb.write(PLAIN_CFG, 0x1234, timeout_cycles=400)
     await tb.write(C_MEM, 0x555, timeout_cycles=400)
