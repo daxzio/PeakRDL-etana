@@ -44,7 +44,13 @@ def cycle_pause(seednum=7):
 
 class AxiWrapper:
     def __init__(
-        self, dut, axi_prefix="s_axi", clk_name="s_aclk", reset_name=None, seednum=None
+        self,
+        dut,
+        axi_prefix="s_axi",
+        clk_name="s_aclk",
+        reset_name=None,
+        seednum=None,
+        reset_active_level=True,
     ):
         self.log = logging.getLogger("cocotb.AxiWrapper")
         self.enable_logging()
@@ -62,6 +68,7 @@ class AxiWrapper:
                     self.bus,
                     getattr(dut, clk_name),
                     getattr(dut, reset_name),
+                    reset_active_level=reset_active_level,
                 )
         else:
             # Use full AXI4 bus and master
@@ -73,6 +80,7 @@ class AxiWrapper:
                     self.bus,
                     getattr(dut, clk_name),
                     getattr(dut, reset_name),
+                    reset_active_level=reset_active_level,
                 )
             self.arid = 4
             self.awid = 4

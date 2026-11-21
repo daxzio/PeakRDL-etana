@@ -4,9 +4,22 @@ addrmap top {
     default sw = rw;
     default hw = na;
 
-    signal {} sync_clk_slow;
-    signal {} sync_clk_fast;
-    signal { cdc_fast = true; } sync_clk_fast_en;
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk_slow;
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk_fast;
 
     reg {
         cdc_clk = sync_clk_slow;
@@ -27,4 +40,50 @@ addrmap top {
         cdc_clk = sync_clk_fast;
         field { sw = r; hw = w; } sts[15:0] = 0x527;
     } fast_sts @0x0c;
+
+    reg {
+        regwidth = 8;
+        accesswidth = 8;
+        cdc_clk = sync_clk_slow;
+        field { sw = rw; hw = r; } v[7:0] = 0x5C;
+    } cfg8 @0x10;
+
+    reg {
+        regwidth = 16;
+        accesswidth = 16;
+        cdc_clk = sync_clk_slow;
+        field { sw = rw; hw = r; } v[15:0] = 0xA5C3;
+    } cfg16 @0x14;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        field { sw = rw; hw = r; } v[31:0] = 0x89ABCDEF;
+    } cfg32 @0x18;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        field { sw = rw; hw = r; } a[0:0] = 1;
+        field { sw = rw; hw = r; } b[6:4] = 5;
+        field { sw = rw; hw = r; } c[15:9] = 0x2A;
+    } pos_cfg @0x1C;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        field { sw = r; hw = w; } s0[3:0] = 0;
+        field { sw = r; hw = w; } s1[11:8] = 0;
+    } pos_sts @0x20;
+
+    reg {
+        cdc_clk = sync_clk_fast;
+        field { sw = w; hw = r; } v[11:0] = 0x123;
+    } wo_cfg @0x24;
+
+    reg {
+        cdc_clk = sync_clk_fast;
+        field { sw = rw; hw = r; } v[7:0];
+    } noreset_cfg @0x28;
+
+    reg {
+        field { sw = rw; hw = r; } v[31:0] = 0x600DF00D;
+    } bus_cfg @0x2C;
 };

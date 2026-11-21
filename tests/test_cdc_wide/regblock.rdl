@@ -1,0 +1,72 @@
+addrmap top {
+    default regwidth = 32;
+    default accesswidth = 32;
+
+    signal { } sync_clk;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        regwidth = 64;
+        field { sw = rw; hw = r; } lo[23:0] = 0x111111;
+        field { sw = rw; hw = r; } mid[39:24] = 0xABCD;
+        field { sw = rw; hw = r; } hi[63:40] = 0x222222;
+    } wmem @0x00;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[31:0] = 0x300;
+    } wtrig @0x08;
+
+    wmem->wbuffer_trigger = wtrig;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        regwidth = 64;
+        field { sw = r; hw = w; } v[63:0] = 0;
+    } rmem @0x10;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } v[31:0] = 0;
+    } rtrig @0x18;
+
+    rmem->rbuffer_trigger = rtrig;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        regwidth = 64;
+        field { sw = rw; hw = r; } v[63:0] = 0x0123456789ABCDEF;
+    } wmem_a[2] @0x20 += 0x8;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[31:0] = 0x400;
+    } wtrig_a @0x30;
+
+    wmem_a->wbuffer_trigger = wtrig_a;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        regwidth = 64;
+        field { sw = r; hw = w; } v[63:0] = 0;
+    } rmem_a[2] @0x40 += 0x8;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_reads;
+        field { sw = r; hw = w; } v[31:0] = 0;
+    } rtrig_a @0x50;
+
+    rmem_a->rbuffer_trigger = rtrig_a;
+
+    reg {
+        field { sw = rw; hw = r; } v[31:0] = 0;
+    } bus_cfg @0x60;
+};

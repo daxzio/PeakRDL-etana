@@ -627,6 +627,10 @@ class InputLogicGenerator(RDLListener):
         ):
             return
 
+        # A domain clock is a module port named after the signal
+        if node.get_path() in self.hwif.ds.cdc_clock_signals:
+            return
+
         width = node.width if node.width is not None else 1
         if width > 1:
             signal_packed_dim = f"[{width-1}:0]"

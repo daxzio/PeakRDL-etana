@@ -81,9 +81,11 @@ class AHBMasterDX(AHBLiteMaster):
         bus: AHBBus,
         clock: str,
         reset: str,
+        reset_sense: Optional[int] = None,
         **kwargs,
     ):
         self.pip = True
+        self.reset_sense = reset_sense
         super().__init__(bus, clock, reset, **kwargs)
         self.buswidth = bus._data_width
         self.mask = (2**self.buswidth) - 1
@@ -152,7 +154,18 @@ class AHBMasterDX(AHBLiteMaster):
         # A transfer started from another clock's edge can land on the same
         # timestamp as this bus clock. Step off that edge before driving, or
         # the master treats it as the address phase and samples stale HRDATA.
+        # Stepping first also shows a reset release written in this time step.
         await Timer(1, unit="ns")
+        # HREADY is high in reset, so a beat started then would finish at once and read 0.
+        if self.reset_sense is not None:
+            while self._in_reset():
+                await RisingEdge(self.clk)
+                await Timer(1, unit="ns")
+
+    def _in_reset(self) -> bool:
+        """True while reset is asserted or unresolved (X or Z, as at time 0 on Icarus)."""
+        value = self.rst.value
+        return not value.is_resolvable or int(value) == self.reset_sense
 
     def enable_backpressure(self):
         self.backpressure = True

@@ -10,9 +10,8 @@
 
 {% endif -%}
 
-// Request — pulse cpuif_req like APB. Combinational stb cannot be used with
-// cpuif_req_masked / external_pending: stb stays high until ack while stall
-// would drop the CDC request mid-handshake.
+// Request — pulse cpuif_req like APB. A request is accepted when stb is high
+// and stall is low; the slave captures exactly those requests.
 logic is_active;
 always_ff {{get_always_ff_event(cpuif.reset)}} begin
     if({{get_resetsignal(cpuif.reset)}}) begin
@@ -24,7 +23,7 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
         cpuif_wr_biten <= '0;
     end else begin
         if(~is_active) begin
-            if({{cpuif.signal("cyc")}} & {{cpuif.signal("stb")}}) begin
+            if({{cpuif.signal("cyc")}} & {{cpuif.signal("stb")}} & ~{{cpuif.signal("stall")}}) begin
                 is_active <= '1;
                 cpuif_req <= '1;
                 cpuif_req_is_wr <= {{cpuif.signal("we")}};
@@ -47,15 +46,12 @@ always_ff {{get_always_ff_event(cpuif.reset)}} begin
     end
 end
 
-// Stall through reset. Pipelined Wishbone (this master has a stall pin) treats
-// stall=0 as an accepted cycle and drops stb. Reset swallows that cycle, so
-// the request must stay stalled until the slave can capture it.
-// After accept, ~is_active drops stall so a pending CDC transfer does not
-// hold the master in _wait_stall.
+// Stall through reset and while a transfer is active: the slave takes one
+// request at a time, so a request presented earlier would be dropped.
 assign {{cpuif.signal("stall")}} = {{get_resetsignal(cpuif.reset)}}
-                                | (~is_active
-                                & ((cpuif_req_stall_rd & ~{{cpuif.signal("we")}})
-                                | (cpuif_req_stall_wr & {{cpuif.signal("we")}})));
+                                | is_active
+                                | (cpuif_req_stall_rd & ~{{cpuif.signal("we")}})
+                                | (cpuif_req_stall_wr & {{cpuif.signal("we")}});
 
 // Response
 assign {{cpuif.signal("ack")}} = is_active & (cpuif_rd_ack | cpuif_wr_ack);

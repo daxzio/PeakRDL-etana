@@ -2,7 +2,32 @@ addrmap top {
     default regwidth = 16;
     default accesswidth = 16;
 
-    signal {} sync_clk;
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk;
+
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk_b;
+
+    signal {
+`ifdef CDC_NSTAGES3
+        cdc_nstages = 3;
+`endif
+`ifdef CDC_FAST_PROP
+        cdc_fast_mode_en = true;
+`endif
+    } sync_clk_c;
 
     reg {
         cdc_clk = sync_clk;
@@ -38,4 +63,80 @@ addrmap top {
 
     sts_a->rbuffer_trigger = sts_cap;
     sts_b->rbuffer_trigger = sts_cap;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = r; hw = w; } v[7:0] = 0;
+    } plain_sts @0x14;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[7:0] = 0x11;
+    } g2_trg @0x18;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[7:0] = 0x22;
+    } g2_mem @0x1C;
+
+    g2_mem->wbuffer_trigger = g2_trg;
+
+    reg {
+        cdc_clk = sync_clk;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[15:0] = 0x3333;
+    } solo @0x20;
+
+    reg {
+        cdc_clk = sync_clk_b;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[11:0] = 0x444;
+    } gb_trg @0x24;
+
+    reg {
+        cdc_clk = sync_clk_b;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[11:0] = 0x555;
+    } gb_mem @0x28;
+
+    gb_mem->wbuffer_trigger = gb_trg;
+
+    reg {
+        field { sw = rw; hw = r; } v[15:0] = 0xBEEF;
+    } bus_cfg @0x2C;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = rw; hw = r; } v[15:0] = 0x7777;
+    } plain_cfg @0x30;
+
+    reg {
+        cdc_clk = sync_clk_c;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[11:0] = 0x0C1;
+    } c_trg @0x34;
+
+    reg {
+        cdc_clk = sync_clk_c;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[11:0] = 0x0C2;
+    } c_mem @0x38;
+
+    c_mem->wbuffer_trigger = c_trg;
+
+    reg {
+        cdc_clk = sync_clk_c;
+        buffer_reads;
+        field { sw = r; hw = w; } a[7:0] = 0;
+    } c_sts @0x3C;
+
+    reg {
+        cdc_clk = sync_clk_c;
+        buffer_reads;
+        field { sw = r; hw = w; } cap[7:0] = 0;
+    } c_cap @0x40;
+
+    c_sts->rbuffer_trigger = c_cap;
 };

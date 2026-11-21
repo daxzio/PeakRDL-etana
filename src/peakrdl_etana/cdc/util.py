@@ -1,7 +1,15 @@
 from __future__ import annotations
 
-from systemrdl.node import RegNode, SignalNode
+from typing import TYPE_CHECKING
+
+from systemrdl.node import FieldNode, Node, RegNode, SignalNode
 from systemrdl.rdltypes import NoValue
+
+from ..utils import IndexedPath
+from .model import CdcRegClass
+
+if TYPE_CHECKING:
+    from .model import CdcDomain
 
 
 def get_cdc_clk(reg: RegNode) -> SignalNode | None:
@@ -15,45 +23,121 @@ def is_cdc_reg(reg: RegNode) -> bool:
     return get_cdc_clk(reg) is not None
 
 
-def is_cdc_write_trigger(reg: RegNode) -> bool:
-    if not reg.get_property("buffer_writes", default=False):
-        return False
-    trigger = reg.get_property("wbuffer_trigger")
-    return isinstance(trigger, RegNode) and trigger == reg
-
-
-def is_cdc_read_trigger(reg: RegNode) -> bool:
-    if not reg.get_property("buffer_reads", default=False):
-        return False
-    trigger = reg.get_property("rbuffer_trigger")
-    return isinstance(trigger, RegNode) and trigger == reg
-
-
-def cdc_uses_cell_access(reg: RegNode) -> bool:
-    if not is_cdc_reg(reg):
-        return False
-    if not reg.get_property("buffer_writes", default=False) and not reg.get_property(
-        "buffer_reads", default=False
-    ):
-        return True
-    return is_cdc_write_trigger(reg) or is_cdc_read_trigger(reg)
-
-
-def is_cdc_group_member(reg: RegNode) -> bool:
-    if not is_cdc_reg(reg):
-        return False
+def cdc_reg_class(reg: RegNode) -> CdcRegClass:
     if reg.get_property("buffer_writes", default=False):
         trigger = reg.get_property("wbuffer_trigger")
-        if isinstance(trigger, RegNode) and trigger != reg:
-            return True
-    if reg.get_property("buffer_reads", default=False):
+        if isinstance(trigger, RegNode):
+            if trigger == reg:
+                return CdcRegClass.WRITE_TRIGGER
+            return CdcRegClass.WRITE_MEMBER
+    elif reg.get_property("buffer_reads", default=False):
         trigger = reg.get_property("rbuffer_trigger")
-        if isinstance(trigger, RegNode) and trigger != reg:
-            return True
-    return False
+        if isinstance(trigger, RegNode):
+            if trigger == reg:
+                return CdcRegClass.READ_TRIGGER
+            return CdcRegClass.READ_MEMBER
+    return CdcRegClass.PLAIN
+
+
+def cdc_crosses(reg: RegNode) -> bool:
+    """True when an access to the register goes through the domain's handshake."""
+    if not is_cdc_reg(reg):
+        return False
+    return cdc_reg_class(reg) not in (
+        CdcRegClass.WRITE_MEMBER,
+        CdcRegClass.READ_MEMBER,
+    )
 
 
 def cdc_reg_domain_key(reg: RegNode) -> str:
     clk = get_cdc_clk(reg)
     assert clk is not None
     return clk.get_path()
+
+
+def cdc_array_dims(reg: RegNode) -> list[int]:
+    """Dimensions of the register and every enclosing array, outermost first."""
+    dims: list[int] = []
+    cur: Node | None = reg
+    while cur is not None:
+        cur_dims = getattr(cur, "array_dimensions", None)
+        if cur_dims:
+            dims = list(cur_dims) + dims
+        cur = cur.parent
+    return dims
+
+
+def cdc_slot_expr(domain: CdcDomain, reg: RegNode) -> str:
+    """SV constant expression of the register element's slot number (row-major)."""
+    cdc_reg = domain.reg(reg)
+    assert cdc_reg.slot_base is not None
+    dims = cdc_array_dims(reg)
+    if not dims:
+        return str(cdc_reg.slot_base)
+    terms = [str(cdc_reg.slot_base)]
+    for level, _ in enumerate(dims):
+        stride = 1
+        for dim in dims[level + 1 :]:
+            stride *= dim
+        terms.append(f"i{level}*{stride}" if stride > 1 else f"i{level}")
+    return "(" + " + ".join(terms) + ")"
+
+
+def cdc_shadow_name(top: Node, field: FieldNode) -> str:
+    p = IndexedPath(top, field)
+    return f"cdc_shadow_{p.path}{p.index_str}"
+
+
+def cdc_snap_name(top: Node, reg: RegNode) -> str:
+    p = IndexedPath(top, reg)
+    return f"cdc_snap_{p.path}{p.index_str}"
+
+
+def cdc_dst_name(top: Node, field: FieldNode) -> str:
+    p = IndexedPath(top, field)
+    return f"cdc_dst_{p.path}_value{p.index_str}"
+
+
+def cdc_pack(width: int, pieces: list[tuple[int, int, str]]) -> str:
+    """Concatenate (high, low, identifier) pieces by bit position, zero-filling gaps."""
+    parts: list[str] = []
+    cursor = width - 1
+    for high, low, ident in sorted(pieces, reverse=True):
+        if cursor > high:
+            parts.append(f"{cursor - high}'d0")
+        parts.append(ident)
+        cursor = low - 1
+    if cursor >= 0:
+        parts.append(f"{cursor + 1}'d0")
+    if not parts:
+        return f"{width}'d0"
+    if len(parts) == 1:
+        return parts[0]
+    return "{" + ", ".join(parts) + "}"
+
+
+def cdc_write_member_pack(top: Node, reg: RegNode, subword: int | None = None) -> str:
+    """Read value of a write member (or of one subword of it): its readable bus-side copies."""
+    regwidth = reg.get_property("regwidth")
+    if subword is None:
+        pieces = [
+            (f.high, f.low, cdc_shadow_name(top, f))
+            for f in reg.fields()
+            if f.is_sw_writable and f.is_sw_readable
+        ]
+        return cdc_pack(regwidth, pieces)
+    accesswidth = reg.get_property("accesswidth")
+    word_low = accesswidth * subword
+    word_high = word_low + accesswidth - 1
+    pieces = []
+    for f in reg.fields():
+        if not (f.is_sw_writable and f.is_sw_readable):
+            continue
+        high, low = min(f.high, word_high), max(f.low, word_low)
+        if high < low:
+            continue
+        ident = cdc_shadow_name(top, f)
+        if (high, low) != (f.high, f.low):
+            ident += f"[{high - f.low}:{low - f.low}]"
+        pieces.append((high - word_low, low - word_low, ident))
+    return cdc_pack(accesswidth, pieces)

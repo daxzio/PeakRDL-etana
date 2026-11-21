@@ -39,6 +39,15 @@ class testbench_ahb(testbench):
 
 
 @test()
+async def test_hready_high_in_reset(dut):
+    """AHB-Lite: the slave drives HREADYOUT high while reset is asserted."""
+    tb = testbench_ahb(dut)
+    await tb.clk.wait_clkn(5)
+    assert not tb.reset.finished, "reset released too early to check"
+    assert dut.s_ahb_hready.value == 1, "HREADY low during reset"
+
+
+@test()
 async def test_dut_simple(dut):
     tb = testbench_ahb(dut)
     mask = tb.intf.mask

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from systemrdl.node import AddrmapNode, MemNode, RegfileNode, RegNode
 from systemrdl.walker import WalkerAction
 
-from .cdc.util import cdc_uses_cell_access, get_cdc_clk
+from .cdc.util import cdc_crosses, get_cdc_clk
 from .forloop_generator import RDLForLoopGenerator
 from .identifier_filter import kw_filter as kwf
 from .utils import (
@@ -15,7 +15,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from systemrdl.node import AddressableNode
+    from systemrdl.node import AddressableNode, Node
 
     from .exporter import RegblockExporter
 
@@ -25,7 +25,12 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         super().__init__()
         self.exp = exp
         self.ext_wacks: list[str] = []
+        self._cdc_wr_domains: set[str] = set()
         self.policy = external_policy(self.exp.ds)
+
+    def get_content(self, node: "Node") -> str | None:
+        self._cdc_wr_domains = set()
+        return super().get_content(node)
 
     def has_external_write(self) -> bool:
         return self.get_content(self.exp.ds.top_node) is not None
@@ -65,11 +70,14 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node) and node.has_sw_writable:
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
-        elif cdc_uses_cell_access(node) and node.has_sw_writable:
+        elif cdc_crosses(node) and node.has_sw_writable:
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
-            self.ext_wacks.append(f"{pfx}_wr_ack")
+            # The domain has one ack, however many registers it has
+            if pfx not in self._cdc_wr_domains:
+                self._cdc_wr_domains.add(pfx)
+                self.ext_wacks.append(f"{pfx}_wr_ack")
         return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:
@@ -98,7 +106,12 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         super().__init__()
         self.exp = exp
         self.ext_racks: list[str] = []
+        self._cdc_rd_domains: set[str] = set()
         self.policy = external_policy(self.exp.ds)
+
+    def get_content(self, node: "Node") -> str | None:
+        self._cdc_rd_domains = set()
+        return super().get_content(node)
 
     def has_external_read(self) -> bool:
         return self.get_content(self.exp.ds.top_node) is not None
@@ -137,11 +150,14 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
         if self.policy.is_external(node) and node.has_sw_readable:
             x = self.exp.hwif.get_external_rd_ack(node, True)
             self.ext_racks.append(x)
-        elif cdc_uses_cell_access(node) and node.has_sw_readable:
+        elif cdc_crosses(node) and node.has_sw_readable:
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
-            self.ext_racks.append(f"{pfx}_rd_ack")
+            # The domain has one ack, however many registers it has
+            if pfx not in self._cdc_rd_domains:
+                self._cdc_rd_domains.add(pfx)
+                self.ext_racks.append(f"{pfx}_rd_ack")
         return WalkerAction.Continue
 
     def enter_Mem(self, node: "MemNode") -> WalkerAction:

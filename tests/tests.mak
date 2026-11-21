@@ -34,6 +34,8 @@ YOSYS=0
 GIT_CHECK=0
 
 SYNTH_OUTPUT?=synth-rtl
+# Sources outside etana-rtl that the generated module instantiates
+YOSYS_EXTRA_SOURCES?=
 VIVADO_PART?=xc7a100tcsg324-1
 VIVADO_SCRIPT?=$(abspath $(SYNTH_OUTPUT)/vivado_synth.tcl)
 VIVADO_REPORT?=$(abspath $(SYNTH_OUTPUT)/vivado_utilization.rpt)
@@ -226,7 +228,7 @@ regblock-vhdl:
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)
 	rm -rf $(SYNTH_OUTPUT)/*
-	yosys -q -s ../synthesis.ys
+	yosys -q -p "read_slang -D SYNTHESIS --top regblock ./etana-rtl/*.sv $(YOSYS_EXTRA_SOURCES); script ../synthesis.ys"
 
 vivado-synth: $(SYNTH_SOURCE_TARGET)
 	@if [ -z "$(strip $(VIVADO_PART))" ]; then \
