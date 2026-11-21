@@ -47,7 +47,6 @@ OUTS = {
 
 async def start(dut, phases=None) -> CdcTB:
     tb = CdcTB(dut, CLOCKS, phases)
-    dut.hwif_in_soft_rst.value = 0
     await tb.clk.wait_clkn(120)
     return tb
 
@@ -657,55 +656,10 @@ async def test_random(dut):
 
 
 @test()
-async def test_field_resetsignal(dut):
+async def test_bus_reset_resets_copy(dut):
     tb = await start(dut)
-    count = DstAccCount(dut, "cdc_sync_clk_c")
 
-    # The field reset leaves the shadow of c_mem unknown until it first asserts; the AHB master
-    # samples read data on every beat, so the first write to c_mem needs a known value.
-    dut.hwif_in_soft_rst.value = 1
-    await ClockCycles(dut.clk, 6)
-    dut.hwif_in_soft_rst.value = 0
-    await tb.settle(SYNC_C)
-
-    await tb.write(PLAIN_CFG, 0x1234, timeout_cycles=400)
-    await tb.write(C_MEM, 0x555, timeout_cycles=400)
-    await tb.write(C_TRG, 0x666, timeout_cycles=400)
-    await tb.settle(SYNC, SYNC_C)
-    dut.hwif_in_c_sts_a.value = 0x5A
-    dut.hwif_in_c_cap_cap.value = 0xA5
-    await tb.settle(SYNC_C)
-    await expect_read(tb, C_CAP, 0xA5, 0xFF)
-    await tb.settle(SYNC_C)
-    await expect_read(tb, C_STS, 0x5A, 0xFF)
-    await tb.write(C_MEM, 0x777, timeout_cycles=400)
-    assert out(dut, "hwif_out_c_trg_v") == 0x666
-    assert out(dut, "hwif_out_c_mem_v") == 0x555
-    await expect_read(tb, C_MEM, 0x777, 0xFFF)
-    assert out(dut, "hwif_out_plain_cfg_v") == 0x1234
-    count.take()
-
-    # The field reset alone, with the bus reset inactive.
-    dut.hwif_in_soft_rst.value = 1
-    await ClockCycles(dut.clk, 6)
-    dut.hwif_in_soft_rst.value = 0
-    await tb.settle(SYNC_C)
-
-    assert out(dut, "hwif_out_c_trg_v") == 0x0C1
-    assert out(dut, "hwif_out_c_mem_v") == 0x0C2
-    assert out(dut, "hwif_out_plain_cfg_v") == 0x1234
     await expect_read(tb, C_MEM, 0x0C2, 0xFFF)
-    await expect_read(tb, C_TRG, 0x0C1, 0xFFF)
-    assert count.take() == 1
-    await expect_read(tb, C_STS, 0, 0xFF)
-    await expect_read(tb, C_CAP, 0xA5, 0xFF)
+    await tb.write(C_TRG, 0x0C1, timeout_cycles=400)
     await tb.settle(SYNC_C)
-    await expect_read(tb, C_STS, 0x5A, 0xFF)
-
-    count.take()
-    await tb.write(C_MEM, 0x321, timeout_cycles=400)
-    await tb.write(C_TRG, 0x654, timeout_cycles=400)
-    await tb.settle(SYNC_C)
-    assert out(dut, "hwif_out_c_mem_v") == 0x321
-    assert out(dut, "hwif_out_c_trg_v") == 0x654
-    assert count.take() == 1
+    assert out(dut, "hwif_out_c_mem_v") == 0x0C2

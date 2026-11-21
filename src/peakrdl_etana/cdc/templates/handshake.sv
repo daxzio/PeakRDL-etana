@@ -1,9 +1,5 @@
 {%- import 'cdc/templates/sync_macros.sv' as macros -%}
 // CDC domain: {{clk}}
-{%- if bus_rst_expr %}
-logic {{P}}_bus_rst;
-assign {{P}}_bus_rst = {{bus_rst_expr}};
-{%- endif %}
 logic {{P}}_arst;
 {%- if arst_registered %}
 always_ff @(posedge clk) begin

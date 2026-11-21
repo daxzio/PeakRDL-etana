@@ -289,7 +289,7 @@ class ChangeRecord:
             self._record(sig_name, clk_name, sig)
 
     async def _poll(self, sig_name: str, clk_name: str) -> None:
-        """Sample an array element, which Icarus cannot watch, at every clock edge of both clocks."""
+        """Sample an array element, which Icarus cannot watch, on every edge of both clocks."""
         sig = signal(self.dut, sig_name, self.shapes)
         clk = getattr(self.dut, clk_name)
         last = int(sig.value)

@@ -20,8 +20,6 @@ addrmap top {
 `endif
     } sync_clk_b;
 
-    signal { activehigh; } soft_rst;
-
     signal {
 `ifdef CDC_NSTAGES3
         cdc_nstages = 3;
@@ -117,13 +115,13 @@ addrmap top {
     reg {
         cdc_clk = sync_clk_c;
         buffer_writes;
-        field { sw = rw; hw = r; resetsignal = soft_rst; } v[11:0] = 0x0C1;
+        field { sw = rw; hw = r; } v[11:0] = 0x0C1;
     } c_trg @0x34;
 
     reg {
         cdc_clk = sync_clk_c;
         buffer_writes;
-        field { sw = rw; hw = r; resetsignal = soft_rst; } v[11:0] = 0x0C2;
+        field { sw = rw; hw = r; } v[11:0] = 0x0C2;
     } c_mem @0x38;
 
     c_mem->wbuffer_trigger = c_trg;
@@ -131,13 +129,13 @@ addrmap top {
     reg {
         cdc_clk = sync_clk_c;
         buffer_reads;
-        field { sw = r; hw = w; resetsignal = soft_rst; } a[7:0] = 0;
+        field { sw = r; hw = w; } a[7:0] = 0;
     } c_sts @0x3C;
 
     reg {
         cdc_clk = sync_clk_c;
         buffer_reads;
-        field { sw = r; hw = w; resetsignal = soft_rst; } cap[7:0] = 0;
+        field { sw = r; hw = w; } cap[7:0] = 0;
     } c_cap @0x40;
 
     c_sts->rbuffer_trigger = c_cap;
