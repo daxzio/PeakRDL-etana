@@ -36,8 +36,3 @@ property wr_swacc {
     component = field;
     type = boolean;
 };
-
-property verilog_reg_only {
-    component = reg;
-    type = boolean;
-};

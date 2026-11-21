@@ -975,3 +975,20 @@ def test_cdc_clock_outside_top(tmp_path):
     out = _export(rdl, tmp_path)
     (sv,) = [p for p in out.rglob("*.sv") if "pkg" not in p.name]
     assert len(re.findall(r"input wire dclk\b", sv.read_text())) == 1
+
+
+def test_udp_files_declare_each_property_once(tmp_path):
+    """Both UDP files compile together; buffer_writes and verilog_reg_only resolve."""
+    c = RDLCompiler()
+    for udp in ALL_UDPS:
+        c.register_udp(udp)
+    c.compile_file("hdl-src/regblock_udps.rdl")
+    c.compile_file(ETANA_UDPS)
+    path = tmp_path / "udps.rdl"
+    path.write_text(
+        _top(
+            "reg { buffer_writes; verilog_reg_only; field { sw=rw; hw=r; } f = 0; } rg;"
+        )
+    )
+    c.compile_file(str(path))
+    c.elaborate()

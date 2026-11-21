@@ -20,7 +20,7 @@ Properties
 ----------
 This UDP definition, along with others supported by PeakRDL-etana can be
 enabled by compiling the following file along with your design:
-:download:`regblock_udps.rdl <../../hdl-src/regblock_udps.rdl>`.
+:download:`etana_udps.rdl <../../hdl-src/etana_udps.rdl>`.
 
 .. describe:: verilog_reg_only
 
