@@ -120,12 +120,6 @@ class CdcDesignValidator(RDLListener):
                 node.inst.inst_src_ref,
             )
 
-        if node.is_array:
-            self.msg.error(
-                "Arrayed CDC registers are not supported yet",
-                node.inst.inst_src_ref,
-            )
-
         regwidth = node.get_property("regwidth")
         accesswidth = node.get_property("accesswidth")
         if regwidth > accesswidth:

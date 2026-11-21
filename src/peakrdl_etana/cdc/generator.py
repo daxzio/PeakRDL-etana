@@ -119,7 +119,8 @@ class CdcRegisterGenerator(RDLForLoopGenerator):
             IndexedPath(self.exp.ds.top_node, node).array_dimensions
         )
         packed = f" [{width - 1}:0]" if width > 1 else ""
-        self.push_top(f"logic{packed} {name}{dims};")
+        # Names carry the loop index string; the declaration takes the dimensions instead.
+        self.push_top(f"logic{packed} {name.split('[')[0]}{dims};")
 
     def _strobe(self, node: RegNode) -> str:
         stb = self.exp.dereferencer.get_access_strobe(node)

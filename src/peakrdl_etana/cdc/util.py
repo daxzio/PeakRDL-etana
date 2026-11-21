@@ -55,11 +55,32 @@ def cdc_reg_domain_key(reg: RegNode) -> str:
     return clk.get_path()
 
 
+def cdc_array_dims(reg: RegNode) -> list[int]:
+    """Dimensions of the register and every enclosing array, outermost first."""
+    dims: list[int] = []
+    cur: Node | None = reg
+    while cur is not None:
+        cur_dims = getattr(cur, "array_dimensions", None)
+        if cur_dims:
+            dims = list(cur_dims) + dims
+        cur = cur.parent
+    return dims
+
+
 def cdc_slot_expr(domain: CdcDomain, reg: RegNode) -> str:
-    """SV constant expression of the register element's slot number."""
+    """SV constant expression of the register element's slot number (row-major)."""
     cdc_reg = domain.reg(reg)
     assert cdc_reg.slot_base is not None
-    return str(cdc_reg.slot_base)
+    dims = cdc_array_dims(reg)
+    if not dims:
+        return str(cdc_reg.slot_base)
+    terms = [str(cdc_reg.slot_base)]
+    for level, _ in enumerate(dims):
+        stride = 1
+        for dim in dims[level + 1 :]:
+            stride *= dim
+        terms.append(f"i{level}*{stride}" if stride > 1 else f"i{level}")
+    return "(" + " + ".join(terms) + ")"
 
 
 def cdc_shadow_name(top: Node, field: FieldNode) -> str:
