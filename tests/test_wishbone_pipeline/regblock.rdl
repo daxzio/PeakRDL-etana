@@ -1,0 +1,20 @@
+addrmap top {
+    default regwidth = 32;
+    default accesswidth = 32;
+
+    signal { } sync_clk;
+
+    reg {
+        field { sw = rw; hw = r; } f[31:0] = 0;
+    } r0 @0x0;
+
+    reg {
+        field { sw = rw; hw = r; } f[31:0] = 0;
+    } r1 @0x4;
+
+    // Every access crosses to sync_clk, so a transfer stays active for several bus cycles
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = rw; hw = r; } f[31:0] = 0;
+    } r_cdc @0x8;
+};
