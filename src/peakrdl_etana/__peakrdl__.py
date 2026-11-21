@@ -239,13 +239,6 @@ class Exporter(ExporterSubcommandPlugin):
             help="""Generate error responses for reads to write-only registers or writes to read-only registers""",
         )
 
-        arg_group.add_argument(
-            "--cdc-emit-cells",
-            action="store_true",
-            default=False,
-            help="""Copy the CDC cells for this design's reset (etana_cdc_<rst>.sv and etana_cdc_sync_<rst>.sv) into the output directory""",
-        )
-
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -317,5 +310,4 @@ class Exporter(ExporterSubcommandPlugin):
             generate_template=options.generate_template,
             err_if_bad_addr=options.err_if_bad_addr,
             err_if_bad_rw=options.err_if_bad_rw,
-            cdc_emit_cells=options.cdc_emit_cells,
         )

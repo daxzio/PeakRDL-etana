@@ -6,7 +6,6 @@ addrmap top {
 
     signal {} sync_clk_slow;
     signal {} sync_clk_fast;
-    signal { cdc_fast = true; } sync_clk_fast_en;
 
     reg {
         cdc_clk = sync_clk_slow;

@@ -3,9 +3,9 @@ addrmap top {
     default accesswidth = 32;
 
     // APB samples PRDATA on the falling edge, 5 ns after the rising edge that
-    // issues the transfer. cdc_fast acks in that same cycle, so the destination
+    // issues the transfer. fast mode acks in that same cycle, so the destination
     // capture has to land inside that half-cycle: (cdc_nstages + 1) * 1 ns.
-    signal { cdc_fast = true; cdc_nstages = 2; } sync_clk;
+    signal { cdc_fast_mode_en = true; cdc_nstages = 2; } sync_clk;
 
     reg {
         cdc_clk = sync_clk;
