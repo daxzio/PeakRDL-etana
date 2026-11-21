@@ -5,11 +5,10 @@ test_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(test_dir))
 
 from cocotb import start_soon, test
-from cocotb.clock import Clock
 from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 
-from tb_base import testbench
+from cdc_tb import CdcTB
 
 
 def _ns() -> float:
@@ -22,17 +21,16 @@ def _ns() -> float:
 
 
 # Time from the regblock seeing cpuif_req to cpuif_rd_ack. Bus masters add their
-# own setup, so this is not the wall-clock length of read(). With cdc_fast the
+# own setup, so this is not the wall-clock length of read(). In fast mode the
 # ack is the issue cycle (0 ns at the sample) or the next bus clock. Without it
 # the ack synchronizer holds the read for cdc_nstages bus clocks (20 ns).
 _FAST_ACK_LIMIT_NS = 10
 
 
-class FastTB(testbench):
+class FastTB(CdcTB):
     def __init__(self, dut):
-        super().__init__(dut)
         # (cdc_nstages + 1) * 1 ns = 3 ns, inside the 5 ns before APB samples.
-        Clock(dut.sync_clk, 1, unit="ns").start()
+        super().__init__(dut, {"sync_clk": 1000})
 
 
 async def _ack_latency(dut, box: dict) -> None:
@@ -81,7 +79,7 @@ async def test_cdc_fast_read_is_early(dut):
     dut._log.info(f"req-to-rd_ack {ack['dt']} ns")
     assert (
         ack["dt"] <= _FAST_ACK_LIMIT_NS
-    ), f"rd_ack was {ack['dt']} ns after cpuif_req; cdc_fast should ack on the issue cycle"
+    ), f"rd_ack was {ack['dt']} ns after cpuif_req; fast mode should ack on the issue cycle"
     await tb.intf.read(0x04, 0x5A5A)
 
 

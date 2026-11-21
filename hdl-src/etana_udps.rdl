@@ -27,7 +27,7 @@ property cdc_clk {
     type = ref;
 };
 
-property cdc_fast {
+property cdc_fast_mode_en {
     component = signal;
     type = boolean;
 };

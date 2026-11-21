@@ -228,8 +228,6 @@ class RegblockExporter:
         stream = template.stream(context)
         stream.dump(module_file_path)
 
-        self.cdc.write_support_files(output_dir)
-
         # Strip trailing whitespace from generated file
         with open(module_file_path, "r") as f:
             lines = f.readlines()
@@ -310,7 +308,6 @@ class DesignState:
         self.generate_template = kwargs.pop("generate_template", False)  # type: bool
         self.err_if_bad_addr = kwargs.pop("err_if_bad_addr", False)  # type: bool
         self.err_if_bad_rw = kwargs.pop("err_if_bad_rw", False)  # type: bool
-        self.cdc_emit_cells = kwargs.pop("cdc_emit_cells", False)  # type: bool
 
         # ------------------------
         # Info about the design

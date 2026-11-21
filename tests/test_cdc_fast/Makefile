@@ -1,4 +1,5 @@
 UDPS?=../../hdl-src/etana_udps.rdl
-PEAKRDL_ARGS+=--cdc-emit-cells
+
+export CDC_FAST_MODE ?= 1
 
 include ../tests.mak
