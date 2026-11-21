@@ -1,14 +1,18 @@
 {%- if kind == "shadow" %}
 {#- Bus-side copy of a write-member field. -#}
 always_ff {{ff_event}} begin
-    {%- if reset is not none %}
+    {%- for seg in segments %}
+    {%- if loop.first and reset is not none %}
     if({{reset_cond}}) begin
         {{name}} <= {{reset}};
-    end else if({{strobe}} & decoded_req & decoded_req_is_wr) begin
+    end else if({{seg.strobe}} & decoded_req & decoded_req_is_wr) begin
+    {%- elif loop.first %}
+    if({{seg.strobe}} & decoded_req & decoded_req_is_wr) begin
     {%- else %}
-    if({{strobe}} & decoded_req & decoded_req_is_wr) begin
+    end else if({{seg.strobe}} & decoded_req & decoded_req_is_wr) begin
     {%- endif %}
-        {{name}} <= ({{name}} & ~{{biten}}) | ({{data}} & {{biten}});
+        {{seg.target}} <= ({{seg.target}} & ~{{seg.biten}}) | ({{seg.data}} & {{seg.biten}});
+    {%- endfor %}
     end
 end
 {%- else %}

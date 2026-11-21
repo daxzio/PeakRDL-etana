@@ -333,7 +333,7 @@ class MovingInputs:
             await FallingEdge(clk)
             self.counter += 1
             for name, (mult, add, width) in self.inputs.items():
-                getattr(self.dut, name).value = (mult * self.counter + add) % (
+                signal(self.dut, name).value = (mult * self.counter + add) % (
                     1 << width
                 )
 
