@@ -6,10 +6,11 @@ supported properties, see the appropriate property listing page in the following
 sections.
 
 
-CDC register arrays
--------------------
-``cdc_clk`` registers cannot be instantiated as arrays in the current release.
-See :ref:`cdc` for other CDC restrictions.
+CDC registers
+-------------
+A ``cdc_clk`` register or trigger cannot be wider than ``accesswidth``, and a
+group trigger cannot be an array element. See :ref:`cdc` for the full list of
+CDC restrictions.
 
 Alias Registers
 ---------------
