@@ -1,5 +1,4 @@
 UDPS?=../../hdl-src/etana_udps.rdl
-override CPUIF=apb4-flat
 
 CDC_NSTAGES3?=
 CDC_FAST_PROP?=

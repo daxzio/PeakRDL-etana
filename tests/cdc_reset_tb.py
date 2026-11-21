@@ -104,6 +104,9 @@ async def run_stopped_clock(dut, reset_sense, resetname):
 async def run_access_in_flight(dut, reset_sense, resetname):
     """Reset with an access in flight and both toggles 1; later accesses complete once each."""
     tb = await start(dut, reset_sense, resetname)
+    # The access in flight is driven on the APB4 pins.
+    if not tb.has_strb:
+        return
     pre = {SLOW: "cdc_sync_clk_slow", FAST: "cdc_sync_clk_fast"}
 
     for clk_name, cfg, sts, cfg_out, reset_val in (
