@@ -8,7 +8,7 @@ from systemrdl.node import AddrmapNode, RegNode
 from systemrdl.walker import RDLListener, RDLWalker, WalkerAction
 
 from ..identifier_filter import kw_filter as kwf
-from ..utils import clog2
+from ..utils import clog2, external_policy
 from .model import CdcDomain, CdcReg, CdcRegClass
 from .util import (
     cdc_array_dims,
@@ -39,10 +39,14 @@ class CdcScanner(RDLListener):
     def enter_Reg(self, node: RegNode) -> WalkerAction | None:
         if not is_cdc_reg(node):
             return WalkerAction.Continue
-        key = cdc_reg_domain_key(node)
-        self._regs_by_domain.setdefault(key, []).append(node)
         clk = get_cdc_clk(node)
         assert clk is not None
+        if external_policy(self.ds).is_inside_external(node, self.top_node):
+            # The export of the external block generates this register
+            self.ds.cdc_foreign_clock_paths.add(clk.get_path())
+            return WalkerAction.Continue
+        key = cdc_reg_domain_key(node)
+        self._regs_by_domain.setdefault(key, []).append(node)
         self.ds.cdc_clock_signals[key] = clk
         return WalkerAction.Continue
 

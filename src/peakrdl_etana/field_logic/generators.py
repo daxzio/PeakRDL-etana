@@ -41,8 +41,6 @@ class FieldResetGenerator(RDLListener):
         return WalkerAction.Continue
 
     def enter_Field(self, node: "FieldNode") -> None:
-        from ..cdc.util import is_cdc_reg
-
         if is_cdc_reg(node.parent):
             return
         if not node.implements_storage:

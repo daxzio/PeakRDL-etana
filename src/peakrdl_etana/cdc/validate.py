@@ -28,6 +28,8 @@ BANNED_FIELD_PROPS = (
     "hwclr",
     "swacc",
     "swmod",
+    "rd_swacc",
+    "wr_swacc",
     "counter",
     "we",
     "wel",
@@ -93,9 +95,18 @@ class CdcDesignValidator(RDLListener):
     def _cdc_reg(self, node: RegNode):
         return self.exp.ds.cdc_domains[cdc_reg_domain_key(node)].reg(node)
 
-    def enter_Component(self, node: Node) -> None:
+    def enter_Component(self, node: Node) -> WalkerAction | None:
+        policy = external_policy(self.exp.ds)
+        if (
+            node.external
+            and policy.is_external(node)
+            and node != self.top_node
+            and not isinstance(node, RegNode)
+        ):
+            # The export of the external block validates its own registers
+            return WalkerAction.SkipDescendants
         if not self.exp.ds.has_cdc_regs:
-            return
+            return None
         for prop in node.list_properties():
             target = node.get_property(prop)
             if isinstance(target, PropertyReference):
@@ -104,6 +115,7 @@ class CdcDesignValidator(RDLListener):
                 continue
             src_ref = node.inst.property_src_ref.get(prop, node.inst.inst_src_ref)
             self._check_reference(node, prop, target, src_ref)
+        return None
 
     def _check_reference(self, node: Node, prop: str, target: Node, src_ref) -> None:
         if (
@@ -127,8 +139,11 @@ class CdcDesignValidator(RDLListener):
 
     def enter_Signal(self, node: SignalNode) -> None:
         for prop in CLOCK_ONLY_PROPS:
-            if prop in node.list_properties() and (
-                node.get_path() not in self.exp.ds.cdc_clock_signals
+            path = node.get_path()
+            if (
+                prop in node.list_properties()
+                and path not in self.exp.ds.cdc_clock_signals
+                and path not in self.exp.ds.cdc_foreign_clock_paths
             ):
                 self.msg.error(
                     f"Signal '{node.inst_name}' sets {prop} but is not used as cdc_clk "
@@ -215,14 +230,9 @@ class CdcDesignValidator(RDLListener):
         if not is_cdc_reg(node.parent):
             return
 
-        parent = node.parent
-        if (
-            parent.get_property("regwidth") > parent.get_property("accesswidth")
-            and node.msb < node.lsb
-        ):
+        if node.msb < node.lsb:
             self.msg.error(
-                f"msb0 field '{node.inst_name}' is not supported in a CDC register "
-                "wider than accesswidth",
+                f"msb0 field '{node.inst_name}' is not supported in a CDC register",
                 node.inst.inst_src_ref,
             )
 

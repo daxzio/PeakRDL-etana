@@ -18,11 +18,17 @@ Properties
 cdc_clk
     Property on ``reg``. A reference to a ``signal``. Registers that name the
     same signal form one domain with one handshake. The signal becomes a module
-    input, named after the signal instance, and is the domain clock. A signal
-    is a domain clock only because a register names it. The signal must be one
-    bit wide, not an array, and must not set ``cpuif_reset``, ``field_reset``,
+    input, named after the signal instance, and is the domain clock. The signal
+    may be declared outside the exported addrmap. A signal is a domain clock
+    only because a register names it. The signal must be one bit wide,
+    not an array, and must not set ``cpuif_reset``, ``field_reset``,
     ``activelow``, ``activehigh``, ``sync`` or ``async``. Nothing else may
     reference it, for example as a ``resetsignal`` or a ``next``.
+
+    The export ignores a ``cdc_clk`` register inside an external ``addrmap`` or
+    ``regfile``. The export of that block generates the register and its
+    handshake. A signal that only such registers name is an ordinary signal in
+    this export and becomes the input ``hwif_in_<signal>``.
 
 cdc_nstages
     Property on the clock ``signal``. Integer, default 2, minimum 2. The number
@@ -126,9 +132,13 @@ Config field
     value resets to it. A field without one has no reset.
 
 Status field
-    ``sw`` is ``r`` and ``hw`` is ``w``. The field has no storage. A read
-    returns the ``hwif_in`` input sampled on the domain clock, so the input must
-    be synchronous to that clock.
+    ``sw`` is ``r`` and ``hw`` is ``w``. The ``hwif_in`` input is sampled on
+    the domain clock, so it must be synchronous to that clock. In a plain
+    register or a trigger the field has no flops of its own: a read samples the
+    input into the read-data register of the domain. All registers of a domain
+    share that register, and it holds the value only until the next read in
+    the domain. In a read member the field has one snapshot flop per bit (see
+    `Atomic groups`_).
 
 Any other combination of ``sw`` and ``hw`` is an error.
 
@@ -195,6 +205,14 @@ regfile, are accepted. The generator emits them in ``for`` loops as it does for
 any array. Every element is a separate slot, so each element has its own
 address, its own storage and its own handshake index. An access to one element
 changes only that element's outputs.
+
+Example
+-------
+
+An example design with two domains, a write group, a read group, arrayed
+members, wide members and fast mode is in
+:download:`tests/test_cdc_example/regblock.rdl <../../tests/test_cdc_example/regblock.rdl>`.
+The cocotb test in ``tests/test_cdc_example/test_dut.py`` simulates it.
 
 Reset
 -----
@@ -299,17 +317,17 @@ Export stops with an error for each of these.
   ``--rt-external reg``.
 * A register with both ``buffer_writes`` and ``buffer_reads``.
 * A plain register, or a trigger, wider than ``accesswidth``.
-* A wide member with an ``msb0`` field.
+* An ``msb0`` field in a CDC register.
 * A trigger that is not a register, is not in the same domain, does not set the
   buffering property, is itself a member of another group, or is an array
   element.
 * A field access other than the config and status combinations above, a status
   field in a write member, and a config field in a read member.
 * ``onread``, ``onwrite``, ``intr``, ``singlepulse``, ``paritycheck``,
-  ``hwset``, ``hwclr``, ``swacc``, ``swmod``, ``counter``, ``we``, ``wel``,
-  ``swwe``, ``swwel``, ``anded``, ``ored``, ``xored``, ``hwenable``,
-  ``hwmask``, ``sticky``, ``stickybit``, ``rclr``, ``rset`` and ``next`` on a
-  field of a CDC register.
+  ``hwset``, ``hwclr``, ``swacc``, ``swmod``, ``rd_swacc``, ``wr_swacc``,
+  ``counter``, ``we``, ``wel``, ``swwe``, ``swwel``, ``anded``, ``ored``,
+  ``xored``, ``hwenable``, ``hwmask``, ``sticky``, ``stickybit``, ``rclr``,
+  ``rset`` and ``next`` on a field of a CDC register.
 * A ``reset`` of a CDC field that is a reference instead of a constant.
 * A ``resetsignal`` on a field of a CDC register.
 * A property outside a CDC register that references a field of one, such as
