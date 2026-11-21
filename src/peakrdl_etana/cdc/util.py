@@ -1,7 +1,14 @@
 from __future__ import annotations
 
-from systemrdl.node import RegNode, SignalNode
+from typing import TYPE_CHECKING
+
+from systemrdl.node import Node, RegNode, SignalNode
 from systemrdl.rdltypes import NoValue
+
+from .model import CdcRegClass
+
+if TYPE_CHECKING:
+    from .model import CdcDomain
 
 
 def get_cdc_clk(reg: RegNode) -> SignalNode | None:
@@ -13,6 +20,60 @@ def get_cdc_clk(reg: RegNode) -> SignalNode | None:
 
 def is_cdc_reg(reg: RegNode) -> bool:
     return get_cdc_clk(reg) is not None
+
+
+def cdc_reg_class(reg: RegNode) -> CdcRegClass:
+    if reg.get_property("buffer_writes", default=False):
+        trigger = reg.get_property("wbuffer_trigger")
+        if isinstance(trigger, RegNode):
+            if trigger == reg:
+                return CdcRegClass.WRITE_TRIGGER
+            return CdcRegClass.WRITE_MEMBER
+    elif reg.get_property("buffer_reads", default=False):
+        trigger = reg.get_property("rbuffer_trigger")
+        if isinstance(trigger, RegNode):
+            if trigger == reg:
+                return CdcRegClass.READ_TRIGGER
+            return CdcRegClass.READ_MEMBER
+    return CdcRegClass.PLAIN
+
+
+def cdc_crosses(reg: RegNode) -> bool:
+    """True when an access to the register goes through the domain's handshake."""
+    if not is_cdc_reg(reg):
+        return False
+    return cdc_reg_class(reg) not in (
+        CdcRegClass.WRITE_MEMBER,
+        CdcRegClass.READ_MEMBER,
+    )
+
+
+def cdc_array_dims(reg: RegNode) -> list[int]:
+    """Dimensions of the register and every enclosing array, outermost first."""
+    dims: list[int] = []
+    cur: Node | None = reg
+    while cur is not None:
+        cur_dims = getattr(cur, "array_dimensions", None)
+        if cur_dims:
+            dims = list(cur_dims) + dims
+        cur = cur.parent
+    return dims
+
+
+def cdc_slot_expr(domain: CdcDomain, reg: RegNode) -> str:
+    """SV constant expression of the register element's slot number (row-major)."""
+    cdc_reg = domain.reg(reg)
+    assert cdc_reg.slot_base is not None
+    dims = cdc_array_dims(reg)
+    if not dims:
+        return str(cdc_reg.slot_base)
+    terms = [str(cdc_reg.slot_base)]
+    for level, _ in enumerate(dims):
+        stride = 1
+        for dim in dims[level + 1 :]:
+            stride *= dim
+        terms.append(f"i{level}*{stride}" if stride > 1 else f"i{level}")
+    return "(" + " + ".join(terms) + ")"
 
 
 def _sibling_buffer_trigger(reg: RegNode, prop: str) -> bool:

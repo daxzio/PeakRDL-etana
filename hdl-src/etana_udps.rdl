@@ -32,6 +32,11 @@ property cdc_fast {
     type = boolean;
 };
 
+property cdc_fast_mode_en {
+    component = signal;
+    type = boolean;
+};
+
 property cdc_nstages {
     component = signal;
     type = longint;

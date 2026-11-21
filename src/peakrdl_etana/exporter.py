@@ -334,6 +334,7 @@ class DesignState:
         self.has_cdc_regs = False
         self.cdc_domains: OrderedDict[str, Any] = OrderedDict()
         self.cdc_clock_signals: OrderedDict[str, SignalNode] = OrderedDict()
+        self.cdc_foreign_clock_paths: set[str] = set()
 
         # Track any referenced enums
         self.user_enums: list[type[Any]] = []

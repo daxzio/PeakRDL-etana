@@ -147,7 +147,9 @@ class CdcImplementationGenerator:
         pfx = self.domain_prefix(domain)
         lines: list[str] = []
         idx_w = domain.idx_width
-        data_w = domain.data_width
+        data_w = max(
+            (slot.data_width for slot in domain.slots), default=domain.data_width
+        )
         nstages = domain.nstages
         fast_s = "'1" if domain.fast else "'0"
         clk = domain.inst_name
@@ -176,8 +178,10 @@ class CdcImplementationGenerator:
         bus_ff = self.exp.dereferencer.get_always_ff_event(None)
         soft_rst = "'0"
         if domain.soft_reset_signals:
-            sig = next(iter(domain.soft_reset_signals))
-            soft_rst = self.exp.dereferencer.get_resetsignal(sig)
+            path = next(iter(domain.soft_reset_signals))
+            sig = self.exp.ds.out_of_hier_signals.get(path)
+            if sig is not None:
+                soft_rst = self.exp.dereferencer.get_resetsignal(sig)
         if soft_rst == "'0":
             rst_conn = rst_name
         else:

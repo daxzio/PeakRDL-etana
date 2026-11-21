@@ -35,6 +35,15 @@ class CdcFast(UDPDefinition):
         return False
 
 
+class CdcFastModeEn(UDPDefinition):
+    name = "cdc_fast_mode_en"
+    valid_components = {Signal}  # noqa: RUF012
+    valid_type = bool
+
+    def get_unassigned_default(self, node: Node) -> Any:
+        return False
+
+
 class CdcNstages(UDPDefinition):
     name = "cdc_nstages"
     valid_components = {Signal}  # noqa: RUF012
