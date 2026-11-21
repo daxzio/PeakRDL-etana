@@ -70,7 +70,40 @@ def test_cdc_rejects_wide_reg():
 
 
 def test_scan_groups(tmp_path):
-    rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
+    rdl = """
+        addrmap top {
+            default regwidth = 16;
+            default accesswidth = 16;
+            signal {} sync_clk;
+            reg {
+                cdc_clk = sync_clk; buffer_writes;
+                field { sw = rw; hw = r; } v[11:0] = 0xF00;
+            } thr_hi @0x04;
+            reg {
+                cdc_clk = sync_clk; buffer_writes;
+                field { sw = rw; hw = r; } v[11:0] = 0x100;
+            } thr_lo @0x00;
+            thr_lo->wbuffer_trigger = thr_hi;
+            reg {
+                cdc_clk = sync_clk; buffer_reads;
+                field { sw = r; hw = w; } cap[7:0] = 0;
+            } sts_cap @0x10;
+            reg {
+                cdc_clk = sync_clk; buffer_reads;
+                field { sw = r; hw = w; } a[7:0] = 0;
+            } sts_a @0x08;
+            reg {
+                cdc_clk = sync_clk; buffer_reads;
+                field { sw = r; hw = w; } b[7:0] = 0;
+            } sts_b @0x0C;
+            sts_a->rbuffer_trigger = sts_cap;
+            sts_b->rbuffer_trigger = sts_cap;
+            reg {
+                cdc_clk = sync_clk;
+                field { sw = r; hw = w; } v[7:0] = 0;
+            } plain_sts @0x14;
+        };
+        """
     ds = _scan(rdl, tmp_path)
     assert list(ds.cdc_domains) == ["top.sync_clk"]
     dom = ds.cdc_domains["top.sync_clk"]

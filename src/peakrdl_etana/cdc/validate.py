@@ -140,7 +140,7 @@ class CdcDesignValidator(RDLListener):
         key = clk.get_path()
         rs = node.get_property("resetsignal")
         bucket = self._domain_resets.setdefault(key, set())
-        bucket.add(rs)
+        bucket.add(rs.get_path() if rs is not None else None)
 
     def exit_Addrmap(self, node) -> None:
         if node != self.top_node:
