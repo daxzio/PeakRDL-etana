@@ -26,6 +26,8 @@ logic obi_rdone;
 logic rsp_take;
 logic exec_result_valid;
 logic presenting_live;
+logic obi_in_reset;
+assign obi_in_reset = {{get_resetsignal(cpuif.reset)}};
 assign cpuif_ack = cpuif_rd_ack | cpuif_wr_ack;
 assign exec_result_valid = exec_held | (exec_valid & cpuif_ack);
 assign presenting_live = exec_result_valid & ~rsp_valid;
@@ -35,7 +37,7 @@ assign {{cpuif.signal("err")}} = rsp_valid ? rsp_err_q : (exec_held ? exec_err_q
 assign {{cpuif.signal("rid")}} = rsp_valid ? rid_q : (exec_held ? exec_rid_q : rid_inflight);
 assign obi_rdone = {{cpuif.signal("rvalid")}} & {{cpuif.signal("rready")}};
 assign rsp_take = exec_result_valid & (~rsp_valid | {{cpuif.signal("rready")}});
-assign {{cpuif.signal("gnt")}} = ~{{get_resetsignal(cpuif.reset)}} & (~exec_valid | rsp_take){% if ds.has_early_external_read %}
+assign {{cpuif.signal("gnt")}} = ~obi_in_reset & (~exec_valid | rsp_take){% if ds.has_early_external_read %}
     // Early read strobe shares the 1-port hwif with the registered write pulse.
     // Do not accept a read on the same cycle a write is issued to the SRAM.
     & ~(cpuif_req & cpuif_req_is_wr & ~{{cpuif.signal("we")}}){% endif %};
