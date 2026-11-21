@@ -308,6 +308,7 @@ class DesignState:
         self.generate_template = kwargs.pop("generate_template", False)  # type: bool
         self.err_if_bad_addr = kwargs.pop("err_if_bad_addr", False)  # type: bool
         self.err_if_bad_rw = kwargs.pop("err_if_bad_rw", False)  # type: bool
+        self.sync_cell = kwargs.pop("sync_cell", None)  # type: str | None
 
         # ------------------------
         # Info about the design

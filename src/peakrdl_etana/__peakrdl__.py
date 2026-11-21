@@ -239,6 +239,13 @@ class Exporter(ExporterSubcommandPlugin):
             help="""Generate error responses for reads to write-only registers or writes to read-only registers""",
         )
 
+        arg_group.add_argument(
+            "--sync-cell",
+            metavar="NAME",
+            default=None,
+            help="""Instantiate module NAME for each CDC synchronizer instead of inline flops""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -310,4 +317,5 @@ class Exporter(ExporterSubcommandPlugin):
             generate_template=options.generate_template,
             err_if_bad_addr=options.err_if_bad_addr,
             err_if_bad_rw=options.err_if_bad_rw,
+            sync_cell=options.sync_cell,
         )

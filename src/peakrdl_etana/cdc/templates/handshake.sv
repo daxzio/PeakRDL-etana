@@ -14,7 +14,7 @@ assign {{P}}_arst = {{bus_rst_ah}};
 {%- endif %}
 logic {{P}}_dst_rst;
 logic {{P}}_rst_sync_q;
-{{macros.sync(P ~ "_rst_sync", P ~ "_rst_sync_q", "1'b1", clk, P ~ "_arst", nstages)}}
+{{macros.sync(P ~ "_rst_sync", P ~ "_rst_sync_q", "1'b1", clk, P ~ "_arst", nstages, sync_cell)}}
 assign {{P}}_dst_rst = ~{{P}}_rst_sync_q;
 
 logic [{{nslots-1}}:0] {{P}}_slot_req;
@@ -61,7 +61,7 @@ logic [{{idx_width-1}}:0] {{P}}_idx;
 logic [{{data_width-1}}:0] {{P}}_wr_data;
 logic [{{data_width-1}}:0] {{P}}_wr_biten;
 logic [{{data_width-1}}:0] {{P}}_rdata;
-{{macros.sync(P ~ "_req_sync", P ~ "_req_sync_q", P ~ "_req_tgl", clk, P ~ "_dst_rst", nstages)}}
+{{macros.sync(P ~ "_req_sync", P ~ "_req_sync_q", P ~ "_req_tgl", clk, P ~ "_dst_rst", nstages, sync_cell)}}
 
 always_ff @(posedge {{clk}} or posedge {{P}}_dst_rst) begin
     if({{P}}_dst_rst) begin
@@ -94,7 +94,7 @@ end
 assign {{P}}_dst_rd_data = {{P}}_slot_rd_data[{{P}}_dst_idx];
 
 // Bus domain
-{{macros.sync(P ~ "_ack_sync", P ~ "_ack_sync_q", P ~ "_ack_tgl", "clk", P ~ "_arst", nstages)}}
+{{macros.sync(P ~ "_ack_sync", P ~ "_ack_sync_q", P ~ "_ack_tgl", "clk", P ~ "_arst", nstages, sync_cell)}}
 
 localparam logic [1:0] {{P}}_IDLE = 2'd0;
 localparam logic [1:0] {{P}}_BUSY = 2'd1;

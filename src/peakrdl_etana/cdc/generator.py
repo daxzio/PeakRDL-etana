@@ -71,6 +71,7 @@ class CdcImplementationGenerator:
             "P": prefix,
             "clk": domain.inst_name,
             "nstages": domain.nstages,
+            "sync_cell": ds.sync_cell,
             "nslots": domain.n_slots,
             "idx_width": domain.idx_width,
             "data_width": domain.data_width,
