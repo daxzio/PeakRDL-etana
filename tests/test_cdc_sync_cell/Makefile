@@ -11,6 +11,8 @@ PEAKRDL_ARGS+=--default-reset $(CDC_RESET)
 endif
 PEAKRDL_ARGS+=--sync-cell cdc_tb_sync
 
+# Set before the include: the xezim makefile copies the list when it is read.
+VERILOG_SOURCES=./etana-rtl/*.sv ./cdc_tb_sync.sv
+
 include ../tests.mak
-VERILOG_SOURCES+=./cdc_tb_sync.sv
 YOSYS_EXTRA_SOURCES=./cdc_tb_sync.sv
