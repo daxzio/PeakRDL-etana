@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -907,6 +908,9 @@ def test_ports(tmp_path):
 
 
 @pytest.mark.parametrize("style", sorted(_STYLES))
+@pytest.mark.skipif(
+    not shutil.which("verilator"), reason="verilator not on PATH (Verilator CI only)"
+)
 def test_lint(tmp_path, style):
     rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
     out = _export(rdl, tmp_path, **_STYLES[style])
@@ -914,6 +918,9 @@ def test_lint(tmp_path, style):
 
 
 @pytest.mark.parametrize("style", sorted(_STYLES))
+@pytest.mark.skipif(
+    not shutil.which("verilator"), reason="verilator not on PATH (Verilator CI only)"
+)
 def test_keywords(tmp_path, style):
     rdl = _top(
         r"""
