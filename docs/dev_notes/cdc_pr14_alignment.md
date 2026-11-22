@@ -33,11 +33,12 @@ OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure
 `verilog_reg_only` remains in `hdl-src/etana_udps.rdl` only (not in
 `regblock_udps.rdl` on either side).
 
-## Known test caveat
+## `test_cdc_groups.test_random`
 
-`test_cdc_groups.test_random` is flaky under Icarus on both `dk_cdc` and the pr14
-reference tree (same assertion at the same step class). All other group tests pass;
-treat as cocotb/environment timing, not a generator regression, until investigated.
+The pr14 test compared full bus read data to the model. APB often matches with
+equality; AHB, Wishbone, OBI, AXI, and passthrough can leave unused high bits set on
+narrow CDC config reads. The test now masks each read with the field width (or
+``0xFF`` for status), same as ``expect_read``.
 
 ## After merge to `develop`
 

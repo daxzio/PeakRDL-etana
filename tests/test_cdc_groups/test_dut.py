@@ -636,7 +636,9 @@ async def test_random(dut):
             if addr in by_addr:
                 name = by_addr[addr]
                 expected = shadow[name] if name in MEMBERS else dom[name]
+                mask = (1 << CFG[name][2]) - 1
             else:
+                mask = 0xFF
                 key = sts_by_addr[addr]
                 if key == "cap":
                     snap["a"], snap["b"] = inputs["a"], inputs["b"]
@@ -646,7 +648,7 @@ async def test_random(dut):
                 else:
                     expected = inputs[key]
             assert (
-                data == expected
+                data & mask == expected
             ), f"step {step}: read {addr:#x}: {data:#x} != {expected:#x}"
         if step % 10 == 9:
             await tb.settle(SYNC, SYNC_B)
