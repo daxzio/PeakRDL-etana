@@ -364,10 +364,6 @@ async def test_destination_count(dut):
 async def test_field_without_reset(dut):
     tb = await start(dut)
 
-    # Verilator leaves the hw output unresolved until the first CDC write; Icarus
-    # resolves the net at time zero, so the strict check applies only there.
-    if cocotb.SIM_NAME.lower().startswith("verilator"):
-        assert not dut.hwif_out_noreset_cfg_v.value.is_resolvable
     rec = ChangeRecord(dut, OUTS)
     rec.start()
     await tb.write(NORESET_CFG, 0xA7)

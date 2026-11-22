@@ -35,9 +35,10 @@ OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure
 
 ## `test_cdc.test_field_without_reset`
 
-pr14 checked on Icarus that a field without hw reset leaves the CDC output
-unresolved; Icarus here resolves the net at time zero. The undriven check runs on
-Verilator only; the write/read behavior is still tested on all simulators.
+pr14 asserted (on Icarus/Verilator) that a field without hw reset leaves the CDC
+``hwif_out`` unresolved until the first write. Etana ties destination config
+outputs to their reset image, so the net is defined at time zero. The cocotb test
+keeps the write/update checks only.
 
 ## `test_cdc_groups.test_random`
 
