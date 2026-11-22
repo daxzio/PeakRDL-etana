@@ -240,10 +240,15 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
   ``rst`` and ``rst_n``. Its release needs ``cdc_nstages`` domain clock edges
   after the bus-side reset releases.
 * The flops in the domain (storage, snapshots, read data, acknowledge toggle)
-  reset asynchronously from the domain reset.
+  reset asynchronously from the domain reset. The storage of a field without a
+  reset value has no reset.
 * The bus-side copies of write members reset from the bus reset, in the
   block's reset style. A bus reset therefore resets the copy and the domain
-  storage of a member to the field's reset value.
+  storage of a member to the field's reset value. The bits of a field without
+  a reset value have no reset. A member with such a field has one flop group
+  per field, ``cdc_copy_<field path>_value``. Its copy ``cdc_shadow_<reg path>``
+  is the concatenation of these groups, with constant 0 in the bits that belong
+  to no field.
 
 With ``cdc_fast_mode_en`` and the input at 1, wait for the domain reset to
 release before the first access.

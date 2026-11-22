@@ -33,13 +33,6 @@ OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure
 `verilog_reg_only` remains in `hdl-src/etana_udps.rdl` only (not in
 `regblock_udps.rdl` on either side).
 
-## `test_cdc.test_field_without_reset`
-
-pr14 asserted (on Icarus/Verilator) that a field without hw reset leaves the CDC
-``hwif_out`` unresolved until the first write. Etana ties destination config
-outputs to their reset image, so the net is defined at time zero. The cocotb test
-keeps the write/update checks only.
-
 ## After merge to `develop`
 
 Close or supersede GitHub PR #14 once `dk_cdc` is merged and CI is green on the

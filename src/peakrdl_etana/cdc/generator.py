@@ -36,10 +36,10 @@ class CdcImplementationGenerator:
         stb = self.exp.dereferencer.get_access_strobe(reg)
         return f"{stb.path}{stb.index_str}"
 
-    def _reset_value(self, field: FieldNode) -> str:
+    def _reset_value(self, field: FieldNode) -> str | None:
         reset = field.get_property("reset", default=None)
         if reset is None:
-            return f"{field.width}'b0"
+            return None
         return str(self.exp.dereferencer.get_value(reset, field.width))
 
     def _pack_reg_expr(self, reg: RegNode) -> str:
@@ -460,6 +460,10 @@ class CdcImplementationGenerator:
         p = self._path_indexed(field)
         return f"cdc_dst_{p.path}_value{p.index_str}"
 
+    def copy_field_ref(self, field: FieldNode) -> str:
+        p = self._path_indexed(field)
+        return f"cdc_copy_{p.path}_value{p.index_str}"
+
     def pack_ref(self, reg: RegNode) -> str:
         p = self._path_indexed(reg)
         return f"cdc_pack_{p.path}{p.index_str}"
@@ -500,13 +504,121 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
         packed = f" [{rw - 1}:0]" if rw > 1 else ""
         self.push_top(f"logic{packed} {basename}{dims};")
 
-    def _decl_field(self, field: FieldNode) -> None:
+    def _decl_field(self, field: FieldNode, prefix: str = "cdc_dst") -> None:
         p = self._path_indexed(field)
         w = field.width
         dims = unpacked_array_suffix(p.array_dimensions)
-        base = f"cdc_dst_{p.path}_value"
+        base = f"{prefix}_{p.path}_value"
         packed = f" [{w - 1}:0]" if w > 1 else ""
         self.push_top(f"logic{packed} {base}{dims};")
+
+    def _emit_copy_ff(self, node: RegNode, sh: str) -> None:
+        """Emit the bus-side copy of a register.
+
+        A register in which every field has a reset value is one flop group with one
+        reset. Otherwise each field gets its own flop variable and always_ff, because a
+        flop without a reset term in a block with an asynchronous reset infers a gated
+        flop, and blocks with different clocking must not drive one variable.
+        """
+        rw = node.get_property("regwidth")
+        aw = node.get_property("accesswidth")
+        # (strobe, lowest copy bit of the subword, subword width)
+        words = []
+        if rw <= aw:
+            words.append((self.impl.reg_strobe(node), 0, rw))
+        else:
+            stb = self.exp.dereferencer.get_access_strobe(node, reduce_substrobes=False)
+            for word in range(rw // aw):
+                words.append((f"{stb.path}{stb.index_str}[{word}]", word * aw, aw))
+
+        fields = list(node.fields())
+        if all(f.get_property("reset", default=None) is not None for f in fields):
+            loads = []
+            for strobe, base, width in words:
+                loads.append(
+                    (
+                        strobe,
+                        sh if rw <= aw else f"{sh}[{base + width - 1}:{base}]",
+                        f"decoded_wr_biten[{width - 1}:0]",
+                        f"decoded_wr_data[{width - 1}:0]",
+                    )
+                )
+            self._emit_copy_block(
+                self.bus_ff, (sh, self.impl._concat_reg_reset(node)), loads
+            )
+            return
+
+        # Bits of no field need no flop.
+        parts: list[str] = []
+        low = rw
+        for field in sorted(fields, key=lambda f: f.low, reverse=True):
+            if low > field.high + 1:
+                parts.append(f"{low - field.high - 1}'d0")
+            parts.append(self.impl.copy_field_ref(field))
+            low = field.low
+        if low > 0:
+            parts.append(f"{low}'d0")
+        self.add_content(f"    assign {sh} = {{{', '.join(parts)}}};")
+
+        for field in fields:
+            self._decl_field(field, "cdc_copy")
+            copy = self.impl.copy_field_ref(field)
+            loads = []
+            for strobe, base, width in words:
+                hi = min(field.high, base + width - 1)
+                lo = max(field.low, base)
+                if hi < lo:
+                    continue
+                loads.append(
+                    (
+                        strobe,
+                        self._bit_slice(
+                            copy, hi - field.low, lo - field.low, field.width
+                        ),
+                        self._bit_slice("decoded_wr_biten", hi - base, lo - base, rw),
+                        self._bit_slice("decoded_wr_data", hi - base, lo - base, rw),
+                    )
+                )
+            reset_value = self.impl._reset_value(field)
+            if reset_value is None:
+                self._emit_copy_block("@(posedge clk)", None, loads)
+            else:
+                self._emit_copy_block(self.bus_ff, (copy, reset_value), loads)
+
+    @staticmethod
+    def _bit_slice(name: str, hi: int, lo: int, width: int) -> str:
+        if width == 1:
+            return name
+        return f"{name}[{hi}]" if hi == lo else f"{name}[{hi}:{lo}]"
+
+    def _emit_copy_block(
+        self,
+        event: str,
+        reset: tuple[str, str] | None,
+        loads: list[tuple[str, str, str, str]],
+    ) -> None:
+        self.add_content(f"    always_ff {event} begin")
+        opener = "        if"
+        if reset is not None:
+            self.add_content(f"        if({self.bus_rst}) begin")
+            self.add_content(f"            {reset[0]} <= {reset[1]};")
+            opener = "        end else if"
+        for strobe, target, biten, data in loads:
+            self.add_content(
+                f"{opener}({strobe} & decoded_req & decoded_req_is_wr) begin"
+            )
+            self.add_content(
+                f"            {target} <= ({target} & ~{biten}) | ({data} & {biten});"
+            )
+            opener = "        end else if"
+        self.add_content("        end")
+        self.add_content("    end")
+
+    def _drop_reset_else(self, start: int) -> None:
+        """Turn the first load branch of a block without a reset into its opening if."""
+        line = self.current_loop.children[start]
+        assert isinstance(line, str) and line.startswith("        else if(")
+        self.current_loop.children[start] = line.replace("else if(", "if(", 1)
 
     def emit(self, top) -> str | None:
         self.start()
@@ -567,49 +679,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
         if write_member:
             sh = self.impl.shadow_ref(node)
             rw = node.get_property("regwidth")
-            aw = node.get_property("accesswidth")
-            reset = f"{rw}'d0"
-            for field in node.fields():
-                if field.get_property("reset", default=None) is not None:
-                    reset = self.impl._concat_reg_reset(node)
-                    break
-            if rw <= aw:
-                segments = [
-                    (
-                        self.impl.reg_strobe(node),
-                        sh,
-                        "decoded_wr_biten",
-                        "decoded_wr_data",
-                    )
-                ]
-            else:
-                stb = self.exp.dereferencer.get_access_strobe(
-                    node, reduce_substrobes=False
-                )
-                segments = []
-                for word in range(rw // aw):
-                    lo = word * aw
-                    hi = lo + aw - 1
-                    segments.append(
-                        (
-                            f"{stb.path}{stb.index_str}[{word}]",
-                            f"{sh}[{hi}:{lo}]",
-                            f"decoded_wr_biten[{aw - 1}:0]",
-                            f"decoded_wr_data[{aw - 1}:0]",
-                        )
-                    )
-            self.add_content(f"    always_ff {self.bus_ff} begin")
-            self.add_content(f"        if({self.bus_rst}) begin")
-            self.add_content(f"            {sh} <= {reset};")
-            for strobe, target, biten, data in segments:
-                self.add_content(
-                    f"        end else if({strobe} & decoded_req & decoded_req_is_wr) begin"
-                )
-                self.add_content(
-                    f"            {target} <= ({target} & ~{biten}) | ({data} & {biten});"
-                )
-            self.add_content("        end")
-            self.add_content("    end")
+            self._emit_copy_ff(node, sh)
 
         for field in node.fields():
             if not field.is_sw_writable:
@@ -617,12 +687,17 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             ident = self.impl.dst_field_ref(field)
             slice_lo = field.low
             slice_hi = field.high
-            self.add_content(
-                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-            )
-            self.add_content(f"        if({pfx}_dst_rst) begin")
-            self.add_content(f"            {ident} <= {self.impl._reset_value(field)};")
-            self.add_content("        end")
+            reset_value = self.impl._reset_value(field)
+            if reset_value is None:
+                self.add_content(f"    always_ff @(posedge {clk}) begin")
+            else:
+                self.add_content(
+                    f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
+                )
+                self.add_content(f"        if({pfx}_dst_rst) begin")
+                self.add_content(f"            {ident} <= {reset_value};")
+                self.add_content("        end")
+            body_start = len(self.current_loop.children)
             if plain_write:
                 biten = (
                     f"{pfx}_dst_wr_biten[{slice_hi}:{slice_lo}]"
@@ -655,6 +730,8 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
                 self.add_content(f"            {ident} <= {src};")
             self.add_content("        end")
             self.add_content("    end")
+            if reset_value is None:
+                self._drop_reset_else(body_start)
 
         key = node.get_path()
         if key not in self._packed:

@@ -1,4 +1,4 @@
-UDPS?=../../hdl-src/etana_udps.rdl
+UDPS?=../regblock_udps.rdl ../../hdl-src/etana_udps.rdl
 
 CDC_RESET?=
 CDC_NSTAGES3?=
