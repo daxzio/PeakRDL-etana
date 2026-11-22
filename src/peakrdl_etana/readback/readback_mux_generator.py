@@ -1,4 +1,3 @@
-import math
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -13,8 +12,6 @@ from systemrdl.node import (
 from systemrdl.walker import WalkerAction
 
 from ..cdc.util import (
-    cdc_array_dims,
-    cdc_reg_domain_key,
     cdc_uses_cell_access,
     get_cdc_clk,
     is_cdc_group_member,
@@ -177,20 +174,6 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
     def get_readback_data_var(self, addr: str) -> str:
         return "readback_data_var"
 
-    def _cdc_read_span(self, reg: RegNode) -> tuple[int, int]:
-        """Lowest bit and width of the fields packed into a read-group payload."""
-        lo = reg.get_property("regwidth")
-        hi = 0
-        found = False
-        for field in reg.fields():
-            if field.is_sw_readable or field.is_hw_readable:
-                found = True
-                lo = min(lo, field.low)
-                hi = max(hi, field.high)
-        if not found:
-            return 0, reg.get_property("regwidth")
-        return lo, hi - lo + 1
-
     def _cdc_shadow_name(self, reg: RegNode) -> str:
         from ..utils import IndexedPath
 
@@ -236,34 +219,10 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         pfx = f"cdc_{kwf(clk.inst_name)}"
         addr = self._get_address_str(node)
         regwidth = node.get_property("regwidth")
-        key = cdc_reg_domain_key(node)
-        domain = self.ds.cdc_domains[key]
-        slot = domain.slot_for_reg(node)
         conditional = self.get_addr_compare_conditional(addr)
         var = self.get_readback_data_var(addr)
         self.add_content(f"if({conditional}) begin")
-        from ..cdc.model import CdcSlotKind
-
-        if (
-            slot is not None
-            and slot.kind == CdcSlotKind.READ_GROUP
-            and len(slot.regs) > 1
-        ):
-            # The handshake returns fields packed by address, not full regwidth slots.
-            offset = 0
-            node_path = node.get_path()
-            for reg in sorted(slot.regs, key=lambda r: r.raw_absolute_address):
-                field_lo, span = self._cdc_read_span(reg)
-                elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
-                if reg.get_path() == node_path:
-                    hi = field_lo + span - 1
-                    self.add_content(
-                        f"    {var}[{hi}:{field_lo}] = "
-                        f"{pfx}_rd_data[{offset + span - 1}:{offset}];"
-                    )
-                    break
-                offset += span * elems
-        elif regwidth < self.exp.cpuif.data_width:
+        if regwidth < self.exp.cpuif.data_width:
             self.add_content(
                 f"    {var}[{regwidth - 1}:0] = {pfx}_rd_data[{regwidth - 1}:0];"
             )
