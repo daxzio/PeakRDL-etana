@@ -168,7 +168,9 @@ Read group
     A read of the trigger crosses. On the domain clock edge of that access,
     every member's status inputs are captured into a snapshot in the domain, and
     the trigger's own value is captured into the read data. The trigger has no
-    snapshot, and its read returns only its own value. A read of a member
+    snapshot, and its read returns only its own value. A write to a trigger
+    with a config field crosses and is posted, merges per bit like a plain
+    register, and loads no snapshot. A read of a member
     returns the snapshot and does not cross. A snapshot is loaded only by a read
     of its own trigger. It resets to 0, so a member reads 0 until the first
     trigger read.
