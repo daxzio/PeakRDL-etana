@@ -218,12 +218,6 @@ class CdcImplementationGenerator:
         bus_rst_ah = self.exp.dereferencer.get_resetsignal(None)
         bus_ff = self.exp.dereferencer.get_always_ff_event(None)
         reset_ah = bus_rst_ah
-        if domain.soft_reset_signals:
-            path = next(iter(domain.soft_reset_signals))
-            sig = self.exp.ds.out_of_hier_signals.get(path)
-            if sig is not None:
-                soft_rst = self.exp.dereferencer.get_resetsignal(sig)
-                reset_ah = f"(({bus_rst_ah}) | ({soft_rst}))"
 
         # The edge goes on the port: an event control on ~rst_n is not portable.
         rst_name = self.exp.dereferencer.default_resetsignal_name
@@ -621,7 +615,6 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
         self.exp = impl.exp
         self.domain_key = domain.clk_signal.get_path()
         self.pfx = impl.domain_prefix(domain)
-        self.idx_w = domain.idx_width
         self.data_w = max(
             (slot.data_width for slot in domain.slots), default=domain.data_width
         )

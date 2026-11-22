@@ -95,7 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CDC user guide**: ``docs/udps/cdc.rst`` brought in line with PR #14 (handshake,
   groups, arrays, fast mode, reset, example design).
 - **CDC PR #14 tracking**: ``docs/dev_notes/cdc_pr14_alignment.md`` lists merged
-  items, prior ``dk_cdc`` work, and intentional exclusions (AHB reset HREADY, CI pins).
+  items (including AHB HREADY high in reset, commit ``e4f718e``), prior ``dk_cdc`` work,
+  and intentional exclusions (CI pins).
 - **COCOTB_MIGRATION_GUIDE.md**: Comprehensive updates with Oct 2025 migration lessons
   - Field naming differences between regblock and etana
   - External emulator patterns and best practices

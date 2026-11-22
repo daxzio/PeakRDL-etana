@@ -38,16 +38,6 @@ def cdc_reg_class(reg: RegNode) -> CdcRegClass:
     return CdcRegClass.PLAIN
 
 
-def cdc_crosses(reg: RegNode) -> bool:
-    """True when an access to the register goes through the domain's handshake."""
-    if not is_cdc_reg(reg):
-        return False
-    return cdc_reg_class(reg) not in (
-        CdcRegClass.WRITE_MEMBER,
-        CdcRegClass.READ_MEMBER,
-    )
-
-
 def cdc_readable_mask(reg: RegNode) -> int | None:
     """Bits of the register that belong to sw-readable fields, or None when all of them do."""
     mask = 0

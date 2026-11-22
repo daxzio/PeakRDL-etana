@@ -10,6 +10,7 @@ what was already merged earlier on `dk_cdc`, and what we deliberately did not ta
 |------|--------|
 | **Tests** | `tests/test_cdc_sync_cell/` (`--sync-cell`, `cdc_tb_sync.sv`); `tests/test_cdc_example/`; pr14-scale `tests/test_cdc_groups/` (multi-domain RDL, D4 snapshot checks, expanded cocotb); full `tests/test_cdc/` harness (21 cocotb tests, Makefile `CDC_*`); expanded `cdc_reset_tb.py` and four tests per `test_cdc_rst*` / `test_cdc_arst*` dir |
 | **Reset suites** | CDC reset Makefiles export `CDC_RESET`, `CDC_NSTAGES3`, `CDC_FAST_PROP`, `CDC_FAST_MODE`, `CDC_T_DST_PS` for all four `--default-reset` styles |
+| **AHB (F3)** | Commit `e4f718e`: `hready_int` no longer includes the reset term, so HREADY is high in reset. `tests/interfaces/ahb_wrapper.py` makes the test master wait for reset release (`reset_sense`) before a transfer. `tests/test_ahb_pipeline` checks it |
 | **Yosys** | `YOSYS_EXTRA_SOURCES` in `tests/tests.mak`; `read_slang` in the yosys recipe; `tests/synthesis.ys` no longer re-reads RTL |
 | **test_all.sh** | Skip `test_cdc_sync_cell` and `test_cdc_example` for regblock / GHDL / NVC / XEZIM (etana-only UDPs and sync-cell TB) |
 | **Wishbone (F1/F2)** | `is_active` capture/stall path for blocks with CDC registers only; `tests/test_wishbone_pipeline` uses shared `cdc_tb.CdcTB` |
@@ -26,7 +27,6 @@ CDC buffer trigger helpers requiring `cdc_clk`; Verilator pytest skips in Icarus
 
 | Id | Topic | Reason |
 |----|--------|--------|
-| **F3** | AHB `HREADY` high in reset | Deliberate `dk_cdc` / product choice |
 | **F4** | Pin Icarus and Yosys versions in CI | User decision: stay on moving toolchains |
 
 OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure.
