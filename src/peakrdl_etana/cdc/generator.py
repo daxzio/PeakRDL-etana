@@ -179,46 +179,9 @@ class CdcImplementationGenerator:
             return pieces[0]
         return "{" + ", ".join(pieces) + "}"
 
-    def _hwif_vectored_reg(self, reg: RegNode) -> str:
-        for field in reg.fields():
-            if not (field.is_hw_readable or field.is_hw_writable):
-                continue
-            ident = str(self.exp.hwif.get_input_identifier(field))
-            root = ident.split("[", 1)[0]
-            suffixes = self._static_array_suffixes(reg)
-            if len(suffixes) == 1:
-                return root + suffixes[0]
-            elems = [root + sfx for sfx in reversed(suffixes)]
-            return "{" + ", ".join(elems) + "}"
-        return self._pack_reg_expr(reg)
-
-    def _reg_read_span(self, reg: RegNode) -> int:
-        lo = reg.get_property("regwidth")
-        hi = 0
-        found = False
-        for field in reg.fields():
-            if field.is_sw_readable or field.is_hw_readable:
-                found = True
-                lo = min(lo, field.low)
-                hi = max(hi, field.high)
-        if not found:
-            return reg.get_property("regwidth")
-        return hi - lo + 1
-
-    def _group_read_concat_width(self, slot_regs: list[RegNode]) -> int:
-        elems = lambda r: math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
-        return sum(self._reg_read_span(r) * elems(r) for r in slot_regs)
-
     def _group_write_concat_width(self, slot_regs: list[RegNode]) -> int:
         elems = lambda r: math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
         return sum(r.get_property("regwidth") * elems(r) for r in slot_regs)
-
-    def _concat_slot_read_live(self, slot_regs: list[RegNode]) -> str:
-        regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
-        pieces = [self._hwif_vectored_reg(reg) for reg in regs]
-        if len(pieces) == 1:
-            return pieces[0]
-        return "{" + ", ".join(pieces) + "}"
 
     def gen_domain(self, domain: CdcDomain) -> str:
         pfx = self.domain_prefix(domain)
@@ -717,7 +680,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
 
         if slot.kind == CdcSlotKind.WRITE_GROUP:
             self._decl_vec(node, f"cdc_shadow_{self._path_indexed(node).path}")
-        if slot.kind == CdcSlotKind.READ_GROUP:
+        if slot.kind == CdcSlotKind.READ_GROUP and not is_cdc_read_trigger(node):
             self._decl_vec(node, f"cdc_snap_{self._path_indexed(node).path}")
 
         for field in node.fields():
@@ -834,7 +797,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             packed_ty = f" [{rw - 1}:0]" if rw > 1 else ""
             self.push_top(f"logic{packed_ty} cdc_pack_{p.path}{dims};")
             pack = self.impl.pack_ref(node)
-            if slot.kind == CdcSlotKind.READ_GROUP:
+            if slot.kind == CdcSlotKind.READ_GROUP and not is_cdc_read_trigger(node):
                 self.add_content(f"    assign {pack} = {self.impl.snapshot_ref(node)};")
             elif slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node):
                 self.add_content(f"    assign {pack} = {self.impl.shadow_ref(node)};")
@@ -843,7 +806,11 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
                     f"    assign {pack} = {self.impl._pack_reg_expr(node)};"
                 )
 
-        if slot.kind == CdcSlotKind.READ_GROUP and slot.trigger is not None:
+        if (
+            slot.kind == CdcSlotKind.READ_GROUP
+            and slot.trigger is not None
+            and not is_cdc_read_trigger(node)
+        ):
             sn = self.impl.snapshot_ref(node)
             rw = node.get_property("regwidth")
             self.add_content(
@@ -864,17 +831,9 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             or (slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node))
             or (slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node))
         ):
-            if slot.kind == CdcSlotKind.SINGLE:
-                pack = self.impl.pack_ref(node)
-                val = pack
+            if slot.kind == CdcSlotKind.SINGLE or slot.kind == CdcSlotKind.READ_GROUP:
+                val = self.impl.pack_ref(node)
                 payload_w = node.get_property("regwidth")
-            elif slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node):
-                val = (
-                    self.impl._concat_slot_read_live(slot.regs)
-                    if len(slot.regs) > 1
-                    else self.impl._pack_reg_expr(slot.regs[0])
-                )
-                payload_w = self.impl._group_read_concat_width(slot.regs)
             else:
                 val = (
                     self.impl._concat_slot_read(slot.regs)

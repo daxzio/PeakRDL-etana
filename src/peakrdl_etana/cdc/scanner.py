@@ -130,7 +130,10 @@ class CdcScanner(RDLListener):
                 trigger = next(
                     (r for r in members if is_cdc_write_trigger(r)), members[-1]
                 )
-                w = sum(self._reg_data_width(r) for r in members)
+                w = sum(
+                    r.get_property("regwidth") * math.prod(cdc_array_dims(r))
+                    for r in members
+                )
                 data_w = max(data_w, w)
                 slots.append(
                     CdcSlot(
@@ -148,7 +151,7 @@ class CdcScanner(RDLListener):
                 trigger = next(
                     (r for r in members if is_cdc_read_trigger(r)), members[0]
                 )
-                w = sum(self._reg_data_width(r) for r in members)
+                w = trigger.get_property("regwidth")
                 data_w = max(data_w, w)
                 slots.append(
                     CdcSlot(

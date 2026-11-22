@@ -166,7 +166,8 @@ Write group
 Read group
     A read of the trigger crosses. On the domain clock edge of that access,
     every member's status inputs are captured into a snapshot in the domain, and
-    the trigger's own value is captured into the read data. A read of a member
+    the trigger's own value is captured into the read data. The trigger has no
+    snapshot, and its read returns only its own value. A read of a member
     returns the snapshot and does not cross. A snapshot is loaded only by a read
     of its own trigger. It resets to 0, so a member reads 0 until the first
     trigger read.
@@ -193,7 +194,7 @@ A write member or a read member may have ``regwidth`` greater than
 Each subword write to a wide write member updates that subword of the bus-side
 copy, with a per-bit merge. A subword that is not written keeps its value. A
 config field may span subwords. The trigger write loads the whole register on one
-domain clock edge. The trigger read captures the whole register into the
+domain clock edge. The trigger read captures the whole member into its
 snapshot on one edge, and each subword read of the member returns that subword
 of the snapshot.
 
