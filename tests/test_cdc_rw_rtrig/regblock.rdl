@@ -1,0 +1,8 @@
+addrmap top {
+    default regwidth = 32; default accesswidth = 32;
+    signal { } sync_clk;
+    reg { cdc_clk = sync_clk; buffer_reads; field { sw=r; hw=w; } m[7:0] = 0; } rmem @0x00;
+    reg { cdc_clk = sync_clk; buffer_reads; field { sw=rw; hw=r; } sel[7:0] = 0x12; } rtrg @0x04;
+    rmem->rbuffer_trigger = rtrg;
+    reg { cdc_clk = sync_clk; buffer_reads; field { sw=rw; hw=r; } sel[7:0] = 0x34; } solo @0x08;
+};
