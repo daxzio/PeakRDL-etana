@@ -51,7 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   register-array handshake sized per element; write groups load members from
   bus-side shadows (trigger read crosses); fields without an RDL reset omit async
   reset in the domain and in write-member copies (matches bus-side field logic).
-  Covered by ``tests/test_cdc*``, ``tests/test_cdc_trigger``, and
+  ``cpuif_reset`` frees a bus stalled on a stopped domain clock (ownership flags;
+  see ``docs/dev_notes/cdc_cpuif_reset_firmware.md``). Covered by
+  ``tests/test_cdc*``, ``tests/test_cdc_cpuif_reset``, and
   ``tests/test_cdc_validate``.
 - **Wishbone stall/capture (PR #14 F1/F2)**: Wishbone CPUIF exports of blocks with CDC
   registers use the registered ``is_active`` request path and stall-through-reset

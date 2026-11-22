@@ -12,13 +12,13 @@ Tracking integration of [PR #15](https://github.com/daxzio/PeakRDL-etana/pull/15
 | 9 | `5c63b3f` | Wishbone `has_cdc_regs` + `test_wishbone_stream` |
 | 10 | `c6cf512` | No async reset when field has no RDL reset value |
 | 11 | `36017f9` | Dead code removal, `cdc.rst` net names |
+| 12 | `99f2c97` | `cpuif_reset` stuck-bus recovery + firmware note |
 
 ## Held
 
 | PR commit | SHA | Topic |
 |-----------|-----|--------|
 | 6 | `2576143` | Domain reset only through synchronizer |
-| 12 | `99f2c97` | `cpuif_reset` stuck-bus recovery |
 
 Reference stack with commit 6: branch `dk_cdc_pr15_full_backup`.
 

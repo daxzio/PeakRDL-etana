@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from systemrdl.node import AddressableNode, FieldNode, RegNode
+from systemrdl.node import AddressableNode, FieldNode, RegNode, SignalNode
 from systemrdl.walker import RDLWalker, WalkerAction
 
 from ..forloop_generator import RDLForLoopGenerator
@@ -192,6 +192,7 @@ class CdcImplementationGenerator:
                 idx_w,
                 data_w,
                 fast_s,
+                self.exp.ds.top_node.cpuif_reset is not None,
             )
         )
         lines.append("    /* verilator lint_on UNUSED */")
@@ -247,9 +248,15 @@ class CdcImplementationGenerator:
         idx_w: int,
         data_w: int,
         fast_s: str,
+        own: bool,
     ) -> list[str]:
-        """Inline toggle handshake. Synchronizers follow _sync."""
+        """Inline toggle handshake. Synchronizers follow _sync.
+
+        own adds the flags that cpuif_reset clears: see cdc_cpurst_clr.
+        """
         dst_ev = f"@(posedge {clk} or posedge {pfx}_dst_rst)"
+        own_term = f" & {pfx}_own" if own else ""
+        pend_own_term = f" & {pfx}_pend_own" if own else ""
         lines: list[str] = [
             f"    logic {pfx}_req_tgl;",
             f"    logic {pfx}_is_wr;",
@@ -262,6 +269,8 @@ class CdcImplementationGenerator:
             f"    logic {pfx}_req_sync;",
             f"    logic {pfx}_ack_sync;",
         ]
+        if own:
+            lines += [f"    logic {pfx}_own;", f"    logic {pfx}_pend_own;"]
         lines.extend(
             self._sync(
                 f"{pfx}_u_req_sync",
@@ -345,13 +354,7 @@ class CdcImplementationGenerator:
             f"                    {pfx}_nxt_state = {pfx}_FULL;",
             "                end",
             "            end",
-            f"            {pfx}_FULL: begin",
-            f"                if ({pfx}_ack_ok) begin",
-            f"                    {pfx}_acc_done_en = '1;",
-            f"                    {pfx}_acc_issue_en = '1;",
-            f"                    {pfx}_nxt_state = {pfx}_BUSY;",
-            "                end",
-            "            end",
+            *self._full_state(pfx, own),
             "            default: begin",
             f"                {pfx}_nxt_state = {pfx}_IDLE;",
             "            end",
@@ -392,7 +395,7 @@ class CdcImplementationGenerator:
             f"    logic [{idx_w - 1}:0] {pfx}_nxt_idx;",
             f"    logic [{data_w - 1}:0] {pfx}_nxt_wr_data;",
             f"    logic [{data_w - 1}:0] {pfx}_nxt_wr_biten;",
-            f"    assign {pfx}_pend_vld = ({pfx}_state == {pfx}_FULL);",
+            f"    assign {pfx}_pend_vld = ({pfx}_state == {pfx}_FULL){pend_own_term};",
             f"    assign {pfx}_nxt_is_wr = {pfx}_pend_vld ? {pfx}_pend_is_wr : {pfx}_req_is_wr;",
             f"    assign {pfx}_nxt_np = {pfx}_pend_vld ? {pfx}_pend_np : {pfx}_req_np;",
             f"    assign {pfx}_nxt_idx = {pfx}_pend_vld ? {pfx}_pend_idx : {pfx}_req_idx;",
@@ -419,11 +422,97 @@ class CdcImplementationGenerator:
             "    end",
             f"    logic {pfx}_posted_ack;",
             f"    assign {pfx}_posted_ack = {pfx}_acc_issue_en & {pfx}_nxt_is_wr & ~{pfx}_nxt_np;",
-            f"    assign {pfx}_wr_ack = {pfx}_posted_ack | ({pfx}_acc_done_en & {pfx}_is_wr & {pfx}_is_np);",
-            f"    assign {pfx}_rd_ack = {pfx}_acc_done_en & ~{pfx}_is_wr;",
+            (
+                f"    assign {pfx}_wr_ack = {pfx}_posted_ack | "
+                f"({pfx}_acc_done_en & {pfx}_is_wr & {pfx}_is_np{own_term});"
+            ),
+            f"    assign {pfx}_rd_ack = {pfx}_acc_done_en & ~{pfx}_is_wr{own_term};",
             f"    assign {pfx}_rd_data = {pfx}_rdata;",
         ]
+        if own:
+            # No rst: each flag is read only in a state that has set it first.
+            lines += [
+                "    always_ff @(posedge clk) begin",
+                f"        if (cdc_cpurst_clr) {pfx}_own <= '0;",
+                f"        else if ({pfx}_acc_issue_en) {pfx}_own <= '1;",
+                "    end",
+                "    always_ff @(posedge clk) begin",
+                f"        if (cdc_cpurst_clr) {pfx}_pend_own <= '0;",
+                f"        else if ({pfx}_pend_ld) {pfx}_pend_own <= '1;",
+                "    end",
+            ]
         return lines
+
+    @staticmethod
+    def _full_state(pfx: str, own: bool) -> list[str]:
+        if not own:
+            return [
+                f"            {pfx}_FULL: begin",
+                f"                if ({pfx}_ack_ok) begin",
+                f"                    {pfx}_acc_done_en = '1;",
+                f"                    {pfx}_acc_issue_en = '1;",
+                f"                    {pfx}_nxt_state = {pfx}_BUSY;",
+                "                end",
+                "            end",
+            ]
+        return [
+            f"            {pfx}_FULL: begin",
+            f"                if ({pfx}_ack_ok) begin",
+            f"                    {pfx}_acc_done_en = '1;",
+            f"                    if ({pfx}_pend_own | {pfx}_req) begin",
+            f"                        {pfx}_acc_issue_en = '1;",
+            f"                        {pfx}_nxt_state = {pfx}_BUSY;",
+            "                    end else begin",
+            f"                        {pfx}_nxt_state = {pfx}_IDLE;",
+            "                    end",
+            f"                end else if ({pfx}_req & ~{pfx}_pend_own) begin",
+            f"                    {pfx}_pend_ld = '1;",
+            "                end",
+            "            end",
+        ]
+
+    def _cpuif_reset_clear(
+        self, cpuif_reset: SignalNode, first: CdcDomain
+    ) -> tuple[list[str], list[str]]:
+        """Declarations and drivers of cdc_cpurst_clr, the synchronous clear of the flags.
+
+        A synchronous cpuif_reset is the clear. An asynchronous one is synchronized to
+        clk and becomes a one-cycle pulse: a flag cleared next to a clk edge could
+        disagree with the flops that use rst, and a level would also clear the flag of
+        an access that starts after the release. The synchronizer carries the inverted
+        signal, so that its reset value 0 means "in reset" and a cpuif_reset that
+        outlives rst gives no pulse, which could come after the release.
+        """
+        rst_ah = self.exp.dereferencer.get_resetsignal(cpuif_reset)
+        decl = ["    logic cdc_cpurst_clr;"]
+        if not cpuif_reset.get_property("async"):
+            return decl, [f"    assign cdc_cpurst_clr = {rst_ah};"]
+        pfx = self.domain_prefix(first)
+        arst = f"{pfx}_arst"
+        event = f"@(posedge clk or posedge {arst})"
+        sig = str(self.exp.dereferencer.get_value(cpuif_reset))
+        not_rst = f"~{sig}" if cpuif_reset.get_property("activehigh") else sig
+        decl += ["    logic cdc_cpurst_sync_q;", "    logic cdc_cpurst_sync_d;"]
+        drv = self._sync(
+            "cdc_u_cpurst_sync",
+            "cdc_cpurst_sync_q",
+            not_rst,
+            "clk",
+            arst,
+            event,
+            first.nstages,
+        )
+        drv += [
+            f"    always_ff {event} begin",
+            f"        if ({arst}) begin",
+            "            cdc_cpurst_sync_d <= '0;",
+            "        end else begin",
+            "            cdc_cpurst_sync_d <= cdc_cpurst_sync_q;",
+            "        end",
+            "    end",
+            "    assign cdc_cpurst_clr = ~cdc_cpurst_sync_q & cdc_cpurst_sync_d;",
+        ]
+        return decl, drv
 
     def _concat_reg_reset(self, reg: RegNode) -> str:
         width = reg.get_property("regwidth")
@@ -460,7 +549,14 @@ class CdcImplementationGenerator:
     def get_implementation(self) -> str:
         if not self.exp.ds.has_cdc_regs:
             return ""
-        chunks = [self.gen_domain(d) for d in self.exp.ds.cdc_domains.values()]
+        domains = list(self.exp.ds.cdc_domains.values())
+        chunks = [self.gen_domain(d) for d in domains]
+        cpuif_reset = self.exp.ds.top_node.cpuif_reset
+        if cpuif_reset is not None:
+            # The drivers use the first domain's arst, so they follow its text.
+            decl, drv = self._cpuif_reset_clear(cpuif_reset, domains[0])
+            chunks.insert(0, "\n".join(decl))
+            chunks.insert(2, "\n".join(drv))
         return "\n".join(chunks)
 
 

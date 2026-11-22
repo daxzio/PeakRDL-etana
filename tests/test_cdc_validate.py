@@ -351,6 +351,112 @@ def test_cdc_rejects_resetsignal(tmp_path):
     )
 
 
+_CPU_RST_REG = """
+    reg {
+        cdc_clk = sync_clk;
+        field { sw=rw; hw=r; } f[7:0] = 0;
+    } rg @0x0;
+    """
+
+
+def _cpuif_reset_top(
+    kind: str, level: str = "activehigh", clk: str = "sync_clk"
+) -> str:
+    sig = "signal { cpuif_reset; %s; %s; } cpu_rst;" % (kind, level)
+    return _top(_CPU_RST_REG.replace("sync_clk", clk), f"signal {{}} {clk}; {sig}")
+
+
+@pytest.mark.parametrize("kind", ["sync", "async"])
+@pytest.mark.parametrize(
+    "opts",
+    [
+        {},
+        {"default_reset_activelow": True},
+        {"default_reset_async": True},
+        {"default_reset_activelow": True, "default_reset_async": True},
+    ],
+)
+def test_cdc_cpuif_reset_flags(tmp_path, kind, opts):
+    out = _export(_cpuif_reset_top(kind), tmp_path, **opts)
+    text = (out / "top.sv").read_text()
+    assert "cdc_sync_clk_own" in text
+    assert "cdc_sync_clk_pend_own" in text
+    blocks = _ff_blocks(text)
+    for flag in ("cdc_sync_clk_own", "cdc_sync_clk_pend_own"):
+        writers = [(ev, b) for ev, b in blocks if re.search(rf"{flag} <=", b)]
+        assert writers
+        for ev, body in writers:
+            assert ev == "@(posedge clk)"
+            assert body.lstrip().startswith("if (cdc_cpurst_clr)")
+    for net in ("cdc_sync_clk_state", "cdc_sync_clk_req_tgl"):
+        writers = [(ev, b) for ev, b in blocks if re.search(rf"{net} <=", b)]
+        assert writers
+        for ev, body in writers:
+            assert "cpu_rst" not in ev + body
+            assert "cpurst" not in ev + body
+    if kind == "sync":
+        assert "assign cdc_cpurst_clr = hwif_in_cpu_rst;" in text
+        assert "cdc_u_cpurst_sync" not in text
+    else:
+        assert "cdc_u_cpurst_sync" in text
+        assert "{cdc_u_cpurst_sync_ff[0:0], ~hwif_in_cpu_rst}" in text
+        assert "assign cdc_cpurst_clr = ~cdc_cpurst_sync_q & cdc_cpurst_sync_d;" in text
+        assert "cdc_cpurst_sync_d <=" in text
+
+
+@pytest.mark.parametrize("kind", ["sync", "async"])
+def test_cdc_cpuif_reset_activelow(tmp_path, kind):
+    out = _export(_cpuif_reset_top(kind, "activelow"), tmp_path)
+    text = (out / "top.sv").read_text()
+    if kind == "sync":
+        assert "assign cdc_cpurst_clr = ~hwif_in_cpu_rst;" in text
+    else:
+        assert "{cdc_u_cpurst_sync_ff[0:0], hwif_in_cpu_rst}" in text
+
+
+def test_cdc_cpuif_reset_above_top(tmp_path):
+    rdl = """
+        signal { cpuif_reset; activehigh; } cpu_rst;
+        addrmap top {
+            default regwidth = 32;
+            default accesswidth = 32;
+            signal {} sync_clk;
+            reg {
+                cdc_clk = sync_clk;
+                field { sw=rw; hw=r; } f[7:0] = 0;
+            } rg @0x0;
+        };
+        """
+    text = (_export(rdl, tmp_path) / "top.sv").read_text()
+    assert "assign cdc_cpurst_clr = cpu_rst;" in text
+
+
+def test_cdc_without_cpuif_reset_has_no_flags(tmp_path):
+    text = (_export(_top(_CPU_RST_REG), tmp_path) / "top.sv").read_text()
+    assert "_own" not in text
+    assert "cpurst" not in text
+
+
+def test_cdc_cpuif_reset_names_do_not_collide(tmp_path):
+    out = _export(_cpuif_reset_top("async", clk="cpurst"), tmp_path)
+    text = (out / "top.sv").read_text()
+    first, last = _cdc_section_lines(text)
+    names = re.findall(
+        r"^\s*logic\s+(?:\[[^\]]*\]\s*)?(\w+)",
+        "\n".join(text.splitlines()[first - 1 : last]),
+        re.MULTILINE,
+    )
+    assert "cdc_cpurst_clr" in names
+    assert len(names) == len(set(names))
+
+
+def test_cdc_cpuif_reset_sync_cell(tmp_path):
+    out = _export(_cpuif_reset_top("async"), tmp_path, sync_cell="my_sync")
+    text = (out / "top.sv").read_text()
+    assert "my_sync #(.NSTAGES(2)) cdc_u_cpurst_sync" in text
+    assert "cdc_u_cpurst_sync_ff" not in text
+
+
 def test_cdc_rejects_trigger_in_other_domain(tmp_path):
     _export_expect_error(
         _top(
@@ -1007,6 +1113,15 @@ def test_ports(tmp_path):
 def test_lint(tmp_path, style):
     rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
     out = _export(rdl, tmp_path, **_STYLES[style])
+    assert _lint_cdc_section(out / "top.sv") == []
+
+
+@pytest.mark.parametrize("kind", ["sync", "async"])
+@pytest.mark.skipif(
+    not shutil.which("verilator"), reason="verilator not on PATH (Verilator CI only)"
+)
+def test_lint_cpuif_reset(tmp_path, kind):
+    out = _export(_cpuif_reset_top(kind), tmp_path)
     assert _lint_cdc_section(out / "top.sv") == []
 
 

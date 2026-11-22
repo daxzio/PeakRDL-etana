@@ -64,7 +64,8 @@ N + 2 + ceil((N + 2) * T_dst / T_bus) bus cycles, counted from request to
 acknowledge, both inclusive. A write to a group trigger takes the same time.
 
 If a domain clock stops, an access to a register in that domain stalls the bus
-with no timeout.
+with no timeout. A ``cpuif_reset`` signal frees the bus (see
+`CPU interface reset`_).
 
 Fast mode
 ---------
@@ -253,14 +254,55 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
 With ``cdc_fast_mode_en`` and the input at 1, wait for the domain reset to
 release before the first access.
 
+CPU interface reset
+-------------------
+
+A signal with ``cpuif_reset`` in the top-level address map or above resets the
+CPU interface and no field. It frees a bus that a stopped domain clock stalls.
+The domain storage, the snapshots and the bus-side copies keep their values.
+
+The handshake keeps an access that is already issued. It executes when the
+domain clock runs, so a write takes effect then, and its acknowledge is ignored.
+A read stalls the bus as an issued access or in the pending slot. A plain write
+stalls it only in the pending slot. The reset drops the access in the pending
+slot: it never takes effect, as the failed bus access suggests, and the slot is
+free for a new access. Exception: the pending access is still issued, and
+executes, if the issued access completes before the reset reaches the handshake:
+at the latest on the first ``clk`` edge with a synchronous signal asserted, and
+within ``cdc_nstages`` + 1 ``clk`` cycles after an asynchronous signal asserts.
+This cannot happen if the domain clock stops at least ``cdc_nstages`` + 1
+``clk`` cycles before the signal asserts, with the ``cdc_nstages`` of that
+domain, and stays stopped until the signal deasserts. A later access to the
+domain waits for the issued one, so it stalls the bus again while the clock is
+stopped.
+
+A write to a group trigger stalls the bus like a read, as an issued access or in
+the pending slot, and a read of the trigger register after the reset tells
+whether the write took effect.
+
+After the reset, the first access to the domain must be one that crosses (see
+`Register classes`_). When it completes, the abandoned access is over. Before
+that, do not access a group member of the domain: the abandoned access can load
+from a bus-side copy that changes, or change a snapshot that is read.
+
+Start no access while the signal is asserted. An asynchronous signal is
+synchronized to ``clk`` before it reaches the handshake, and must stay asserted
+for at least ``cdc_nstages`` + 2 ``clk`` cycles. The cycle counts that start
+when an asynchronous signal asserts use the ``cdc_nstages`` of the first domain,
+which is the domain of the block's CDC register at the lowest address.
+
+Firmware bring-up checklist (timing, recovery order, group pitfalls):
+``docs/dev_notes/cdc_cpuif_reset_firmware.md``.
+
 Synchronizer cell
 -----------------
 
 By default each synchronizer is a vector of flops in the generated module.
-Each domain has three synchronizers: reset, request and acknowledge. The option
-``--sync-cell NAME`` replaces each of them with an instance of the module
-``NAME``, which the project supplies. The generated module then has no inline
-synchronizer flops.
+Each domain has three synchronizers: reset, request and acknowledge. A block
+with an asynchronous ``cpuif_reset`` signal has one more, on the bus clock, with
+the ``cdc_nstages`` of its first domain. The option ``--sync-cell NAME``
+replaces each of them with an instance of the module ``NAME``, which the
+project supplies. The generated module then has no inline synchronizer flops.
 
 The module has this interface:
 
@@ -298,6 +340,14 @@ named ``<name>_ff``, and its last bit drives the output net. With
 ``cdc_<clk>_u_ack_sync``
     Output net ``cdc_<clk>_ack_sync``. Carries the acknowledge toggle
     ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``.
+
+A block with an asynchronous ``cpuif_reset`` signal has one more synchronizer,
+outside the three of each domain.
+
+``cdc_u_cpurst_sync``
+    Exists once per block. Output net ``cdc_cpurst_sync_q``. Carries the
+    inverted ``cpuif_reset`` signal, 1 while the signal is deasserted, to
+    ``clk``. Reset asynchronously by ``cdc_<clk>_arst`` of the first domain.
 
 The signals below cross without a synchronizer. The handshake holds each one
 stable while the receiving clock samples it; in fast mode this rests on the

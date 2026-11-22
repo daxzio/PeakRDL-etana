@@ -37,8 +37,8 @@ OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure
 
 See `docs/dev_notes/cdc_pr15_cherry_pick.md`. Fixes (commits 1–5), write-group shadows
 (7), fields without RDL reset (10), array handshake (8), Wishbone gating (9), and doc
-cleanup (11) are merged. **Held:** commit 6 (domain reset path) and `99f2c97`
-(`cpuif_reset`).
+cleanup (11), and `cpuif_reset` recovery (12) are merged. **Held:** commit 6 (domain
+reset path). Firmware rules: `docs/dev_notes/cdc_cpuif_reset_firmware.md`.
 
 ## After merge to `develop`
 
