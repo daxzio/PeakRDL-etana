@@ -9,6 +9,7 @@ from cdc_reset_tb import (
     run_access_in_flight,
     run_cdc_reset,
     run_first_cycle_after_release,
+    run_release_needs_domain_clock,
     run_stopped_clock,
 )
 
@@ -31,3 +32,8 @@ async def test_reset_access_in_flight(dut):
 @test()
 async def test_reset_first_cycle_after_release(dut):
     await run_first_cycle_after_release(dut, reset_sense=0, resetname="arst_n")
+
+
+@test()
+async def test_reset_release_needs_domain_clock(dut):
+    await run_release_needs_domain_clock(dut, reset_sense=0, resetname="arst_n")

@@ -101,6 +101,24 @@ async def run_stopped_clock(dut, reset_sense, resetname):
     assert int(dut.hwif_out_fast_cfg_cfg.value) == 0x364
 
 
+async def run_release_needs_domain_clock(dut, reset_sense, resetname):
+    """The domain reset must not release before the domain clock runs."""
+    tb = await start(dut, reset_sense, resetname)
+    tb.stop_clock(SLOW)
+    tb.stop_clock(FAST)
+    await tb.reset_pulse(4)
+    await ClockCycles(dut.clk, 50)
+    for name in (SLOW, FAST):
+        got = int(getattr(dut, f"cdc_{name}_dst_rst").value)
+        assert got == 1, f"{name}: got {got:#x} expected 0x1"
+    tb.start_clock(SLOW)
+    tb.start_clock(FAST)
+    await ClockCycles(getattr(dut, SLOW), 10)
+    for name in (SLOW, FAST):
+        got = int(getattr(dut, f"cdc_{name}_dst_rst").value)
+        assert got == 0, f"{name}: got {got:#x} expected 0x0"
+
+
 async def run_access_in_flight(dut, reset_sense, resetname):
     """Reset with an access in flight and both toggles 1; later accesses complete once each."""
     tb = await start(dut, reset_sense, resetname)
