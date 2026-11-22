@@ -12,6 +12,7 @@ from systemrdl.node import (
 from systemrdl.walker import WalkerAction
 
 from ..cdc.util import (
+    cdc_readable_mask,
     cdc_uses_cell_access,
     get_cdc_clk,
     is_cdc_group_member,
@@ -193,6 +194,7 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
         base = (
             self._cdc_shadow_name(node) if is_write else self._cdc_snapshot_name(node)
         )
+        mask = cdc_readable_mask(node) if is_write else None
         n_subwords = max(regwidth // accesswidth, 1)
         for subword in range(n_subwords):
             addr = self._get_address_str(
@@ -201,9 +203,13 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             width = min(regwidth, accesswidth)
             if n_subwords == 1:
                 data = base
+                part_mask = mask
             else:
                 low = subword * accesswidth
                 data = f"{base}[{low + accesswidth - 1}:{low}]"
+                part_mask = None if mask is None else (mask >> low) & ((1 << width) - 1)
+            if part_mask is not None and part_mask != (1 << width) - 1:
+                data = f"({data} & {width}'h{part_mask:x})"
             conditional = self.get_addr_compare_conditional(addr)
             var = self.get_readback_data_var(addr)
             self.add_content(f"if({conditional}) begin")

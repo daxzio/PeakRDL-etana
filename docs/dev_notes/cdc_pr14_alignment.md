@@ -40,13 +40,6 @@ pr14 asserted (on Icarus/Verilator) that a field without hw reset leaves the CDC
 outputs to their reset image, so the net is defined at time zero. The cocotb test
 keeps the write/update checks only.
 
-## `test_cdc_groups.test_random`
-
-The pr14 test compared full bus read data to the model. APB often matches with
-equality; AHB, Wishbone, OBI, AXI, and passthrough can leave unused high bits set on
-narrow CDC config reads. The test now masks each read with the field width (or
-``0xFF`` for status), same as ``expect_read``.
-
 ## After merge to `develop`
 
 Close or supersede GitHub PR #14 once `dk_cdc` is merged and CI is green on the
