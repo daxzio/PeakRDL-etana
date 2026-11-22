@@ -48,6 +48,17 @@ def cdc_crosses(reg: RegNode) -> bool:
     )
 
 
+def cdc_readable_mask(reg: RegNode) -> int | None:
+    """Bits of the register that belong to sw-readable fields, or None when all of them do."""
+    mask = 0
+    for field in reg.fields():
+        if field.is_sw_readable:
+            mask |= ((1 << field.width) - 1) << field.low
+    if mask == (1 << reg.get_property("regwidth")) - 1:
+        return None
+    return mask
+
+
 def cdc_array_dims(reg: RegNode) -> list[int]:
     """Dimensions of the register and every enclosing array, outermost first."""
     dims: list[int] = []
