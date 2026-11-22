@@ -48,11 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CDC (PR #15)**: Domain reset synchronizer clocked by the domain clock; read
   trigger readback returns only the trigger's fields; write-group reads mask
   non-readable bits; writable fields in a read trigger generate legal RTL.
-  Covered by ``tests/test_cdc_trigger``, ``tests/test_cdc_rw_rtrig``, and reset
-  cocotb ``test_reset_release_needs_domain_clock``.
-- **Wishbone stall/capture (PR #14 F1/F2)**: All Wishbone CPUIF exports use the
-  registered ``is_active`` request path and stall-through-reset behavior, not only
-  when the design has CDC registers. ``tests/test_wishbone_pipeline`` updated.
+  Domain reset released only through the synchronizer; write groups load members
+  from bus-side copies; array handshake sized per element; fields without reset
+  values omit async reset in the destination domain. Covered by ``tests/test_cdc*``,
+  ``tests/test_cdc_trigger``, and ``tests/test_cdc_rw_rtrig``.
+- **Wishbone stall/capture (PR #14 F1/F2)**: Wishbone CPUIF exports of blocks with CDC
+  registers use the registered ``is_active`` request path and stall-through-reset
+  behavior; non-CDC designs use the combinational path again.
+  ``tests/test_wishbone_pipeline`` and ``tests/test_wishbone_stream`` updated.
 - **Wide multi-field external registers**: A field above the first subword was sliced from `decoded_wr_data` at its absolute bit position, past the bus, and each subword's readback assigned the undeclared register-level `rd_data`. Writes now use the field's position inside its subword, and readback reassembles the declared per-field `rd_data` ports into that subword. Covered by `tests/test_wide_ext_multifield`. (#10)
 - **External regfile arrays**: Ports, the decode strobe, and the request outputs were scalar while the ack and readback logic indexed `[i0]`. Each element now has its own unpacked port, strobe, and request assignment, including the retimed path. The same array dimensions are applied to external addrmap and memory blocks, which share that request template. Array address compares, and `next_cpuif_addr`, use the CPU address width so Verilator does not widen a narrower literal to 32 bits. Covered by `tests/test_ext_regfile_array`. (#9)
 - **Retimed read fanin** (`--rt-read-fanin`): The registered readback copied whole unpacked arrays, which Icarus rejects, and it read `decoded_err` when that net is only declared with `--err-if-bad-addr` or `--err-if-bad-rw`. Copies are per element, and the error flop takes `'0` without those options. Covered by `tests/test_read_fanin_rt`. (#11)

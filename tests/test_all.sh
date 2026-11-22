@@ -125,12 +125,12 @@ if [ "$REGBLOCK" -eq 1 ] || [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" 
     SKIP_TESTS+=("test_cdc" "test_cdc_fast" "test_cdc_groups")
     SKIP_TESTS+=("test_cdc_array" "test_cdc_wide" "test_cdc_sync_cell" "test_cdc_example")
     SKIP_TESTS+=("test_cdc_rst" "test_cdc_rst_n" "test_cdc_arst" "test_cdc_arst_n")
-    SKIP_TESTS+=("test_wishbone_pipeline")
+    SKIP_TESTS+=("test_wishbone_pipeline" "test_wishbone_stream")
     SKIP_TESTS+=("test_cdc_trigger" "test_cdc_rw_rtrig")
 fi
 
 if [ "$CPUIF" != "wishbone-flat" ]; then
-    SKIP_TESTS+=("test_wishbone_pipeline")
+    SKIP_TESTS+=("test_wishbone_pipeline" "test_wishbone_stream")
 fi
 
 if [ "$CPUIF" != "ahb-flat" ]; then

@@ -12,7 +12,7 @@ what was already merged earlier on `dk_cdc`, and what we deliberately did not ta
 | **Reset suites** | CDC reset Makefiles export `CDC_RESET`, `CDC_NSTAGES3`, `CDC_FAST_PROP`, `CDC_FAST_MODE`, `CDC_T_DST_PS` for all four `--default-reset` styles |
 | **Yosys** | `YOSYS_EXTRA_SOURCES` in `tests/tests.mak`; `read_slang` in the yosys recipe; `tests/synthesis.ys` no longer re-reads RTL |
 | **test_all.sh** | Skip `test_cdc_sync_cell` and `test_cdc_example` for regblock / GHDL / NVC / XEZIM (etana-only UDPs and sync-cell TB) |
-| **Wishbone (F1/F2)** | Single `is_active` capture/stall path for all designs; `tests/test_wishbone_pipeline` uses shared `cdc_tb.CdcTB` |
+| **Wishbone (F1/F2)** | `is_active` capture/stall path for blocks with CDC registers only; `tests/test_wishbone_pipeline` uses shared `cdc_tb.CdcTB` |
 | **Docs** | Full `docs/udps/cdc.rst` from pr14, including downloadable `test_cdc_example/regblock.rdl` |
 
 ## Already on `dk_cdc` before gap closure
