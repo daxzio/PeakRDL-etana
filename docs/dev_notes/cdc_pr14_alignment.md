@@ -8,7 +8,7 @@ what was already merged earlier on `dk_cdc`, and what we deliberately did not ta
 
 | Area | Change |
 |------|--------|
-| **Tests** | `tests/test_cdc_sync_cell/` (`--sync-cell`, `cdc_tb_sync.sv`); `tests/test_cdc_example/`; pr14-scale `tests/test_cdc_groups/` (multi-domain RDL, D4 snapshot checks, expanded cocotb) |
+| **Tests** | `tests/test_cdc_sync_cell/` (`--sync-cell`, `cdc_tb_sync.sv`); `tests/test_cdc_example/`; pr14-scale `tests/test_cdc_groups/` (multi-domain RDL, D4 snapshot checks, expanded cocotb); full `tests/test_cdc/` harness (21 cocotb tests, Makefile `CDC_*`); expanded `cdc_reset_tb.py` and four tests per `test_cdc_rst*` / `test_cdc_arst*` dir |
 | **Reset suites** | CDC reset Makefiles export `CDC_RESET`, `CDC_NSTAGES3`, `CDC_FAST_PROP`, `CDC_FAST_MODE`, `CDC_T_DST_PS` for all four `--default-reset` styles |
 | **Yosys** | `YOSYS_EXTRA_SOURCES` in `tests/tests.mak`; `read_slang` in the yosys recipe; `tests/synthesis.ys` no longer re-reads RTL |
 | **test_all.sh** | Skip `test_cdc_sync_cell` and `test_cdc_example` for regblock / GHDL / NVC / XEZIM (etana-only UDPs and sync-cell TB) |
@@ -32,6 +32,12 @@ CDC buffer trigger helpers requiring `cdc_clk`; Verilator pytest skips in Icarus
 OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure.
 `verilog_reg_only` remains in `hdl-src/etana_udps.rdl` only (not in
 `regblock_udps.rdl` on either side).
+
+## `test_cdc.test_field_without_reset`
+
+pr14 checked on Icarus that a field without hw reset leaves the CDC output
+unresolved; Icarus here resolves the net at time zero. The undriven check runs on
+Verilator only; the write/read behavior is still tested on all simulators.
 
 ## `test_cdc_groups.test_random`
 

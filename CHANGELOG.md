@@ -22,9 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   alignment with community PR #14 tracked in ``docs/dev_notes/cdc_pr14_alignment.md``.
 - **CDC integration tests (PR #14 gap closure)**: ``tests/test_cdc_sync_cell`` for
   ``--sync-cell``; ``tests/test_cdc_example``; pr14-scale ``tests/test_cdc_groups``
-  (multi-domain design, D4 snapshot RTL checks). Reset-suite Makefiles accept
-  ``CDC_*`` overrides for all CPU interfaces. Yosys flows accept ``YOSYS_EXTRA_SOURCES``
-  (sync-cell testbench module).
+  (multi-domain design, D4 snapshot RTL checks); full ``tests/test_cdc`` cocotb
+  harness (Makefile ``CDC_*``); ``cdc_reset_tb`` helpers and four reset-style suites
+  per reset polarity. Yosys flows accept ``YOSYS_EXTRA_SOURCES`` (sync-cell
+  testbench module).
 - **CPU Interface Error Response Testing**: New `test_cpuif_err_rsp` test suite validating error signaling for:
   - Unmapped address access
   - Forbidden read/write operations (read-only, write-only registers)
