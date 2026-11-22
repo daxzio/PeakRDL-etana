@@ -13,7 +13,6 @@ from systemrdl.walker import WalkerAction
 
 from ..cdc.util import (
     cdc_readable_mask,
-    cdc_uses_cell_access,
     get_cdc_clk,
     is_cdc_group_member,
     is_cdc_reg,
@@ -117,14 +116,10 @@ class ReadbackMuxGenerator(RDLForLoopGenerator):
             return WalkerAction.SkipDescendants
 
         if is_cdc_reg(node):
-            from ..cdc.util import is_cdc_read_trigger, is_cdc_write_trigger
-
-            if is_cdc_write_trigger(node):
+            if is_cdc_group_member(node):
                 self.process_cdc_member_reg(node)
-            elif is_cdc_read_trigger(node) or cdc_uses_cell_access(node):
+            else:
                 self.process_cdc_cell_reg(node)
-            elif is_cdc_group_member(node):
-                self.process_cdc_member_reg(node)
             return WalkerAction.SkipDescendants
 
         if node.external:
