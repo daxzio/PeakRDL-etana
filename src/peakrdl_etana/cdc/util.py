@@ -91,6 +91,8 @@ def _sibling_buffer_trigger(reg: RegNode, prop: str) -> bool:
 
 
 def is_cdc_write_trigger(reg: RegNode) -> bool:
+    if not is_cdc_reg(reg):
+        return False
     if not reg.get_property("buffer_writes", default=False):
         return False
     trigger = reg.get_property("wbuffer_trigger")
@@ -100,6 +102,8 @@ def is_cdc_write_trigger(reg: RegNode) -> bool:
 
 
 def is_cdc_read_trigger(reg: RegNode) -> bool:
+    if not is_cdc_reg(reg):
+        return False
     if not reg.get_property("buffer_reads", default=False):
         return False
     trigger = reg.get_property("rbuffer_trigger")
