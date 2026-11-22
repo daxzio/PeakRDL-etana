@@ -60,7 +60,6 @@ class CdcDomain:
     n_slots: int = 0
     idx_width: int = 1
     data_width: int = 32
-    soft_reset_signals: set[str] = field(default_factory=set)
 
     @property
     def fast_mode_en(self) -> bool:

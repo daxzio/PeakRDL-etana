@@ -282,20 +282,22 @@ Crossings
 ---------
 
 Each domain, with ``<clk>`` the clock signal name, has three synchronizers.
-Each carries one bit. With inline synchronizers the flops of each are named
-``<name>_ff``; with ``--sync-cell`` each is an instance named ``<name>``.
+Each carries one bit. With inline synchronizers the flops of each are a vector
+named ``<name>_ff``, and its last bit drives the output net. With
+``--sync-cell`` each is an instance named ``<name>`` that drives the output net.
 
-``cdc_<clk>_rst_sync``
-    Clocked by ``<clk>``, ``d`` is ``1'b1``, reset asynchronously by
-    ``cdc_<clk>_arst`` from the bus side. Its output releases
-    ``cdc_<clk>_dst_rst``.
+``cdc_<clk>_u_rst_sync``
+    Output net ``cdc_<clk>_rst_sync_q``. Clocked by ``<clk>``, ``d`` is
+    ``1'b1``, reset asynchronously by ``cdc_<clk>_arst`` from the bus side. Its
+    output releases ``cdc_<clk>_dst_rst``.
 
-``cdc_<clk>_req_sync``
-    Carries the request toggle ``cdc_<clk>_req_tgl`` from ``clk`` to ``<clk>``.
+``cdc_<clk>_u_req_sync``
+    Output net ``cdc_<clk>_req_sync``. Carries the request toggle
+    ``cdc_<clk>_req_tgl`` from ``clk`` to ``<clk>``.
 
-``cdc_<clk>_ack_sync``
-    Carries the acknowledge toggle ``cdc_<clk>_ack_tgl`` from ``<clk>`` to
-    ``clk``.
+``cdc_<clk>_u_ack_sync``
+    Output net ``cdc_<clk>_ack_sync``. Carries the acknowledge toggle
+    ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``.
 
 The signals below cross without a synchronizer. The handshake holds each one
 stable while the receiving clock samples it; in fast mode this rests on the
@@ -319,7 +321,8 @@ From ``<clk>`` to ``clk``:
   The readback logic reads it on a member read.
 
 ``<field path>`` and ``<reg path>`` are the hierarchical names below the top
-addrmap, joined with ``_``, for example ``cdc_shadow_thr_lo_v``.
+addrmap, joined with ``_``, for example ``cdc_shadow_thr_lo`` and
+``cdc_dst_thr_lo_v_value``.
 
 Rules
 -----
