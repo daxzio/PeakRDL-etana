@@ -677,6 +677,12 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             slot_expr = cdc_slot_expr(self.domain, cdc_reg.trigger)
         pfx = self.pfx
         clk = self.clk
+        # A read trigger with a writable field is written like a plain register.
+        plain_write = slot.kind == CdcSlotKind.SINGLE or (
+            slot.kind == CdcSlotKind.READ_GROUP
+            and is_cdc_read_trigger(node)
+            and node.has_sw_writable
+        )
 
         if slot.kind == CdcSlotKind.WRITE_GROUP:
             self._decl_vec(node, f"cdc_shadow_{self._path_indexed(node).path}")
@@ -751,7 +757,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"        if({pfx}_dst_rst) begin")
             self.add_content(f"            {ident} <= {self.impl._reset_value(field)};")
             self.add_content("        end")
-            if slot.kind == CdcSlotKind.SINGLE:
+            if plain_write:
                 biten = (
                     f"{pfx}_dst_wr_biten[{slice_hi}:{slice_lo}]"
                     if field.width > 1
@@ -849,7 +855,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             )
             self.add_content(f"    assign {pfx}_slot_rd_data[{rd_slot}] = {val};")
 
-        if slot.kind == CdcSlotKind.SINGLE:
+        if plain_write:
             rw = node.get_property("regwidth")
             stb = self.impl.reg_strobe(node)
             pad_w = self.data_w - rw

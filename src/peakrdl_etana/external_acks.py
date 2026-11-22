@@ -71,7 +71,9 @@ class ExternalWriteAckGenerator(RDLForLoopGenerator):
             x = self.exp.hwif.get_external_wr_ack(node, True)
             self.ext_wacks.append(x)
         elif (
-            cdc_uses_cell_access(node) or is_cdc_write_trigger(node)
+            cdc_uses_cell_access(node)
+            or is_cdc_write_trigger(node)
+            or is_cdc_read_trigger(node)
         ) and node.has_sw_writable:
             clk = get_cdc_clk(node)
             assert clk is not None
