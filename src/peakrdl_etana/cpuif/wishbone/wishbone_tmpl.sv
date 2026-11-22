@@ -10,6 +10,8 @@
 
 {% endif -%}
 
+{%- if ds.has_cdc_regs %}
+
 // Request — pulse cpuif_req like APB. A request is accepted when stb is high
 // and stall is low; the slave captures exactly those requests.
 logic is_active;
@@ -57,3 +59,26 @@ assign {{cpuif.signal("stall")}} = {{get_resetsignal(cpuif.reset)}}
 assign {{cpuif.signal("ack")}} = is_active & (cpuif_rd_ack | cpuif_wr_ack);
 assign {{cpuif.signal("idat")}} = cpuif_rd_data;
 assign {{cpuif.signal("err")}} = is_active & (cpuif_rd_err | cpuif_wr_err);
+
+{%- else -%}
+
+// Request
+always_comb begin
+    cpuif_req = {{cpuif.signal("stb")}};
+    cpuif_req_is_wr = {{cpuif.signal("we")}};
+    cpuif_addr = {{cpuif.signal("adr")}};
+    cpuif_wr_data = {{cpuif.signal("odat")}};
+    for(int i=0; i<{{cpuif.data_width_bytes}}; i++) begin
+        cpuif_wr_biten[i*8 +: 8] = {8{ {{-cpuif.signal("sel")}}[i]}};
+    end
+    {{cpuif.signal("stall")}} = {{cpuif.signal("stb")}} & ((cpuif_req_stall_rd) | (cpuif_req_stall_wr & {{cpuif.signal("we")}}));
+end
+
+// Response
+always_comb begin
+    {{cpuif.signal("ack")}} = cpuif_rd_ack | cpuif_wr_ack;
+    {{cpuif.signal("idat")}} = cpuif_rd_data;
+    {{cpuif.signal("err")}} = cpuif_rd_err | cpuif_wr_err;
+end
+
+{%- endif %}
