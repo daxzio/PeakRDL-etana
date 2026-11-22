@@ -1024,6 +1024,22 @@ def test_cdc_skips_reg_in_external_block(tmp_path):
     assert [r.node.inst_name for r in domain.regs] == ["rg"]
 
 
+def test_cdc_array_handshake_is_one_register_wide(tmp_path):
+    rdl = _top(
+        """
+        reg {
+            cdc_clk = sync_clk;
+            field { sw=rw; hw=r; } v[31:0] = 0;
+        } cfg[64] @0x00 += 4;
+        """
+    )
+    out = _export(rdl, tmp_path)
+    (sv,) = [p for p in out.rglob("*.sv") if "pkg" not in p.name]
+    text = sv.read_text()
+    assert "logic [31:0] cdc_sync_clk_slot_wr_data[64];" in text
+    assert "[2047:0]" not in text
+
+
 def test_cdc_only_in_external_block(tmp_path):
     plain = "reg { field { sw=rw; hw=r; } f[7:0] = 0; } r0 @0x0;"
     rdl = _top(plain + _EXT_CHILD, signals="signal { cdc_nstages = 3; } sync_clk;")
