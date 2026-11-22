@@ -258,6 +258,41 @@ def test_cdc_rejects_resetsignal(tmp_path):
     )
 
 
+@pytest.mark.parametrize(
+    "style, opts",
+    [
+        ("rst", {}),
+        ("rst_n", {"default_reset_activelow": True}),
+        ("arst", {"default_reset_async": True}),
+        ("arst_n", {"default_reset_activelow": True, "default_reset_async": True}),
+    ],
+)
+def test_cdc_domain_reset_only_through_synchronizer(tmp_path, style, opts):
+    out = _export(
+        _top(
+            """
+            reg {
+                cdc_clk = sync_clk;
+                field { sw=rw; hw=r; } f[7:0] = 0;
+            } rg @0x0;
+            """
+        ),
+        tmp_path,
+        **opts,
+    )
+    text = (out / "top.sv").read_text()
+    assert "assign cdc_sync_clk_dst_rst = ~cdc_sync_clk_rst_sync_q;" in text
+    assert re.search(r"^\s*logic cdc_sync_clk_arst;$", text, re.MULTILINE)
+    registered = re.search(
+        r"always_ff @\(posedge clk\) begin\s+cdc_sync_clk_arst <= ", text
+    )
+    continuous = re.search(r"assign cdc_sync_clk_arst = ", text)
+    if style in ("rst", "rst_n"):
+        assert registered and not continuous
+    else:
+        assert continuous and not registered
+
+
 def test_cdc_rejects_trigger_in_other_domain(tmp_path):
     _export_expect_error(
         _top(

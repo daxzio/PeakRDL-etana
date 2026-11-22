@@ -225,21 +225,26 @@ class CdcImplementationGenerator:
                 soft_rst = self.exp.dereferencer.get_resetsignal(sig)
                 reset_ah = f"(({bus_rst_ah}) | ({soft_rst}))"
 
-        # The edge goes on the port: an event control on ~rst_n is not portable.
-        rst_name = self.exp.dereferencer.default_resetsignal_name
-        rst_edge = "negedge" if self.exp.ds.default_reset_activelow else "posedge"
+        lines.append(f"    logic {pfx}_arst;")
+        if self.exp.ds.default_reset_async:
+            lines.append(f"    assign {pfx}_arst = {reset_ah};")
+        else:
+            # A synchronous bus reset can glitch between clock edges: register it.
+            lines.append("    always_ff @(posedge clk) begin")
+            lines.append(f"        {pfx}_arst <= {reset_ah};")
+            lines.append("    end")
         lines.extend(
             self._sync(
                 f"{pfx}_u_rst_sync",
                 f"{pfx}_rst_sync_q",
                 "1'b1",
                 clk,
-                reset_ah,
-                f"@(posedge {clk} or {rst_edge} {rst_name})",
+                f"{pfx}_arst",
+                f"@(posedge {clk} or posedge {pfx}_arst)",
                 nstages,
             )
         )
-        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {reset_ah};")
+        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q;")
 
         n_slots = domain.n_slots
         slot_msb = max(n_slots - 1, 0)
@@ -422,8 +427,8 @@ class CdcImplementationGenerator:
                 f"{pfx}_ack_sync",
                 f"{pfx}_ack_tgl",
                 "clk",
-                reset_ah,
-                bus_ff,
+                f"{pfx}_arst",
+                f"@(posedge clk or posedge {pfx}_arst)",
                 nstages,
             )
         )
