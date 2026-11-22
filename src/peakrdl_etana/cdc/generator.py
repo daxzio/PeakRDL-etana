@@ -262,6 +262,9 @@ class CdcImplementationGenerator:
                 soft_rst = self.exp.dereferencer.get_resetsignal(sig)
                 reset_ah = f"(({bus_rst_ah}) | ({soft_rst}))"
 
+        # The edge goes on the port: an event control on ~rst_n is not portable.
+        rst_name = self.exp.dereferencer.default_resetsignal_name
+        rst_edge = "negedge" if self.exp.ds.default_reset_activelow else "posedge"
         lines.extend(
             self._sync(
                 f"{pfx}_u_rst_sync",
@@ -269,7 +272,7 @@ class CdcImplementationGenerator:
                 "1'b1",
                 clk,
                 reset_ah,
-                bus_ff,
+                f"@(posedge {clk} or {rst_edge} {rst_name})",
                 nstages,
             )
         )
