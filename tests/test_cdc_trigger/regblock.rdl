@@ -1,7 +1,8 @@
 addrmap top {
     default regwidth = 32; default accesswidth = 32;
     signal { } sync_clk;
-    reg { cdc_clk = sync_clk; buffer_writes; field { sw=rw; hw=r; } v[11:0] = 0x111; } wtrg @0x00;
+    reg { cdc_clk = sync_clk; buffer_writes; field { sw=rw; hw=r; } v[11:0] = 0x111;
+          field { sw=r; hw=w; } sts[23:16] = 0; } wtrg @0x00;
     reg { cdc_clk = sync_clk; buffer_writes; field { sw=rw; hw=r; } v[11:0] = 0x222; } wmem @0x04;
     wmem->wbuffer_trigger = wtrg;
     reg { cdc_clk = sync_clk; buffer_writes; field { sw=rw; hw=r; } v[7:0] = 0;

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 from systemrdl.node import AddressableNode, FieldNode, RegNode
@@ -11,7 +10,6 @@ from ..sv_int import SVInt
 from ..utils import IndexedPath, unpacked_array_suffix
 from .model import CdcDomain, CdcRegClass, CdcSlotKind
 from .util import (
-    cdc_array_dims,
     cdc_reg_domain_key,
     cdc_slot_expr,
     is_cdc_read_trigger,
@@ -30,14 +28,6 @@ class CdcImplementationGenerator:
     def domain_prefix(self, domain: CdcDomain) -> str:
         return f"cdc_{domain.inst_name}"
 
-    def shadow_name(self, reg: RegNode) -> str:
-        p = IndexedPath(self.exp.ds.top_node, reg)
-        return f"cdc_shadow_{p.path}{p.index_str}"
-
-    def snapshot_name(self, reg: RegNode) -> str:
-        p = IndexedPath(self.exp.ds.top_node, reg)
-        return f"cdc_snap_{p.path}{p.index_str}"
-
     def dst_storage_name(self, field: FieldNode) -> str:
         p = IndexedPath(self.exp.ds.top_node, field)
         return f"cdc_dst_{p.path}_value{p.index_str}"
@@ -51,45 +41,6 @@ class CdcImplementationGenerator:
         if reset is None:
             return f"{field.width}'b0"
         return str(self.exp.dereferencer.get_value(reset, field.width))
-
-    def _reg_read_pack_name(self, reg: RegNode) -> str:
-        p = IndexedPath(self.exp.ds.top_node, reg)
-        return f"cdc_pack_{p.path}{p.index_str}"
-
-    def _read_group_member(self, reg: RegNode) -> bool:
-        for domain in self.exp.ds.cdc_domains.values():
-            found = domain.slot_for_reg(reg)
-            if found is None:
-                continue
-            if found.kind != CdcSlotKind.READ_GROUP:
-                return False
-            return found.trigger is not reg
-        return False
-
-    def _write_group_trigger(self, reg: RegNode) -> bool:
-        for domain in self.exp.ds.cdc_domains.values():
-            found = domain.slot_for_reg(reg)
-            if found is None:
-                continue
-            if found.kind != CdcSlotKind.WRITE_GROUP:
-                return False
-            return found.trigger is reg
-        return False
-
-    def _emit_reg_read_pack(self, reg: RegNode, lines: list[str]) -> str:
-        rw = reg.get_property("regwidth")
-        pack = self._reg_read_pack_name(reg)
-        lines.append(f"    logic [{rw - 1}:0] {pack};")
-        if self._read_group_member(reg):
-            lines.append(f"    assign {pack} = {self.snapshot_name(reg)};")
-        elif self._write_group_trigger(reg):
-            lines.append(f"    assign {pack} = {self.shadow_name(reg)};")
-        else:
-            # Continuous assign, not always @(*). Icarus drops RHS signals from the
-            # sensitivity list of a procedural slice assignment, so the pack stays
-            # X and a read of the reset value comes back as 0.
-            lines.append(f"    assign {pack} = {self._pack_reg_expr(reg)};")
-        return pack
 
     def _pack_reg_expr(self, reg: RegNode) -> str:
         rw = reg.get_property("regwidth")
@@ -117,71 +68,6 @@ class CdcImplementationGenerator:
         if len(parts) == 1:
             return parts[0]
         return "{" + ", ".join(parts) + "}"
-
-    def _pack_reg_read(self, reg: RegNode) -> str:
-        return self._reg_read_pack_name(reg)
-
-    def _static_array_suffixes(self, node: RegNode) -> list[str]:
-        dims = cdc_array_dims(node)
-        if not dims:
-            return [""]
-        out: list[str] = []
-
-        def rec(level: int, suffix: str) -> None:
-            if level == len(dims):
-                out.append(suffix)
-                return
-            for i in range(dims[level]):
-                rec(level + 1, suffix + f"[{i}]")
-
-        rec(0, "")
-        return out
-
-    def _vectored_name(self, basename: str, node: RegNode) -> str:
-        p = IndexedPath(self.exp.ds.top_node, node)
-        suffixes = self._static_array_suffixes(node)
-        if len(suffixes) == 1:
-            return f"{basename}{p.path}{suffixes[0]}"
-        elems = [f"{basename}{p.path}{sfx}" for sfx in reversed(suffixes)]
-        return "{" + ", ".join(elems) + "}"
-
-    def _concat_member_shadows(self, regs: list[RegNode]) -> str:
-        regs = sorted(regs, key=lambda r: r.raw_absolute_address, reverse=True)
-        parts = [self._vectored_name("cdc_shadow_", r) for r in regs]
-        if len(parts) == 1:
-            return parts[0]
-        return "{" + ", ".join(parts) + "}"
-
-    def _write_group_payload(self, slot_regs: list[RegNode], trigger: RegNode) -> str:
-        regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
-        parts: list[str] = []
-        for reg in regs:
-            sh = self._vectored_name("cdc_shadow_", reg)
-            rw = reg.get_property("regwidth")
-            if reg is trigger:
-                trig = self._vectored_name("cdc_shadow_", reg)
-                parts.append(
-                    f"(({trig} & ~decoded_wr_biten[{rw - 1}:0]) | "
-                    f"(decoded_wr_data[{rw - 1}:0] & decoded_wr_biten[{rw - 1}:0]))"
-                )
-            else:
-                parts.append(sh)
-        if len(parts) == 1:
-            return parts[0]
-        return "{" + ", ".join(parts) + "}"
-
-    def _concat_slot_read(self, slot_regs: list[RegNode]) -> str:
-        regs = sorted(slot_regs, key=lambda r: r.raw_absolute_address, reverse=True)
-        pieces: list[str] = []
-        for reg in regs:
-            pieces.append(self._vectored_name("cdc_pack_", reg))
-        if len(pieces) == 1:
-            return pieces[0]
-        return "{" + ", ".join(pieces) + "}"
-
-    def _group_write_concat_width(self, slot_regs: list[RegNode]) -> int:
-        elems = lambda r: math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
-        return sum(r.get_property("regwidth") * elems(r) for r in slot_regs)
 
     def gen_domain(self, domain: CdcDomain) -> str:
         pfx = self.domain_prefix(domain)
@@ -539,37 +425,6 @@ class CdcImplementationGenerator:
         ]
         return lines
 
-    def _reg_offset_in_concat(self, regs: list[RegNode], target: RegNode) -> int:
-        ordered = sorted(regs, key=lambda r: r.raw_absolute_address)
-        off = 0
-        for reg in ordered:
-            if reg.get_path() == target.get_path():
-                return off
-            elems = math.prod(cdc_array_dims(reg)) if cdc_array_dims(reg) else 1
-            off += reg.get_property("regwidth") * elems
-        return 0
-
-    def _write_group_bit_offset(self, slot_regs: list[RegNode], reg: RegNode) -> str:
-        """SV expression for the reg's base bit index inside a write-group concat."""
-        ordered = sorted(slot_regs, key=lambda r: r.raw_absolute_address)
-        off = 0
-        rw = reg.get_property("regwidth")
-        for r in ordered:
-            if r.get_path() == reg.get_path():
-                dims = cdc_array_dims(reg)
-                if not dims:
-                    return str(off)
-                terms = [str(off)]
-                for level, _ in enumerate(dims):
-                    stride = rw
-                    for dim in dims[level + 1 :]:
-                        stride *= dim
-                    terms.append(f"i{level}*{stride}" if stride > 1 else f"i{level}")
-                return "(" + " + ".join(terms) + ")"
-            elems = math.prod(cdc_array_dims(r)) if cdc_array_dims(r) else 1
-            off += r.get_property("regwidth") * elems
-        return "0"
-
     def _concat_reg_reset(self, reg: RegNode) -> str:
         width = reg.get_property("regwidth")
         val = 0
@@ -670,14 +525,20 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             slot_expr = cdc_slot_expr(self.domain, cdc_reg.trigger)
         pfx = self.pfx
         clk = self.clk
-        # A read trigger with a writable field is written like a plain register.
-        plain_write = slot.kind == CdcSlotKind.SINGLE or (
-            slot.kind == CdcSlotKind.READ_GROUP
-            and is_cdc_read_trigger(node)
-            and node.has_sw_writable
+        # A write trigger, and a read trigger with a writable field, are written like a
+        # plain register.
+        plain_write = (
+            slot.kind == CdcSlotKind.SINGLE
+            or (slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node))
+            or (
+                slot.kind == CdcSlotKind.READ_GROUP
+                and is_cdc_read_trigger(node)
+                and node.has_sw_writable
+            )
         )
+        write_member = slot.kind == CdcSlotKind.WRITE_GROUP and not plain_write
 
-        if slot.kind == CdcSlotKind.WRITE_GROUP:
+        if write_member:
             self._decl_vec(node, f"cdc_shadow_{self._path_indexed(node).path}")
         if slot.kind == CdcSlotKind.READ_GROUP and not is_cdc_read_trigger(node):
             self._decl_vec(node, f"cdc_snap_{self._path_indexed(node).path}")
@@ -691,7 +552,7 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
                     f"    assign {out} = {self.impl.dst_field_ref(field)};"
                 )
 
-        if slot.kind == CdcSlotKind.WRITE_GROUP:
+        if write_member:
             sh = self.impl.shadow_ref(node)
             rw = node.get_property("regwidth")
             aw = node.get_property("accesswidth")
@@ -768,22 +629,18 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
                 self.add_content(
                     f"            {ident} <= ({ident} & ~{biten}) | ({data} & {biten});"
                 )
-            elif slot.kind == CdcSlotKind.WRITE_GROUP:
-                base = self.impl._write_group_bit_offset(slot.regs, node)
-                lo = f"({base})+{slice_lo}"
-                fhi = f"({base})+{slice_hi}"
+            elif write_member:
+                if rw == 1:
+                    src = sh
+                elif field.width == 1:
+                    src = f"{sh}[{slice_hi}]"
+                else:
+                    src = f"{sh}[{slice_hi}:{slice_lo}]"
                 self.add_content(
                     f"        else if({pfx}_dst_acc_en & {pfx}_dst_is_wr & "
                     f"({pfx}_dst_idx == {slot_expr})) begin"
                 )
-                if field.width == 1:
-                    self.add_content(
-                        f"            {ident} <= {pfx}_dst_wr_data[{fhi}];"
-                    )
-                else:
-                    self.add_content(
-                        f"            {ident} <= {pfx}_dst_wr_data[{fhi}:{lo}];"
-                    )
+                self.add_content(f"            {ident} <= {src};")
             self.add_content("        end")
             self.add_content("    end")
 
@@ -798,8 +655,6 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             pack = self.impl.pack_ref(node)
             if slot.kind == CdcSlotKind.READ_GROUP and not is_cdc_read_trigger(node):
                 self.add_content(f"    assign {pack} = {self.impl.snapshot_ref(node)};")
-            elif slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node):
-                self.add_content(f"    assign {pack} = {self.impl.shadow_ref(node)};")
             else:
                 self.add_content(
                     f"    assign {pack} = {self.impl._pack_reg_expr(node)};"
@@ -830,16 +685,8 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             or (slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node))
             or (slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node))
         ):
-            if slot.kind == CdcSlotKind.SINGLE or slot.kind == CdcSlotKind.READ_GROUP:
-                val = self.impl.pack_ref(node)
-                payload_w = node.get_property("regwidth")
-            else:
-                val = (
-                    self.impl._concat_slot_read(slot.regs)
-                    if len(slot.regs) > 1
-                    else self.impl._pack_reg_read(slot.regs[0])
-                )
-                payload_w = self.impl._group_write_concat_width(slot.regs)
+            val = self.impl.pack_ref(node)
+            payload_w = node.get_property("regwidth")
             pad_w = self.data_w - payload_w
             if pad_w > 0:
                 val = f"{{{pad_w}'d0, {val}}}"
@@ -864,22 +711,6 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             self.add_content(f"    assign {pfx}_slot_wr_data[{slot_expr}] = {wr_data};")
             self.add_content(
                 f"    assign {pfx}_slot_wr_biten[{slot_expr}] = {wr_biten};"
-            )
-        elif slot.kind == CdcSlotKind.WRITE_GROUP and is_cdc_write_trigger(node):
-            assert slot.trigger is not None
-            stb = self.impl.reg_strobe(node)
-            trig_slot = cdc_slot_expr(self.domain, node)
-            self.add_content(
-                f"    assign {pfx}_slot_req[{trig_slot}] = "
-                f"{stb} & decoded_req & decoded_req_is_wr;"
-            )
-            concat = self.impl._write_group_payload(slot.regs, slot.trigger)
-            pad_w = self.data_w - slot.data_width
-            if pad_w > 0:
-                concat = f"{{{pad_w}'d0, {concat}}}"
-            self.add_content(f"    assign {pfx}_slot_wr_data[{trig_slot}] = {concat};")
-            self.add_content(
-                f"    assign {pfx}_slot_wr_biten[{trig_slot}] = {{{self.data_w}{{1'b1}}}};"
             )
         elif slot.kind == CdcSlotKind.READ_GROUP and is_cdc_read_trigger(node):
             stb = self.impl.reg_strobe(node)

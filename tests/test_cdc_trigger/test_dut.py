@@ -8,6 +8,7 @@ from cocotb import test
 from cdc_tb import CdcTB
 
 INPUTS = {
+    "wtrg_sts": 0x77,
     "rtrg_lo": 0xA1,
     "rtrg_hi": 0xB2,
     "rmem_a": 0xC3,
@@ -47,7 +48,7 @@ async def test_write_member_unused_bits(dut):
 async def test_write_trigger_unused_bits(dut):
     tb = await start(dut)
     await tb.write(0x00, 0xFFFFFFFF, timeout_cycles=400)
-    eq(await rd(tb, 0x00), 0xFFF)
+    eq(await rd(tb, 0x00), 0x770FFF)
 
 
 @test()
@@ -68,6 +69,43 @@ async def test_write_group_reaches_outputs(dut):
     eq(int(dut.hwif_out_wkey_v.value), 0xCD)
     eq(int(dut.hwif_out_wkey_key.value), 0xAB)
     eq(int(dut.hwif_out_wtrg_v.value), 0x123)
+
+
+@test()
+async def test_member_write_after_trigger_write(dut):
+    tb = await start(dut)
+    await tb.write(0x04, 0x345, timeout_cycles=400)
+    await tb.write(0x00, 0x123, timeout_cycles=400)
+    await tb.write(0x04, 0x678, timeout_cycles=400)
+    await tb.settle("sync_clk")
+    eq(int(dut.hwif_out_wmem_v.value), 0x345)
+    eq(int(dut.hwif_out_wtrg_v.value), 0x123)
+    await tb.write(0x00, 0x124, timeout_cycles=400)
+    await tb.settle("sync_clk")
+    eq(int(dut.hwif_out_wmem_v.value), 0x678)
+
+
+@test()
+async def test_status_field_in_write_trigger(dut):
+    tb = await start(dut)
+    eq(await rd(tb, 0x00), 0x770111)
+    await tb.write(0x00, 0xFF0123, timeout_cycles=400)
+    eq(await rd(tb, 0x00), 0x770123)
+    dut.hwif_in_wtrg_sts.value = 0x5A
+    await tb.settle("sync_clk")
+    eq(await rd(tb, 0x00), 0x5A0123)
+
+
+@test()
+async def test_trigger_write_without_byte_enable(dut):
+    tb = await start(dut)
+    if not tb.has_strb:
+        return
+    await tb.write(0x04, 0x345, timeout_cycles=400)
+    await tb.write(0x00, 0xFFF, strb=0, timeout_cycles=400)
+    await tb.settle("sync_clk")
+    eq(int(dut.hwif_out_wmem_v.value), 0x345)
+    eq(int(dut.hwif_out_wtrg_v.value), 0x111)
 
 
 @test()

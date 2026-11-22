@@ -102,7 +102,7 @@ The scanner assigns each register with ``cdc_clk`` to one class.
 +===============+=================================================+==================+=======================+
 | plain         | ``cdc_clk`` only                                | crosses, posted  | crosses               |
 +---------------+-------------------------------------------------+------------------+-----------------------+
-| write trigger | ``buffer_writes``; ``wbuffer_trigger`` is the   | crosses, not     | bus-side copy         |
+| write trigger | ``buffer_writes``; ``wbuffer_trigger`` is the   | crosses, not     | crosses               |
 |               | register itself (the default)                   | posted           |                       |
 +---------------+-------------------------------------------------+------------------+-----------------------+
 | write member  | ``buffer_writes``; ``wbuffer_trigger`` is       | bus-side copy,   | bus-side copy         |
@@ -156,13 +156,16 @@ write to it is not posted.
 Write group
     A write to a member updates the member's bus-side copy, with a per-bit
     merge, and completes in one bus cycle. It changes no output. A write to the
-    trigger crosses. On the domain clock edge of that access, every member
-    loads its domain storage from its bus-side copy, and the trigger loads its
-    own fields from the write data. A member that was not written keeps its
-    value in the copy, so the load rewrites the old value. A read of a member or
-    of the trigger returns the bus-side copy, which can differ from the domain
-    output until the next trigger write. Bits outside fields with ``sw`` read
-    access read 0.
+    trigger crosses and carries only the trigger's own write data and byte
+    enables. On the domain clock edge of that access, every member loads its
+    domain storage from its bus-side copy whatever the byte enables are, and
+    the trigger loads its own fields from the write data with a per-bit merge.
+    A member that was not written keeps its value in the copy, so the load
+    rewrites the old value. The trigger has no bus-side copy. A read of a member
+    returns the bus-side copy, which can differ from the domain output until
+    the next trigger write. A read of the trigger crosses and returns the
+    domain value of its fields with ``sw`` read access. Bits outside fields
+    with ``sw`` read access read 0.
 
 Read group
     A read of the trigger crosses. On the domain clock edge of that access,
@@ -301,8 +304,9 @@ From ``clk`` to ``<clk>``:
 * ``cdc_<clk>_idx``, ``cdc_<clk>_is_wr``, ``cdc_<clk>_wr_data`` and
   ``cdc_<clk>_wr_biten``: the request index, the write flag, the write data and
   the bit enables. They are flops on the bus side.
-* ``cdc_shadow_<field path>``: the bus-side copy of a write member field. The
-  domain storage ``cdc_dst_<field path>_value`` loads it on a trigger write.
+* ``cdc_shadow_<reg path>``: the bus-side copy of a write member. The domain
+  storage ``cdc_dst_<field path>_value`` of each of its fields loads from it on a
+  trigger write. The trigger has no bus-side copy.
 
 From ``<clk>`` to ``clk``:
 

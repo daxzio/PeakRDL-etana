@@ -148,12 +148,14 @@ class ExternalReadAckGenerator(RDLForLoopGenerator):
             x = self.exp.hwif.get_external_rd_ack(node, True)
             self.ext_racks.append(x)
         elif (
-            cdc_uses_cell_access(node) or is_cdc_read_trigger(node)
+            cdc_uses_cell_access(node)
+            or is_cdc_read_trigger(node)
+            or is_cdc_write_trigger(node)
         ) and node.has_sw_readable:
             clk = get_cdc_clk(node)
             assert clk is not None
             pfx = f"cdc_{kwf(clk.inst_name)}"
-            # Domain rd_ack also pulses on trigger reads; only count it for cell reads.
+            # Match assert_bad_ext_*_ack in module_tmpl.sv: active bus xfer only.
             self.ext_racks.append(f"({pfx}_rd_ack & (external_pending | external_req))")
         return WalkerAction.Continue
 
