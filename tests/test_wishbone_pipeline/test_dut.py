@@ -7,22 +7,14 @@ test_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(test_dir))
 
 from cocotb import start_soon, test
-from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer
 
-from tb_base import testbench
+from cdc_tb import BUS_PERIOD_PS, CdcTB
 
 R0, R1, R_CDC = 0x0, 0x4, 0x8
 SYNC_PERIOD_PS = 30000
-BUS_PERIOD_PS = 10000
 TIMEOUT_CYCLES = 200
 TRAIL_CYCLES = 8
-
-
-class CdcWbTB(testbench):
-    def __init__(self, dut, sync_period_ps: int = SYNC_PERIOD_PS):
-        super().__init__(dut)
-        Clock(dut.sync_clk, sync_period_ps, unit="ps").start()
 
 
 class PinMaster:
@@ -85,21 +77,21 @@ class PinMaster:
 
 
 async def setup(dut):
-    tb = CdcWbTB(dut)
+    tb = CdcTB(dut, {"sync_clk": SYNC_PERIOD_PS})
     master = PinMaster(dut)
     await master.start()
     return tb, master
 
 
 async def expect_read(tb, addr, expected):
-    data = await tb.intf.read(addr)
+    data, _ = await tb.read(addr, timeout_cycles=400)
     assert data == expected, f"read {addr:#x}: {data:#x}, expected {expected:#x}"
 
 
 @test()
 async def test_request_during_active_transfer(dut):
     tb, master = await setup(dut)
-    await tb.intf.write(R_CDC, 0x3C3C3C3C)
+    await tb.write(R_CDC, 0x3C3C3C3C, timeout_cycles=400)
     master.acks.clear()
 
     await master.request(0, R_CDC)

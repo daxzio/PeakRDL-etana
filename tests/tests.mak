@@ -32,6 +32,7 @@ XEZIM_VHD_BIN?=/home/gomez/projects/xezim-vhd/target/release/xezim
 XEZIM_SV_BIN?=$(shell ls -d /cadtools/spack-2025/opt/linux-ubuntu24.04-skylake/gcc-13.3.0/xezim/*/bin/xezim 2>/dev/null | sort -V | tail -n 1)
 YOSYS=0
 GIT_CHECK=0
+YOSYS_EXTRA_SOURCES?=
 
 SYNTH_OUTPUT?=synth-rtl
 VIVADO_PART?=xc7a100tcsg324-1
@@ -226,7 +227,7 @@ regblock-vhdl:
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)
 	rm -rf $(SYNTH_OUTPUT)/*
-	yosys -q -s ../synthesis.ys
+	yosys -q -p "read_slang -D SYNTHESIS --top regblock ./etana-rtl/*.sv $(YOSYS_EXTRA_SOURCES); script ../synthesis.ys"
 
 vivado-synth: $(SYNTH_SOURCE_TARGET)
 	@if [ -z "$(strip $(VIVADO_PART))" ]; then \
