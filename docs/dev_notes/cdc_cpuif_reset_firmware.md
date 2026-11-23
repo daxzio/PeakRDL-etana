@@ -63,6 +63,8 @@ clock at least **`cdc_nstages + 1`** bus cycles **before** asserting async
 
 ## PR origin
 
-Cherry-picked from PR #15 commit `99f2c97` on `dk_cdc`. Domain-reset path is the
-pre-commit-6 style (`dst_rst`); if commit 6 is merged later, re-check async
-`cpuif_reset` synchronizer reset hook-up in release notes.
+Cherry-picked from PR #15 commit `99f2c97` on `dk_cdc`. The async `cpuif_reset`
+synchronizer uses the **block bus reset** and `always_ff` event (same as the bus
+side of the CDC handshake), not per-domain `cdc_<clk>_arst` (PR #15 commit 6).
+If commit 6 is merged later, consider aligning this synchronizer with
+`cdc_<clk>_arst` and re-run `test_lint_cpuif_reset`.

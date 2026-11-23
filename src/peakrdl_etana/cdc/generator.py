@@ -487,9 +487,8 @@ class CdcImplementationGenerator:
         decl = ["    logic cdc_cpurst_clr;"]
         if not cpuif_reset.get_property("async"):
             return decl, [f"    assign cdc_cpurst_clr = {rst_ah};"]
-        pfx = self.domain_prefix(first)
-        arst = f"{pfx}_arst"
-        event = f"@(posedge clk or posedge {arst})"
+        bus_rst_ah = self.exp.dereferencer.get_resetsignal(None)
+        bus_ff = self.exp.dereferencer.get_always_ff_event(None)
         sig = str(self.exp.dereferencer.get_value(cpuif_reset))
         not_rst = f"~{sig}" if cpuif_reset.get_property("activehigh") else sig
         decl += ["    logic cdc_cpurst_sync_q;", "    logic cdc_cpurst_sync_d;"]
@@ -498,13 +497,13 @@ class CdcImplementationGenerator:
             "cdc_cpurst_sync_q",
             not_rst,
             "clk",
-            arst,
-            event,
+            bus_rst_ah,
+            bus_ff,
             first.nstages,
         )
         drv += [
-            f"    always_ff {event} begin",
-            f"        if ({arst}) begin",
+            f"    always_ff {bus_ff} begin",
+            f"        if ({bus_rst_ah}) begin",
             "            cdc_cpurst_sync_d <= '0;",
             "        end else begin",
             "            cdc_cpurst_sync_d <= cdc_cpurst_sync_q;",
@@ -553,7 +552,7 @@ class CdcImplementationGenerator:
         chunks = [self.gen_domain(d) for d in domains]
         cpuif_reset = self.exp.ds.top_node.cpuif_reset
         if cpuif_reset is not None:
-            # The drivers use the first domain's arst, so they follow its text.
+            # Async cpuif_reset sync uses the block bus reset, not domain arst.
             decl, drv = self._cpuif_reset_clear(cpuif_reset, domains[0])
             chunks.insert(0, "\n".join(decl))
             chunks.insert(2, "\n".join(drv))
