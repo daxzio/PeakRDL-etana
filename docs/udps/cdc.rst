@@ -320,14 +320,12 @@ The module has this interface:
         output logic q,
         input  wire  d,
         input  wire  clk,  // receiving clock
-        input  wire  rst,  // active high, asynchronous; present when the block
-        input  wire  rst_n // uses rst or arst
-    );                     // active low, asynchronous; present when the block
-                           // uses rst_n or arst_n
+        input  wire  rst   // or rst_n: name and polarity match --default-reset
+    );
 
-The generated module connects ``rst`` or ``rst_n`` to match ``--default-reset``,
-and passes ``RESET_VAL`` so the synchronizer chain idles in the released state.
-Only one reset port is connected; tie off the unused port in the cell if needed.
+The generated module connects exactly one reset port and passes ``RESET_VAL`` so
+the synchronizer chain idles in the released state. The cell only needs that
+port (declare ``rst`` for active-high styles or ``rst_n`` for active-low).
 The generated module sets ``NSTAGES`` from ``cdc_nstages`` of the domain. Add
 the cell to the file list of the simulator or synthesis tool together with the
 generated module.

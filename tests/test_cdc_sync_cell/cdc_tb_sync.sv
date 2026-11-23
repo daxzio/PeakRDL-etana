@@ -1,4 +1,4 @@
-// Test synchronizer for --sync-cell: follows --default-reset polarity via elaboration define.
+// Test synchronizer for --sync-cell: one reset port, polarity from CDC_TB_SYNC_RST_N.
 module cdc_tb_sync #(
     parameter int NSTAGES = 2,
     parameter logic RESET_VAL = 1'b0
@@ -6,8 +6,11 @@ module cdc_tb_sync #(
     output logic q,
     input  wire  d,
     input  wire  clk,
-    input  wire  rst,
+`ifdef CDC_TB_SYNC_RST_N
     input  wire  rst_n
+`else
+    input  wire  rst
+`endif
 );
     logic [NSTAGES-1:0] ff;
 
