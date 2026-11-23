@@ -45,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for read-write, read-only, and write-only memories
 
 ### Fixed
+- **CDC (PR #15)**: Domain reset synchronizer clocked by the domain clock; read
+  trigger readback returns only the trigger's fields; write-group reads mask
+  non-readable bits; writable fields in a read trigger generate legal RTL.
+  Covered by ``tests/test_cdc_trigger``, ``tests/test_cdc_rw_rtrig``, and reset
+  cocotb ``test_reset_release_needs_domain_clock``.
 - **Wishbone stall/capture (PR #14 F1/F2)**: All Wishbone CPUIF exports use the
   registered ``is_active`` request path and stall-through-reset behavior, not only
   when the design has CDC registers. ``tests/test_wishbone_pipeline`` updated.
