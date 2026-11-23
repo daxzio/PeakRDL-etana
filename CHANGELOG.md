@@ -47,11 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **CDC (PR #15)**: Domain reset synchronizer clocked by the domain clock; read
   trigger readback returns only the trigger's fields; write-group reads mask
-  non-readable bits; writable fields in a read trigger generate legal RTL.
-  Domain reset released only through the synchronizer; write groups load members
-  from bus-side copies; array handshake sized per element; fields without reset
-  values omit async reset in the destination domain. Covered by ``tests/test_cdc*``,
-  ``tests/test_cdc_trigger``, and ``tests/test_cdc_rw_rtrig``.
+  non-readable bits; writable fields in a read trigger generate legal RTL;
+  register-array handshake sized per element. Covered by ``tests/test_cdc_trigger``,
+  ``tests/test_cdc_rw_rtrig``, and ``tests/test_cdc_validate``.
 - **Wishbone stall/capture (PR #14 F1/F2)**: Wishbone CPUIF exports of blocks with CDC
   registers use the registered ``is_active`` request path and stall-through-reset
   behavior; non-CDC designs use the combinational path again.

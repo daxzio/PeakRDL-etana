@@ -40,6 +40,12 @@ pr14 asserted (on Icarus/Verilator) that a field without hw reset leaves the CDC
 outputs to their reset image, so the net is defined at time zero. The cocotb test
 keeps the write/update checks only.
 
+## PR #15 on `dk_cdc` (Nov 2025)
+
+See `docs/dev_notes/cdc_pr15_cherry_pick.md`. Fixes (commits 1–5), array handshake (8),
+Wishbone gating (9), and doc cleanup (11) are merged. **Held:** commits 6, 7, 10 and
+`99f2c97` (`cpuif_reset`). Compare with `dk_cdc_pr15_full_backup` if needed.
+
 ## After merge to `develop`
 
 Close or supersede GitHub PR #14 once `dk_cdc` is merged and CI is green on the
