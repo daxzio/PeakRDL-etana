@@ -14,13 +14,15 @@ Tracking integration of [PR #15](https://github.com/daxzio/PeakRDL-etana/pull/15
 | 11 | `36017f9` | Dead code removal, `cdc.rst` net names |
 | 12 | `99f2c97` | `cpuif_reset` stuck-bus recovery + firmware note |
 
-## Held
+## Replaced (not cherry-picked as-is)
 
 | PR commit | SHA | Topic |
 |-----------|-----|--------|
-| 6 | `2576143` | Domain reset only through synchronizer |
+| 6 | `2576143` | Domain reset only through synchronizer — replaced on `dk_cdc` by a polarity-following path (`dst_rst` / `dst_rst_n` from synchronizer `q`; no `cdc_<clk>_arst`; ``--sync-cell`` gains `RESET_VAL` and reset port per ``--default-reset``). |
 
-Reference stack with commit 6: branch `dk_cdc_pr15_full_backup`.
+## Follow-up (not in this batch)
+
+- ``--test-mode <pin>`` scan bypass for synchronizers — opt-in, deferred (Stefanos PR #15 reply).
 
 ## Verification
 

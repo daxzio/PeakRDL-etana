@@ -232,17 +232,22 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
   the block's reset style, as the other flops of the block do.
 * The bus reset is the only reset of a domain. A field of a CDC register must
   not set ``resetsignal``.
-* The synchronizers use an asynchronous, active-high reset derived from the bus
-  reset. For ``rst`` and ``rst_n`` it is registered once on ``clk``, because a
-  synchronous reset can glitch between clock edges.
-* The domain reset, ``cdc_<clk>_dst_rst``, is active high in every style. It
-  asserts with the domain clock stopped or running: at the same time as the
-  bus-side reset in ``arst`` and ``arst_n``, and one ``clk`` cycle later in
-  ``rst`` and ``rst_n``. Its release needs ``cdc_nstages`` domain clock edges
-  after the bus-side reset releases.
+* Each domain reset synchronizer uses the block reset style: active-low for
+  ``rst_n`` and ``arst_n``, active-high for ``rst`` and ``arst``. For ``rst`` and
+  ``rst_n`` the bus reset is registered once on ``clk`` first, because a
+  synchronous reset can glitch between clock edges; ``arst`` and ``arst_n`` use
+  the bus reset directly.
+* The domain reset net follows the block polarity:
+  ``cdc_<clk>_dst_rst_n`` or ``cdc_<clk>_dst_rst``. It is the synchronizer output
+  with no inverter or OR term. It asserts with the domain clock stopped or
+  running: at the same time as the bus-side reset in ``arst`` and ``arst_n``, and
+  one ``clk`` cycle later in ``rst`` and ``rst_n``. Its release needs
+  ``cdc_nstages`` domain clock edges after the bus-side reset releases.
 * The flops in the domain (storage, snapshots, read data, acknowledge toggle)
-  reset asynchronously from the domain reset. The storage of a field without a
-  reset value has no reset.
+  reset asynchronously from that domain reset, in the same polarity. The storage
+  of a field without a reset value has no reset.
+* The request synchronizer and the bus-side acknowledge synchronizer use the
+  domain reset and the block reset respectively, each in the matching style.
 * The bus-side copies of write members reset from the bus reset, in the
   block's reset style. A bus reset therefore resets the copy and the domain
   storage of a member to the field's reset value. The bits of a field without
@@ -308,17 +313,24 @@ The module has this interface:
 
 .. code-block:: systemverilog
 
-    module NAME #(parameter int NSTAGES = 2) (
-        output logic q,    // synchronized; 0 while rst is asserted
+    module NAME #(
+        parameter int NSTAGES = 2,
+        parameter logic RESET_VAL = 1'b0
+    ) (
+        output logic q,
         input  wire  d,
         input  wire  clk,  // receiving clock
-        input  wire  rst   // active high, asynchronous
-    );
+        input  wire  rst,  // active high, asynchronous; present when the block
+        input  wire  rst_n // uses rst or arst
+    );                     // active low, asynchronous; present when the block
+                           // uses rst_n or arst_n
 
-``rst`` is active high and asynchronous in every ``--default-reset`` style, so
-one cell serves all four. The generated module sets ``NSTAGES`` from
-``cdc_nstages`` of the domain. Add the cell to the file list of the simulator
-or synthesis tool together with the generated module.
+The generated module connects ``rst`` or ``rst_n`` to match ``--default-reset``,
+and passes ``RESET_VAL`` so the synchronizer chain idles in the released state.
+Only one reset port is connected; tie off the unused port in the cell if needed.
+The generated module sets ``NSTAGES`` from ``cdc_nstages`` of the domain. Add
+the cell to the file list of the simulator or synthesis tool together with the
+generated module.
 
 Crossings
 ---------
@@ -329,9 +341,11 @@ named ``<name>_ff``, and its last bit drives the output net. With
 ``--sync-cell`` each is an instance named ``<name>`` that drives the output net.
 
 ``cdc_<clk>_u_rst_sync``
-    Output net ``cdc_<clk>_rst_sync_q``. Clocked by ``<clk>``, ``d`` is
-    ``1'b1``, reset asynchronously by ``cdc_<clk>_arst`` from the bus side. Its
-    output releases ``cdc_<clk>_dst_rst``.
+    Output net ``cdc_<clk>_rst_sync_q``. Clocked by ``<clk>``. ``d`` is ``1'b1``
+    in active-low styles and ``1'b0`` in active-high styles. Reset asynchronously
+    from the block reset, or from ``cdc_<clk>_bus_rst_q`` when the block reset
+    is synchronous. Its output drives ``cdc_<clk>_dst_rst_n`` or
+    ``cdc_<clk>_dst_rst``.
 
 ``cdc_<clk>_u_req_sync``
     Output net ``cdc_<clk>_req_sync``. Carries the request toggle
@@ -347,7 +361,7 @@ outside the three of each domain.
 ``cdc_u_cpurst_sync``
     Exists once per block. Output net ``cdc_cpurst_sync_q``. Carries the
     inverted ``cpuif_reset`` signal, 1 while the signal is deasserted, to
-    ``clk``. Reset asynchronously by ``cdc_<clk>_arst`` of the first domain.
+    ``clk``. Reset asynchronously from the block bus reset, in the block style.
 
 The signals below cross without a synchronizer. The handshake holds each one
 stable while the receiving clock samples it; in fast mode this rests on the

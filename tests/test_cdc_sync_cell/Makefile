@@ -8,6 +8,9 @@ export CDC_RESET CDC_NSTAGES3 CDC_T_DST_PS CDC_FAST_MODE
 
 ifneq ($(CDC_RESET),)
 PEAKRDL_ARGS+=--default-reset $(CDC_RESET)
+ifneq ($(findstring _n,$(CDC_RESET)),)
+DEFINES+=CDC_TB_SYNC_RST_N
+endif
 endif
 PEAKRDL_ARGS+=--sync-cell cdc_tb_sync
 

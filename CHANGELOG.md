@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regfile arrays with scalar triggers. Group members may be wider than
   ``accesswidth``. ``cdc_fast_mode_en`` on the clock adds a runtime
   ``<clock>_fast_mode_en`` input. ``--sync-cell NAME`` instantiates a project
-  synchronizer (ports ``q``, ``d``, ``clk``, ``rst``, parameter ``NSTAGES``);
-  otherwise the synchronizer flops are inline. Cocotb suites under
+  synchronizer (ports ``q``, ``d``, ``clk``, and ``rst`` or ``rst_n`` matching
+  ``--default-reset``; parameters ``NSTAGES``, ``RESET_VAL``); otherwise the
+  synchronizer flops are inline. Cocotb suites under
   ``tests/test_cdc*``; elaboration rules in ``tests/test_cdc_validate.py``. Documented
   in ``docs/udps/cdc.rst``. Expanded user guide and example RDL download in that page;
   alignment with community PR #14 tracked in ``docs/dev_notes/cdc_pr14_alignment.md``.
@@ -45,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for read-write, read-only, and write-only memories
 
 ### Fixed
+- **CDC domain reset polarity**: Domain reset follows ``--default-reset`` (``cdc_<clk>_dst_rst``
+  or ``cdc_<clk>_dst_rst_n`` from the reset synchronizer, with no inverter or OR).
+  Domain flops and inline synchronizers use the same polarity; synchronous bus
+  resets are registered on ``clk`` before the domain reset chain. Breaking change
+  to the ``--sync-cell`` interface (``RESET_VAL``, reset port naming). Covered by
+  ``test_cdc_domain_reset_polarity`` and the four ``test_cdc_rst*`` cocotb suites.
 - **CDC (PR #15)**: Domain reset synchronizer clocked by the domain clock; read
   trigger readback returns only the trigger's fields; write-group reads mask
   non-readable bits; writable fields in a read trigger generate legal RTL;

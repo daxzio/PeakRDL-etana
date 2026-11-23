@@ -1,21 +1,33 @@
-// Test synchronizer cell: NSTAGES flops on clk, asynchronous active-high reset.
+// Test synchronizer for --sync-cell: follows --default-reset polarity via elaboration define.
 module cdc_tb_sync #(
-    parameter int NSTAGES = 2
+    parameter int NSTAGES = 2,
+    parameter logic RESET_VAL = 1'b0
 ) (
     output logic q,
     input  wire  d,
     input  wire  clk,
-    input  wire  rst
+    input  wire  rst,
+    input  wire  rst_n
 );
     logic [NSTAGES-1:0] ff;
 
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            ff <= '0;
+`ifdef CDC_TB_SYNC_RST_N
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (~rst_n) begin
+            ff <= {NSTAGES{RESET_VAL}};
         end else begin
             ff <= {ff[NSTAGES-2:0], d};
         end
     end
+`else
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            ff <= {NSTAGES{RESET_VAL}};
+        end else begin
+            ff <= {ff[NSTAGES-2:0], d};
+        end
+    end
+`endif
 
     assign q = ff[NSTAGES-1];
 endmodule

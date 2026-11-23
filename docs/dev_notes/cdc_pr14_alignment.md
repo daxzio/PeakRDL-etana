@@ -4,7 +4,7 @@ Branch `dk_cdc` tracks [daxzio/PeakRDL-etana#14](https://github.com/daxzio/PeakR
 (base `dk_cdc`, head `cdc-pr`). This note records what was brought in from that PR,
 what was already merged earlier on `dk_cdc`, and what we deliberately did not take.
 
-## Brought in (gap closure, Nov 2025)
+## Brought in (gap closure, Nov 2026)
 
 | Area | Change |
 |------|--------|
@@ -33,12 +33,14 @@ OBI grant-reset (F6) and `validate.py` rules already matched pr14 at gap closure
 `verilog_reg_only` remains in `hdl-src/etana_udps.rdl` only (not in
 `regblock_udps.rdl` on either side).
 
-## PR #15 on `dk_cdc` (Nov 2025)
+## PR #15 on `dk_cdc` (Nov 2026)
 
 See `docs/dev_notes/cdc_pr15_cherry_pick.md`. Fixes (commits 1–5), write-group shadows
-(7), fields without RDL reset (10), array handshake (8), Wishbone gating (9), and doc
-cleanup (11), and `cpuif_reset` recovery (12) are merged. **Held:** commit 6 (domain
-reset path). Firmware rules: `docs/dev_notes/cdc_cpuif_reset_firmware.md`.
+(7), fields without RDL reset (10), array handshake (8), Wishbone gating (9), doc
+cleanup (11), and `cpuif_reset` recovery (12) are merged. PR #15 commit 6 was
+**replaced** by a polarity-following domain reset (no inverter/OR on the
+synchronizer output; domain flops and ``--sync-cell`` follow ``--default-reset``).
+Firmware rules: `docs/dev_notes/cdc_cpuif_reset_firmware.md`.
 
 ## After merge to `develop`
 

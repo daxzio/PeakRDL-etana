@@ -28,15 +28,17 @@ checklist for software and system architects.
 
 | Access state | Typical outcome |
 |--------------|-----------------|
-| **Pending** slot only (e.g. plain posted write waiting) | Dropped; never executes in the domain. |
-| **Issued** in flight (read, trigger write, or pending read) | May still complete when the domain clock runs; **ack to the bus is suppressed** if ownership was cleared. |
+| **Pending** slot only (e.g. plain posted write waiting) | Dropped; never executes in the domain (same as a failed bus access from firmware’s point of view). |
+| **Issued** in flight (read, trigger write, or pending read) | Still executes once the domain clock runs; **ack to the bus is suppressed** if ownership was cleared. |
 | Late `rd_ack` / `wr_ack` after clear | **Ignored** (no spurious completion of a new transaction). |
 
-**Race:** If `cpuif_reset` asserts while an access is still issuing, that access can
-still complete in the domain (write may take effect; ack may not match what
-software expected from the aborted bus cycle). To avoid that, stop the domain
-clock at least **`cdc_nstages + 1`** bus cycles **before** asserting async
-`cpuif_reset`, and keep it stopped until release.
+**Race:** The access in the **pending** slot is dropped, but an **issued** access
+still runs to completion in the domain when the clock runs—even if
+`cpuif_reset` asserts during the bus cycle that issued it and the reset pulse
+reaches the handshake before that access would normally finish on the bus. To
+avoid surprising domain side effects, stop the domain clock at least
+**`cdc_nstages + 1`** bus cycles **before** asserting async `cpuif_reset`, and
+keep it stopped until release.
 
 ## Firmware sequence after recovery
 
@@ -65,6 +67,6 @@ clock at least **`cdc_nstages + 1`** bus cycles **before** asserting async
 
 Cherry-picked from PR #15 commit `99f2c97` on `dk_cdc`. The async `cpuif_reset`
 synchronizer uses the **block bus reset** and `always_ff` event (same as the bus
-side of the CDC handshake), not per-domain `cdc_<clk>_arst` (PR #15 commit 6).
-If commit 6 is merged later, consider aligning this synchronizer with
-`cdc_<clk>_arst` and re-run `test_lint_cpuif_reset`.
+side of the CDC handshake), not a per-domain reset net. PR #15 commit 6 was
+replaced by a polarity-following domain reset path on `dk_cdc`; behaviour of
+`cpuif_reset` is unchanged.

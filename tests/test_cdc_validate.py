@@ -24,6 +24,16 @@ from peakrdl_etana.udps import ALL_UDPS
 ETANA_UDPS = "hdl-src/etana_udps.rdl"
 REGBLOCK_UDPS = "tests/regblock_udps.rdl"
 
+_RESET_STYLES = {
+    "rst": {},
+    "rst_n": {"default_reset_activelow": True},
+    "arst": {"default_reset_async": True},
+    "arst_n": {
+        "default_reset_activelow": True,
+        "default_reset_async": True,
+    },
+}
+
 
 class _CapturePrinter(MessagePrinter):
     def __init__(self) -> None:
@@ -277,6 +287,50 @@ def test_cdc_field_without_reset_has_no_reset_term(tmp_path):
     assert body.lstrip().startswith("if(")
 
 
+@pytest.mark.parametrize("style", sorted(_RESET_STYLES))
+def test_cdc_domain_reset_polarity(tmp_path, style):
+    """Domain reset follows block polarity: no inverter or OR on the synchronizer output."""
+    opts = _RESET_STYLES[style]
+    rdl = _top(_cfg())
+    text = (_export(rdl, tmp_path, **opts) / "top.sv").read_text()
+    first, last = _cdc_section_lines(text)
+    section = "\n".join(text.splitlines()[first - 1 : last])
+    active_low = opts.get("default_reset_activelow", False)
+    pfx = "cdc_sync_clk"
+    dst_net = f"{pfx}_dst_rst_n" if active_low else f"{pfx}_dst_rst"
+    assert f"assign {dst_net} = {pfx}_rst_sync_q;" in section
+    for ln in section.splitlines():
+        if "assign" in ln and "_dst_rst" in ln:
+            rhs = ln.split("=", 1)[1]
+            assert "|" not in rhs
+            assert "~" not in rhs.strip()
+    if opts.get("default_reset_async", False):
+        assert f"{pfx}_bus_rst_q" not in section
+    else:
+        assert f"{pfx}_bus_rst_q" in section
+    dom_ev = (
+        f"@(posedge sync_clk or negedge {dst_net})"
+        if active_low
+        else f"@(posedge sync_clk or posedge {dst_net})"
+    )
+    domain_blocks = [
+        (ev, body) for ev, body in _ff_blocks(text) if f"cdc_dst_rg_f_value <=" in body
+    ]
+    assert len(domain_blocks) == 1
+    ev, body = domain_blocks[0]
+    assert ev == dom_ev
+    if active_low:
+        assert re.search(rf"if\s*\(\s*~{re.escape(dst_net)}\s*\)", body)
+    else:
+        assert re.search(rf"if\s*\(\s*{re.escape(dst_net)}\s*\)", body)
+    ack_ff = [
+        (ev, body) for ev, body in _ff_blocks(text) if f"{pfx}_u_ack_sync_ff" in body
+    ]
+    assert len(ack_ff) == 1
+    _, ack_body = ack_ff[0]
+    assert dst_net not in ack_body
+
+
 @pytest.mark.parametrize("regwidth", [32, 64])
 @pytest.mark.parametrize("opts", [{}, {"default_reset_async": True}])
 def test_cdc_write_member_copy_resets_only_fields_with_a_value(
@@ -453,7 +507,8 @@ def test_cdc_cpuif_reset_names_do_not_collide(tmp_path):
 def test_cdc_cpuif_reset_sync_cell(tmp_path):
     out = _export(_cpuif_reset_top("async"), tmp_path, sync_cell="my_sync")
     text = (out / "top.sv").read_text()
-    assert "my_sync #(.NSTAGES(2)) cdc_u_cpurst_sync" in text
+    assert "my_sync #(.NSTAGES(2), .RESET_VAL('0)) cdc_u_cpurst_sync" in text
+    assert ".rst (rst)" in text
     assert "cdc_u_cpurst_sync_ff" not in text
 
 
@@ -1013,10 +1068,7 @@ def test_scan_slots_of_arrays(tmp_path):
 # Generated RTL checks
 
 _REPO = Path(__file__).resolve().parent.parent
-_STYLES = {
-    "rst": {},
-    "arst_n": {"default_reset_activelow": True, "default_reset_async": True},
-}
+_STYLES = _RESET_STYLES
 _NON_CDC_RDL = """
     addrmap top {
         default regwidth = 32;

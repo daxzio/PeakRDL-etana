@@ -77,6 +77,20 @@ async def run_cdc_reset(dut, reset_sense, resetname):
     assert [int(dut.hwif_out_mix_mem_nr[i].value) for i in (0, 1)] == [0xA, 0x5]
 
 
+def _domain_reset_sig(dut, clk_name: str, reset_sense: int):
+    """Return the domain-reset net (polarity follows --default-reset)."""
+    if reset_sense == 0:
+        return getattr(dut, f"cdc_{clk_name}_dst_rst_n")
+    return getattr(dut, f"cdc_{clk_name}_dst_rst")
+
+
+def _domain_in_reset(net, reset_sense: int) -> bool:
+    v = int(net.value)
+    if reset_sense == 0:
+        return v == 0
+    return v == 1
+
+
 SLOW = "sync_clk_slow"
 FAST = "sync_clk_fast"
 LANE_CFG, LANE_STS, FAST_CFG, FAST_STS = 0x00, 0x04, 0x08, 0x0C
@@ -135,14 +149,18 @@ async def run_release_needs_domain_clock(dut, reset_sense, resetname):
     await tb.reset_pulse(4)
     await ClockCycles(dut.clk, 50)
     for name in (SLOW, FAST):
-        got = int(getattr(dut, f"cdc_{name}_dst_rst").value)
-        assert got == 1, f"{name}: got {got:#x} expected 0x1"
+        net = _domain_reset_sig(dut, name, reset_sense)
+        assert _domain_in_reset(
+            net, reset_sense
+        ), f"{name}: domain reset released too early"
     tb.start_clock(SLOW)
     tb.start_clock(FAST)
     await ClockCycles(getattr(dut, SLOW), 10)
     for name in (SLOW, FAST):
-        got = int(getattr(dut, f"cdc_{name}_dst_rst").value)
-        assert got == 0, f"{name}: got {got:#x} expected 0x0"
+        net = _domain_reset_sig(dut, name, reset_sense)
+        assert not _domain_in_reset(
+            net, reset_sense
+        ), f"{name}: domain reset still asserted"
 
 
 async def run_access_in_flight(dut, reset_sense, resetname):
@@ -220,8 +238,8 @@ async def run_first_cycle_after_release(dut, reset_sense, resetname):
         await ClockCycles(dut.clk, 4)
         tb.reset_sig.value = int(not reset_sense)
         if tb.fast_mode:
-            dst_rst = getattr(dut, f"cdc_{clk_name}_dst_rst")
-            while int(dst_rst.value):
+            dst_rst = _domain_reset_sig(dut, clk_name, reset_sense)
+            while _domain_in_reset(dst_rst, reset_sense):
                 await RisingEdge(dut.clk)
         await tb.write(cfg, 0x2B, timeout_cycles=400)
         await tb.settle(clk_name)

@@ -36,6 +36,22 @@ class CdcImplementationGenerator:
         stb = self.exp.dereferencer.get_access_strobe(reg)
         return f"{stb.path}{stb.index_str}"
 
+    def domain_reset_net(self, pfx: str) -> str:
+        if self.exp.ds.default_reset_activelow:
+            return f"{pfx}_dst_rst_n"
+        return f"{pfx}_dst_rst"
+
+    def domain_reset_event(self, pfx: str, clk: str) -> str:
+        net = self.domain_reset_net(pfx)
+        edge = "negedge" if self.exp.ds.default_reset_activelow else "posedge"
+        return f"@(posedge {clk} or {edge} {net})"
+
+    def domain_reset_asserted(self, pfx: str) -> str:
+        net = self.domain_reset_net(pfx)
+        if self.exp.ds.default_reset_activelow:
+            return f"~{net}"
+        return net
+
     def _reset_value(self, field: FieldNode) -> str | None:
         reset = field.get_property("reset", default=None)
         if reset is None:
@@ -78,9 +94,10 @@ class CdcImplementationGenerator:
         )
         nstages = domain.nstages
         fast_s = "'1" if domain.fast else "'0"
-        clk = domain.inst_name
+        dom_clk = domain.inst_name
+        bus_clk = "clk"
 
-        lines.append(f"    // CDC domain: {clk}")
+        lines.append(f"    // CDC domain: {dom_clk}")
         lines.append("    /* verilator lint_off UNUSED */")
         lines.append("    /* verilator lint_off UNUSEDSIGNAL */")
         lines.append(f"    logic {pfx}_req;")
@@ -93,7 +110,8 @@ class CdcImplementationGenerator:
         lines.append(f"    logic {pfx}_rd_ack;")
         lines.append(f"    logic [{data_w - 1}:0] {pfx}_rd_data;")
         lines.append(f"    logic [{data_w - 1}:0] {pfx}_dst_rd_data;")
-        lines.append(f"    logic {pfx}_dst_rst;")
+        dst_rst = self.domain_reset_net(pfx)
+        lines.append(f"    logic {dst_rst};")
         lines.append(f"    logic {pfx}_rst_sync_q;")
         lines.append(f"    logic {pfx}_dst_acc_en;")
         lines.append(f"    logic {pfx}_dst_is_wr;")
@@ -104,22 +122,37 @@ class CdcImplementationGenerator:
         bus_rst_ah = self.exp.dereferencer.get_resetsignal(None)
         bus_ff = self.exp.dereferencer.get_always_ff_event(None)
         reset_ah = bus_rst_ah
-
-        # The edge goes on the port: an event control on ~rst_n is not portable.
+        active_low = self.exp.ds.default_reset_activelow
         rst_name = self.exp.dereferencer.default_resetsignal_name
-        rst_edge = "negedge" if self.exp.ds.default_reset_activelow else "posedge"
+        rst_edge = "negedge" if active_low else "posedge"
+        sync_d = "1'b1" if active_low else "1'b0"
+        sync_reset_val = "'0" if active_low else "'1"
+        if self.exp.ds.default_reset_async:
+            sync_rst_wire = rst_name
+            sync_rst_asserted = bus_rst_ah
+        else:
+            sync_rst_wire = f"{pfx}_bus_rst_q"
+            lines.append(f"    logic {sync_rst_wire};")
+            lines.append(f"    always_ff @(posedge {bus_clk}) begin")
+            lines.append(f"        {sync_rst_wire} <= {rst_name};")
+            lines.append("    end")
+            sync_rst_asserted = f"~{sync_rst_wire}" if active_low else sync_rst_wire
+        lines.append("    /* verilator lint_off SYNCASYNCNET */")
         lines.extend(
             self._sync(
                 f"{pfx}_u_rst_sync",
                 f"{pfx}_rst_sync_q",
-                "1'b1",
-                clk,
-                reset_ah,
-                f"@(posedge {clk} or {rst_edge} {rst_name})",
+                sync_d,
+                dom_clk,
+                sync_rst_asserted,
+                f"@(posedge {dom_clk} or {rst_edge} {sync_rst_wire})",
                 nstages,
+                reset_val=sync_reset_val,
+                reset_wire=sync_rst_wire,
             )
         )
-        lines.append(f"    assign {pfx}_dst_rst = ~{pfx}_rst_sync_q | {reset_ah};")
+        lines.append("    /* verilator lint_on SYNCASYNCNET */")
+        lines.append(f"    assign {dst_rst} = {pfx}_rst_sync_q;")
 
         n_slots = domain.n_slots
         slot_msb = max(n_slots - 1, 0)
@@ -185,7 +218,7 @@ class CdcImplementationGenerator:
         lines.extend(
             self._handshake(
                 pfx,
-                clk,
+                dom_clk,
                 reset_ah,
                 bus_ff,
                 nstages,
@@ -206,19 +239,23 @@ class CdcImplementationGenerator:
         q: str,
         d: str,
         clk: str,
-        rst: str,
+        rst_asserted: str,
         event: str,
         nstages: int,
+        reset_val: str = "'0",
+        reset_wire: str | None = None,
     ) -> list[str]:
-        """Toggle synchronizer: --sync-cell, or inline flops cleared while rst is high."""
+        """Toggle synchronizer: --sync-cell, or inline flops while reset is asserted."""
         cell = self.exp.ds.sync_cell
         if cell:
+            pin = "rst_n" if self.exp.ds.default_reset_activelow else "rst"
+            wire = reset_wire if reset_wire is not None else rst_asserted
             return [
-                f"    {cell} #(.NSTAGES({nstages})) {inst} (",
+                f"    {cell} #(.NSTAGES({nstages}), .RESET_VAL({reset_val})) {inst} (",
                 f"        .q   ({q}),",
                 f"        .d   ({d}),",
                 f"        .clk ({clk}),",
-                f"        .rst ({rst})",
+                f"        .{pin} ({wire})",
                 "    );",
             ]
         ff = f"{inst}_ff"
@@ -229,8 +266,8 @@ class CdcImplementationGenerator:
         return [
             f"    logic [{max(nstages, 1) - 1}:0] {ff};",
             f"    always_ff {event} begin",
-            f"        if ({rst}) begin",
-            f"            {ff} <= '0;",
+            f"        if ({rst_asserted}) begin",
+            f"            {ff} <= {reset_val};",
             "        end else begin",
             f"            {ff} <= {shift};",
             "        end",
@@ -254,7 +291,9 @@ class CdcImplementationGenerator:
 
         own adds the flags that cpuif_reset clears: see cdc_cpurst_clr.
         """
-        dst_ev = f"@(posedge {clk} or posedge {pfx}_dst_rst)"
+        dst_rst = self.domain_reset_net(pfx)
+        dst_ev = self.domain_reset_event(pfx, clk)
+        dst_asserted = self.domain_reset_asserted(pfx)
         own_term = f" & {pfx}_own" if own else ""
         pend_own_term = f" & {pfx}_pend_own" if own else ""
         lines: list[str] = [
@@ -277,14 +316,15 @@ class CdcImplementationGenerator:
                 f"{pfx}_req_sync",
                 f"{pfx}_req_tgl",
                 clk,
-                f"{pfx}_dst_rst",
+                dst_asserted,
                 dst_ev,
                 nstages,
+                reset_wire=dst_rst,
             )
         )
         lines += [
             f"    always_ff {dst_ev} begin",
-            f"        if ({pfx}_dst_rst) begin",
+            f"        if ({dst_asserted}) begin",
             f"            {pfx}_ack_tgl <= '0;",
             "        end else begin",
             f"            {pfx}_ack_tgl <= {pfx}_req_sync;",
@@ -292,7 +332,7 @@ class CdcImplementationGenerator:
             "    end",
             f"    assign {pfx}_dst_acc_en = {pfx}_req_sync ^ {pfx}_ack_tgl;",
             f"    always_ff {dst_ev} begin",
-            f"        if ({pfx}_dst_rst) begin",
+            f"        if ({dst_asserted}) begin",
             f"            {pfx}_rdata <= '0;",
             "        end else begin",
             f"            if ({pfx}_dst_acc_en & ~{pfx}_is_wr) begin",
@@ -305,6 +345,7 @@ class CdcImplementationGenerator:
             f"    assign {pfx}_dst_wr_data = {pfx}_wr_data;",
             f"    assign {pfx}_dst_wr_biten = {pfx}_wr_biten;",
         ]
+        rst_name = self.exp.dereferencer.default_resetsignal_name
         lines.extend(
             self._sync(
                 f"{pfx}_u_ack_sync",
@@ -314,6 +355,7 @@ class CdcImplementationGenerator:
                 reset_ah,
                 bus_ff,
                 nstages,
+                reset_wire=rst_name,
             )
         )
         lines += [
@@ -492,6 +534,7 @@ class CdcImplementationGenerator:
         sig = str(self.exp.dereferencer.get_value(cpuif_reset))
         not_rst = f"~{sig}" if cpuif_reset.get_property("activehigh") else sig
         decl += ["    logic cdc_cpurst_sync_q;", "    logic cdc_cpurst_sync_d;"]
+        rst_name = self.exp.dereferencer.default_resetsignal_name
         drv = self._sync(
             "cdc_u_cpurst_sync",
             "cdc_cpurst_sync_q",
@@ -500,6 +543,7 @@ class CdcImplementationGenerator:
             bus_rst_ah,
             bus_ff,
             first.nstages,
+            reset_wire=rst_name,
         )
         drv += [
             f"    always_ff {bus_ff} begin",
@@ -771,13 +815,13 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
             slice_lo = field.low
             slice_hi = field.high
             reset_value = self.impl._reset_value(field)
+            dst_ev = self.impl.domain_reset_event(pfx, clk)
+            dst_asserted = self.impl.domain_reset_asserted(pfx)
             if reset_value is None:
                 self.add_content(f"    always_ff @(posedge {clk}) begin")
             else:
-                self.add_content(
-                    f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-                )
-                self.add_content(f"        if({pfx}_dst_rst) begin")
+                self.add_content(f"    always_ff {dst_ev} begin")
+                self.add_content(f"        if({dst_asserted}) begin")
                 self.add_content(f"            {ident} <= {reset_value};")
                 self.add_content("        end")
             body_start = len(self.current_loop.children)
@@ -839,10 +883,10 @@ class CdcRegLogicGenerator(RDLForLoopGenerator):
         ):
             sn = self.impl.snapshot_ref(node)
             rw = node.get_property("regwidth")
-            self.add_content(
-                f"    always_ff @(posedge {clk} or posedge {pfx}_dst_rst) begin"
-            )
-            self.add_content(f"        if({pfx}_dst_rst) begin")
+            dst_ev = self.impl.domain_reset_event(pfx, clk)
+            dst_asserted = self.impl.domain_reset_asserted(pfx)
+            self.add_content(f"    always_ff {dst_ev} begin")
+            self.add_content(f"        if({dst_asserted}) begin")
             self.add_content(f"            {sn} <= {rw}'d0;")
             self.add_content(
                 f"        end else if({pfx}_dst_acc_en & ~{pfx}_dst_is_wr & "
