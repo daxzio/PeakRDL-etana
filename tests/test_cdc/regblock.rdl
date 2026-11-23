@@ -86,4 +86,32 @@ addrmap top {
     reg {
         field { sw = rw; hw = r; } v[31:0] = 0x600DF00D;
     } bus_cfg @0x2C;
+
+    reg {
+        cdc_clk = sync_clk_slow;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[7:0] = 0x11;
+    } mix_trg @0x30;
+
+    // Write members with unused bits, and fields with and without a reset value. The
+    // field without one is write-only, so that no bus read returns X.
+    reg {
+        cdc_clk = sync_clk_slow;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[11:0] = 0x222;
+        field { sw = w; hw = r; } nr[23:20];
+    } mix_mem[2] @0x34 += 0x4;
+
+    mix_mem->wbuffer_trigger = mix_trg;
+
+    // A write member narrower than the bus.
+    reg {
+        regwidth = 16;
+        accesswidth = 16;
+        cdc_clk = sync_clk_slow;
+        buffer_writes;
+        field { sw = rw; hw = r; } v[9:0] = 0x3F;
+    } nar_mem @0x3C;
+
+    nar_mem->wbuffer_trigger = mix_trg;
 };

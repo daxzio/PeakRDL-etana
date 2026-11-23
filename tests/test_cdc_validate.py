@@ -242,6 +242,99 @@ def test_cdc_accepts_default_property_value(tmp_path):
     assert list(ds.cdc_domains) == ["top.sync_clk"]
 
 
+def _ff_blocks(text: str) -> list[tuple[str, str]]:
+    """The (event, body) of every always_ff block, found by its indentation."""
+    blocks: list[tuple[str, str]] = []
+    lines = text.splitlines()
+    for n, line in enumerate(lines):
+        m = re.match(r"^(\s*)always_ff (@\([^)]*\)) begin$", line)
+        if not m:
+            continue
+        end = next(
+            k for k in range(n + 1, len(lines)) if lines[k] == f"{m.group(1)}end"
+        )
+        blocks.append((m.group(2), "\n".join(lines[n + 1 : end])))
+    return blocks
+
+
+def test_cdc_field_without_reset_has_no_reset_term(tmp_path):
+    rdl = """
+        reg {
+            cdc_clk = sync_clk;
+            field { sw=rw; hw=r; } v[7:0];
+        } rg @0x0;
+        """
+    out = _export(_top(rdl), tmp_path)
+    blocks = [
+        (event, body)
+        for event, body in _ff_blocks((out / "top.sv").read_text())
+        if "cdc_dst_rg_v_value <=" in body
+    ]
+    assert len(blocks) == 1
+    event, body = blocks[0]
+    assert event == "@(posedge sync_clk)"
+    assert "dst_rst" not in body
+    assert body.lstrip().startswith("if(")
+
+
+@pytest.mark.parametrize("regwidth", [32, 64])
+@pytest.mark.parametrize("opts", [{}, {"default_reset_async": True}])
+def test_cdc_write_member_copy_resets_only_fields_with_a_value(
+    tmp_path, regwidth, opts
+):
+    hi = regwidth - 1
+    rdl = f"""
+        reg {{
+            cdc_clk = sync_clk; buffer_writes;
+            regwidth = {regwidth};
+            field {{ sw=rw; hw=r; }} a[7:0] = 0x5A;
+            field {{ sw=rw; hw=r; }} b[{hi - 8}:8];
+            field {{ sw=w; hw=r; }} c[{hi}:{hi - 7}] = 0x11;
+        }} m @0x0;
+        reg {{
+            cdc_clk = sync_clk; buffer_writes;
+            field {{ sw=rw; hw=r; }} t[7:0] = 0;
+        }} t @0x10;
+        m->wbuffer_trigger = t;
+        """
+    out = _export(_top(rdl), tmp_path, **opts)
+    text = (out / "top.sv").read_text()
+    blocks = _ff_blocks(text)
+
+    def copy_block(field: str) -> tuple[str, str]:
+        found = [
+            (event, body)
+            for event, body in blocks
+            if re.search(rf"cdc_copy_m_{field}_value(\[\d+:\d+\])? <=", body)
+        ]
+        assert len(found) == 1
+        return found[0]
+
+    a_event, a_body = copy_block("a")
+    assert a_event == ("@(posedge clk or posedge arst)" if opts else "@(posedge clk)")
+    assert "cdc_copy_m_a_value <= 8'h5a;" in a_body
+
+    # A field without a value has no reset term. Its flop uses the plain clock event
+    # also next to an asynchronous bus reset.
+    b_event, b_body = copy_block("b")
+    assert b_event == "@(posedge clk)"
+    assert "rst" not in b_body
+    if regwidth == 64:
+        # The field spans two subwords: one load branch per subword.
+        assert "decoded_reg_strb_m[0]" in b_body
+        assert "cdc_copy_m_b_value[47:24] <=" in b_body
+        assert "decoded_reg_strb_m[1]" in b_body
+
+    c_event, c_body = copy_block("c")
+    assert c_event == a_event
+    assert "cdc_copy_m_c_value <= 8'h11;" in c_body
+
+    # The register vector has one driver, a continuous assignment.
+    assert not any("cdc_shadow_m" in body.split("<=")[0] for _, body in blocks)
+    concat = "{cdc_copy_m_c_value, cdc_copy_m_b_value, cdc_copy_m_a_value}"
+    assert text.count(f"assign cdc_shadow_m = {concat};") == 1
+
+
 def test_cdc_rejects_resetsignal(tmp_path):
     _export_expect_error(
         _top(

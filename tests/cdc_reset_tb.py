@@ -35,6 +35,20 @@ async def run_cdc_reset(dut, reset_sense, resetname):
         await RisingEdge(dut.sync_clk_fast)
     assert int(dut.hwif_out_fast_cfg_cfg.value) == 0x3645
 
+    # Write members that mix fields with and without a reset value, then their trigger.
+    await tb.intf.write(0x34, 0xFFAFF345)
+    await tb.intf.write(0x38, 0x00500678)
+    await tb.intf.write(0x3C, 0x155)
+    await tb.intf.write(0x30, 0x12)
+    for _ in range(8):
+        await RisingEdge(dut.sync_clk_slow)
+    assert [int(dut.hwif_out_mix_mem_v[i].value) for i in (0, 1)] == [0x345, 0x678]
+    assert [int(dut.hwif_out_mix_mem_nr[i].value) for i in (0, 1)] == [0xA, 0x5]
+    await tb.intf.read(0x34, 0x345)
+    await tb.intf.read(0x38, 0x678)
+    assert int(dut.hwif_out_nar_mem_v.value) == 0x155
+    await tb.intf.read(0x3C, 0x155)
+
     rst = getattr(dut, resetname)
     rst.value = reset_sense
     for _ in range(40):
@@ -49,6 +63,18 @@ async def run_cdc_reset(dut, reset_sense, resetname):
     await tb.intf.read(0x04, 0x00)
     await tb.intf.read(0x08, 0x364)
     await tb.intf.read(0x0C, 0x00)
+
+    assert [int(dut.hwif_out_mix_mem_v[i].value) for i in (0, 1)] == [0x222, 0x222]
+    assert [int(dut.hwif_out_mix_mem_nr[i].value) for i in (0, 1)] == [0xA, 0x5]
+    await tb.intf.read(0x34, 0x222)
+    assert int(dut.hwif_out_nar_mem_v.value) == 0x3F
+    await tb.intf.read(0x3C, 0x3F)
+    # The copy of a field without a reset value keeps its value too.
+    await tb.intf.write(0x30, 0x13)
+    for _ in range(8):
+        await RisingEdge(dut.sync_clk_slow)
+    assert [int(dut.hwif_out_mix_mem_v[i].value) for i in (0, 1)] == [0x222, 0x222]
+    assert [int(dut.hwif_out_mix_mem_nr[i].value) for i in (0, 1)] == [0xA, 0x5]
 
 
 SLOW = "sync_clk_slow"
