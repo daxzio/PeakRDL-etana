@@ -364,7 +364,10 @@ outside the three of each domain.
 ``cdc_u_cpurst_sync``
     Exists once per block. Output net ``cdc_cpurst_sync_q``. Carries the
     inverted ``cpuif_reset`` signal, 1 while the signal is deasserted, to
-    ``clk``. Reset asynchronously from the block bus reset, in the block style.
+    ``clk``. Reset from the block bus reset, in the block style, which is
+    asynchronous in ``arst`` and ``arst_n`` and synchronous in ``rst`` and
+    ``rst_n`` with inline synchronizers. A ``--sync-cell`` instance resets
+    asynchronously.
 
 The signals below cross without a synchronizer. The handshake holds each one
 stable while the receiving clock samples it; in fast mode this rests on the
