@@ -28,17 +28,21 @@ checklist for software and system architects.
 
 | Access state | Typical outcome |
 |--------------|-----------------|
-| **Pending** slot only (e.g. plain posted write waiting) | Dropped; never executes in the domain (same as a failed bus access from firmware’s point of view). |
-| **Issued** in flight (read, trigger write, or pending read) | Still executes once the domain clock runs; **ack to the bus is suppressed** if ownership was cleared. |
+| **Pending** slot only (a read or write waiting behind an issued access) | Dropped; never executes in the domain (same as a failed bus access from firmware’s point of view). |
+| **Issued** in flight (read, plain write or trigger write) | Still executes once the domain clock runs; **ack to the bus is suppressed** if ownership was cleared. |
 | Late `rd_ack` / `wr_ack` after clear | **Ignored** (no spurious completion of a new transaction). |
 
 **Race:** The access in the **pending** slot is dropped, but an **issued** access
 still runs to completion in the domain when the clock runs—even if
 `cpuif_reset` asserts during the bus cycle that issued it and the reset pulse
-reaches the handshake before that access would normally finish on the bus. To
+reaches the handshake before that access would normally finish on the bus.
+The pending access is still issued, and executes, if the issued access completes
+before the reset reaches the handshake. The reset reaches the handshake at the
+latest on the first `clk` edge with a synchronous `cpuif_reset` asserted, and
+within `cdc_nstages + 1` `clk` cycles after an asynchronous one asserts. To
 avoid surprising domain side effects, stop the domain clock at least
-**`cdc_nstages + 1`** bus cycles **before** asserting async `cpuif_reset`, and
-keep it stopped until release.
+**`cdc_nstages + 1`** bus cycles **before** asserting `cpuif_reset`, and keep it
+stopped until release.
 
 ## Firmware sequence after recovery
 
