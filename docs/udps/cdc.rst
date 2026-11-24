@@ -248,6 +248,8 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
   of a field without a reset value has no reset.
 * The request synchronizer and the bus-side acknowledge synchronizer use the
   domain reset and the block reset respectively, each in the matching style.
+  With ``--sync-cell`` in ``rst`` and ``rst_n`` the acknowledge cell takes
+  ``cdc_<clk>_bus_rst_q``, so it leaves reset one ``clk`` cycle after the block.
 * The bus-side copies of write members reset from the bus reset, in the
   block's reset style. A bus reset therefore resets the copy and the domain
   storage of a member to the field's reset value. The bits of a field without
@@ -356,7 +358,9 @@ named ``<name>_ff``, and its last bit drives the output net. With
 
 ``cdc_<clk>_u_ack_sync``
     Output net ``cdc_<clk>_ack_sync``. Carries the acknowledge toggle
-    ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``.
+    ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``. A ``--sync-cell`` instance
+    in ``rst`` and ``rst_n`` takes ``cdc_<clk>_bus_rst_q`` as its reset, so it
+    leaves reset one ``clk`` cycle after the block.
 
 A block with an asynchronous ``cpuif_reset`` signal has one more synchronizer,
 outside the three of each domain.

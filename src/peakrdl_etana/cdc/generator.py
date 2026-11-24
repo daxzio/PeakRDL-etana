@@ -41,6 +41,12 @@ class CdcImplementationGenerator:
             return f"{pfx}_dst_rst_n"
         return f"{pfx}_dst_rst"
 
+    def bus_reset_net(self, pfx: str) -> str:
+        """Reset net of the reset and acknowledge synchronizers (registered if synchronous)."""
+        if self.exp.ds.default_reset_async:
+            return self.exp.dereferencer.default_resetsignal_name
+        return f"{pfx}_bus_rst_q"
+
     def domain_reset_event(self, pfx: str, clk: str) -> str:
         net = self.domain_reset_net(pfx)
         edge = "negedge" if self.exp.ds.default_reset_activelow else "posedge"
@@ -127,11 +133,10 @@ class CdcImplementationGenerator:
         rst_edge = "negedge" if active_low else "posedge"
         sync_d = "1'b1" if active_low else "1'b0"
         sync_reset_val = "'0" if active_low else "'1"
+        sync_rst_wire = self.bus_reset_net(pfx)
         if self.exp.ds.default_reset_async:
-            sync_rst_wire = rst_name
             sync_rst_asserted = bus_rst_ah
         else:
-            sync_rst_wire = f"{pfx}_bus_rst_q"
             lines.append(f"    logic {sync_rst_wire};")
             lines.append(f"    always_ff @(posedge {bus_clk}) begin")
             lines.append(f"        {sync_rst_wire} <= {rst_name};")
@@ -345,7 +350,6 @@ class CdcImplementationGenerator:
             f"    assign {pfx}_dst_wr_data = {pfx}_wr_data;",
             f"    assign {pfx}_dst_wr_biten = {pfx}_wr_biten;",
         ]
-        rst_name = self.exp.dereferencer.default_resetsignal_name
         lines.extend(
             self._sync(
                 f"{pfx}_u_ack_sync",
@@ -355,7 +359,7 @@ class CdcImplementationGenerator:
                 reset_ah,
                 bus_ff,
                 nstages,
-                reset_wire=rst_name,
+                reset_wire=self.bus_reset_net(pfx),
             )
         )
         lines += [
