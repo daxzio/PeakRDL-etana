@@ -165,6 +165,9 @@ else ifeq ($(SIM),xezim)
 	COMPILE_ARGS += $(addprefix -D , $(DEFINES))
     endif
 endif
+ifneq ($(filter $(SIM),icarus verilator),)
+	COMPILE_ARGS += $(addprefix -D,$(DEFINES))
+endif
 ifeq ($(WAVES),1)
 	ifeq ($(SIM),verilator)
 		PLUSARGS += --trace
@@ -227,7 +230,7 @@ regblock-vhdl:
 yosys: etana
 	@mkdir -p $(SYNTH_OUTPUT)
 	rm -rf $(SYNTH_OUTPUT)/*
-	yosys -q -p "read_slang -D SYNTHESIS --top regblock ./etana-rtl/*.sv $(YOSYS_EXTRA_SOURCES); script ../synthesis.ys"
+	yosys -q -p "read_slang -D SYNTHESIS $(addprefix -D ,$(DEFINES)) --top regblock ./etana-rtl/*.sv $(YOSYS_EXTRA_SOURCES); script ../synthesis.ys"
 
 vivado-synth: $(SYNTH_SOURCE_TARGET)
 	@if [ -z "$(strip $(VIVADO_PART))" ]; then \

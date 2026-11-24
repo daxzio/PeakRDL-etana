@@ -508,8 +508,39 @@ def test_cdc_cpuif_reset_sync_cell(tmp_path):
     out = _export(_cpuif_reset_top("async"), tmp_path, sync_cell="my_sync")
     text = (out / "top.sv").read_text()
     assert "my_sync #(.NSTAGES(2), .RESET_VAL('0)) cdc_u_cpurst_sync" in text
-    assert ".rst (rst)" in text
+    start = text.index(" cdc_u_cpurst_sync (")
+    assert ".rst (rst)" in text[start : text.index(");", start)]
     assert "cdc_u_cpurst_sync_ff" not in text
+
+
+# Style: (ack cell pin text, `{q}` is the domain's registered bus reset, cpurst cell pin text)
+_ACK_RESET_PINS = {
+    "rst": (".rst ({q})", ".rst (rst)"),
+    "rst_n": (".rst_n ({q})", ".rst_n (rst_n)"),
+    "arst": (".rst (arst)", ".rst (arst)"),
+    "arst_n": (".rst_n (arst_n)", ".rst_n (arst_n)"),
+}
+
+
+@pytest.mark.parametrize("style", sorted(_RESET_STYLES))
+def test_cdc_sync_cell_ack_uses_registered_reset(tmp_path, style):
+    clks = ("clk_a", "clk_b")
+    body = _CPU_RST_REG.replace("sync_clk", clks[0]) + _cfg("", "rg_b", 0x4).replace(
+        "sync_clk", clks[1]
+    )
+    sigs = "".join(f"signal {{}} {c};" for c in clks)
+    sigs += "signal { cpuif_reset; async; activehigh; } cpu_rst;"
+    out = _export(_top(body, sigs), tmp_path, sync_cell="my_sync", **_RESET_STYLES[style])
+    text = (out / "top.sv").read_text()
+    ack_pin, cpurst_pin = _ACK_RESET_PINS[style]
+    for clk in clks:
+        q = f"cdc_{clk}_bus_rst_q"
+        start = text.index(f" cdc_{clk}_u_ack_sync (")
+        assert ack_pin.format(q=q) in text[start : text.index(");", start)]
+        if "{q}" in ack_pin:
+            assert text.index(f"logic {q};") < start
+    start = text.index(" cdc_u_cpurst_sync (")
+    assert cpurst_pin in text[start : text.index(");", start)]
 
 
 def test_cdc_rejects_trigger_in_other_domain(tmp_path):

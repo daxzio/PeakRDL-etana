@@ -248,6 +248,8 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
   of a field without a reset value has no reset.
 * The request synchronizer and the bus-side acknowledge synchronizer use the
   domain reset and the block reset respectively, each in the matching style.
+  With ``--sync-cell`` in ``rst`` and ``rst_n`` the acknowledge cell takes
+  ``cdc_<clk>_bus_rst_q``, so it leaves reset one ``clk`` cycle after the block.
 * The bus-side copies of write members reset from the bus reset, in the
   block's reset style. A bus reset therefore resets the copy and the domain
   storage of a member to the field's reset value. The bits of a field without
@@ -323,9 +325,14 @@ The module has this interface:
         input  wire  rst   // or rst_n: name and polarity match --default-reset
     );
 
-The generated module connects exactly one reset port and passes ``RESET_VAL`` so
-the synchronizer chain idles in the released state. The cell only needs that
+The generated module connects exactly one reset port. The cell only needs that
 port (declare ``rst`` for active-high styles or ``rst_n`` for active-low).
+``RESET_VAL`` is the value of ``q``, and of every stage, while the reset is
+asserted. The reset synchronizer holds the domain reset asserted: ``RESET_VAL``
+is ``1'b1`` in the active-high styles and ``1'b0`` in the active-low styles.
+Every other synchronizer has ``1'b0``. The reset of the cell must be
+asynchronous, because the reset synchronizer must assert its output while the
+domain clock is stopped.
 The generated module sets ``NSTAGES`` from ``cdc_nstages`` of the domain. Add
 the cell to the file list of the simulator or synthesis tool together with the
 generated module.
@@ -351,7 +358,9 @@ named ``<name>_ff``, and its last bit drives the output net. With
 
 ``cdc_<clk>_u_ack_sync``
     Output net ``cdc_<clk>_ack_sync``. Carries the acknowledge toggle
-    ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``.
+    ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``. A ``--sync-cell`` instance
+    in ``rst`` and ``rst_n`` takes ``cdc_<clk>_bus_rst_q`` as its reset, so it
+    leaves reset one ``clk`` cycle after the block.
 
 A block with an asynchronous ``cpuif_reset`` signal has one more synchronizer,
 outside the three of each domain.
@@ -359,7 +368,10 @@ outside the three of each domain.
 ``cdc_u_cpurst_sync``
     Exists once per block. Output net ``cdc_cpurst_sync_q``. Carries the
     inverted ``cpuif_reset`` signal, 1 while the signal is deasserted, to
-    ``clk``. Reset asynchronously from the block bus reset, in the block style.
+    ``clk``. Reset from the block bus reset, in the block style, which is
+    asynchronous in ``arst`` and ``arst_n`` and synchronous in ``rst`` and
+    ``rst_n`` with inline synchronizers. A ``--sync-cell`` instance resets
+    asynchronously.
 
 The signals below cross without a synchronizer. The handshake holds each one
 stable while the receiving clock samples it; in fast mode this rests on the
