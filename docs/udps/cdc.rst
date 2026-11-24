@@ -323,9 +323,14 @@ The module has this interface:
         input  wire  rst   // or rst_n: name and polarity match --default-reset
     );
 
-The generated module connects exactly one reset port and passes ``RESET_VAL`` so
-the synchronizer chain idles in the released state. The cell only needs that
+The generated module connects exactly one reset port. The cell only needs that
 port (declare ``rst`` for active-high styles or ``rst_n`` for active-low).
+``RESET_VAL`` is the value of ``q``, and of every stage, while the reset is
+asserted. The reset synchronizer holds the domain reset asserted: ``RESET_VAL``
+is ``1'b1`` in the active-high styles and ``1'b0`` in the active-low styles.
+Every other synchronizer has ``1'b0``. The reset of the cell must be
+asynchronous, because the reset synchronizer must assert its output while the
+domain clock is stopped.
 The generated module sets ``NSTAGES`` from ``cdc_nstages`` of the domain. Add
 the cell to the file list of the simulator or synthesis tool together with the
 generated module.
