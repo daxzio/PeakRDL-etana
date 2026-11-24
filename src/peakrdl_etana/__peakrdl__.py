@@ -245,6 +245,13 @@ class Exporter(ExporterSubcommandPlugin):
             help="""Module instantiated for each CDC synchronizer. Ports: q, d, clk, rst (active-high clear), parameter NSTAGES. Default is inline flops in the generated module.""",
         )
 
+        arg_group.add_argument(
+            "--test-mode",
+            metavar="PIN",
+            default=None,
+            help="""Input port that, at 1, drives every generated CDC reset from the block reset, for scan test.""",
+        )
+
     def do_export(self, top_node: "AddrmapNode", options: "argparse.Namespace") -> None:
         cpuifs = self.get_cpuifs()
 
@@ -317,4 +324,5 @@ class Exporter(ExporterSubcommandPlugin):
             err_if_bad_addr=options.err_if_bad_addr,
             err_if_bad_rw=options.err_if_bad_rw,
             sync_cell=options.sync_cell,
+            test_mode=options.test_mode,
         )
