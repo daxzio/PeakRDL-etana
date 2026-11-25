@@ -543,6 +543,82 @@ def test_cdc_sync_cell_ack_uses_registered_reset(tmp_path, style):
     assert cpurst_pin in text[start : text.index(");", start)]
 
 
+_RESET_PORT = {"rst": "rst", "rst_n": "rst_n", "arst": "arst", "arst_n": "arst_n"}
+
+
+@pytest.mark.parametrize("cell", [None, "my_sync"])
+@pytest.mark.parametrize("style", sorted(_RESET_STYLES))
+def test_cdc_test_mode_muxes(tmp_path, style, cell):
+    clks = ("clk_a", "clk_b")
+    body = _cfg().replace("sync_clk", clks[0]) + _cfg("", "rg_b", 0x4).replace(
+        "sync_clk", clks[1]
+    )
+    sigs = "".join(f"signal {{}} {c};" for c in clks)
+    opts = dict(_RESET_STYLES[style], test_mode="tm")
+    if cell:
+        opts["sync_cell"] = cell
+    text = (_export(_top(body, sigs), tmp_path, **opts) / "top.sv").read_text()
+    rst = _RESET_PORT[style]
+    low = style.endswith("_n")
+    assert "input wire tm," in text
+    for clk in clks:
+        dst = f"cdc_{clk}_dst_rst_n" if low else f"cdc_{clk}_dst_rst"
+        assert f"assign {dst} = tm ? {rst} : cdc_{clk}_rst_sync_q;" in text
+        if style.startswith("arst"):
+            assert f"cdc_{clk}_bus_rst" not in text
+            continue
+        assert f"cdc_{clk}_bus_rst_q <= {rst};" in text
+        assert f"assign cdc_{clk}_bus_rst = tm ? {rst} : cdc_{clk}_bus_rst_q;" in text
+        pin = "rst_n" if low else "rst"
+        for inst in (f"cdc_{clk}_u_rst_sync", f"cdc_{clk}_u_ack_sync"):
+            if cell:
+                start = text.index(f" {inst} (")
+                assert (
+                    f".{pin} (cdc_{clk}_bus_rst)"
+                    in text[start : text.index(");", start)]
+                )
+        if not cell:
+            edge = "negedge" if low else "posedge"
+            assert f"@(posedge {clk} or {edge} cdc_{clk}_bus_rst)" in text
+
+
+@pytest.mark.parametrize("style", sorted(_RESET_STYLES))
+def test_cdc_test_mode_off_has_no_mux(tmp_path, style):
+    text = (
+        _export(_top(_cfg()), tmp_path, **_RESET_STYLES[style]) / "top.sv"
+    ).read_text()
+    assert " ? " not in "".join(
+        l for l in text.splitlines() if "_dst_rst" in l or "_bus_rst" in l
+    )
+    assert "cdc_sync_clk_bus_rst " not in text and "cdc_sync_clk_bus_rst;" not in text
+
+
+@pytest.mark.parametrize(
+    "pin, message",
+    [
+        ("1tm", "is not a valid port name"),
+        ("input", "is not a valid port name"),
+        ("clk", "collides with"),
+        ("sync_clk", "collides with"),
+        ("cdc_sync_clk_x", "collides with"),
+        ("hwif_in_x", "collides with"),
+    ],
+)
+def test_cdc_test_mode_rejects_bad_pin(tmp_path, pin, message):
+    _export_expect_error(_top(_cfg()), message, tmp_path, test_mode=pin)
+
+
+def test_cdc_test_mode_without_cdc_warns(tmp_path):
+    rdl = _top("reg { field { sw=rw; hw=r; } f[7:0] = 0; } rg @0x0;", "")
+    printer = _CapturePrinter()
+    out = tmp_path / "out"
+    RegblockExporter().export(
+        _compile(rdl, tmp_path, printer), str(out), test_mode="tm"
+    )
+    assert "input wire tm," in (out / "top.sv").read_text()
+    assert "--test-mode has no effect: the design has no CDC register" in printer.text
+
+
 def test_cdc_rejects_trigger_in_other_domain(tmp_path):
     _export_expect_error(
         _top(

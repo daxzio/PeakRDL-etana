@@ -250,6 +250,7 @@ The reset behavior is the same for the four ``--default-reset`` styles ``rst``,
   domain reset and the block reset respectively, each in the matching style.
   With ``--sync-cell`` in ``rst`` and ``rst_n`` the acknowledge cell takes
   ``cdc_<clk>_bus_rst_q``, so it leaves reset one ``clk`` cycle after the block.
+  With ``--test-mode`` it takes ``cdc_<clk>_bus_rst`` (see `Scan test mode`_).
 * The bus-side copies of write members reset from the bus reset, in the
   block's reset style. A bus reset therefore resets the copy and the domain
   storage of a member to the field's reset value. The bits of a field without
@@ -301,6 +302,40 @@ which is the domain of the block's CDC register at the lowest address.
 Firmware bring-up checklist (timing, recovery order, group pitfalls):
 ``docs/dev_notes/cdc_cpuif_reset_firmware.md``.
 
+Scan test mode
+--------------
+
+The option ``--test-mode PIN`` adds the input port ``PIN`` after the block
+reset port. The pin is active high. Hold it at 0 in functional operation.
+Timing analysis and CDC checks need the pin as a constant 0, for example with
+``set_case_analysis 0``. Otherwise they see a combinational reset path from the
+block reset into each domain.
+
+With ``PIN`` at 1, the block reset port drives the domain reset net
+``cdc_<clk>_dst_rst`` (``cdc_<clk>_dst_rst_n`` in ``rst_n`` and ``arst_n``)
+directly, through a mux after the synchronizer output. The domain reset then
+releases without domain clock edges.
+
+In ``rst`` and ``rst_n`` the option adds the net ``cdc_<clk>_bus_rst``. It is
+``cdc_<clk>_bus_rst_q`` with ``PIN`` at 0 and the block reset with ``PIN`` at 1.
+It replaces ``cdc_<clk>_bus_rst_q`` as the reset of ``cdc_<clk>_u_rst_sync``
+(inline or cell) and of the ``cdc_<clk>_u_ack_sync`` cell. The inline
+acknowledge synchronizer resets with the block's own flops. In ``arst`` and
+``arst_n`` these synchronizers already reset from the block reset port, so
+there is no ``cdc_<clk>_bus_rst`` net.
+
+A scan tool can therefore control every asynchronous reset of the CDC logic
+from the block reset. This holds with and without ``--sync-cell``, because each
+mux sits outside the synchronizer or cell.
+
+The request and acknowledge synchronizers and ``cdc_u_cpurst_sync`` carry
+data. ``PIN`` does not bypass them.
+
+``PIN`` must be a valid SystemVerilog identifier and not a keyword. It must not
+collide with a port, with the ``hwif_in_`` and ``hwif_out_`` prefixes or with a
+``cdc_<clk>_`` name. A design with no CDC register still gets the port, and the
+generator prints a warning.
+
 Synchronizer cell
 -----------------
 
@@ -349,8 +384,10 @@ named ``<name>_ff``, and its last bit drives the output net. With
     Output net ``cdc_<clk>_rst_sync_q``. Clocked by ``<clk>``. ``d`` is ``1'b1``
     in active-low styles and ``1'b0`` in active-high styles. Reset asynchronously
     from the block reset, or from ``cdc_<clk>_bus_rst_q`` when the block reset
-    is synchronous. Its output drives ``cdc_<clk>_dst_rst_n`` or
-    ``cdc_<clk>_dst_rst``.
+    is synchronous. With ``--test-mode`` that reset is
+    ``cdc_<clk>_bus_rst`` instead (see `Scan test mode`_). Its output drives
+    ``cdc_<clk>_dst_rst_n`` or ``cdc_<clk>_dst_rst``, with ``--test-mode``
+    through the mux.
 
 ``cdc_<clk>_u_req_sync``
     Output net ``cdc_<clk>_req_sync``. Carries the request toggle
@@ -360,7 +397,8 @@ named ``<name>_ff``, and its last bit drives the output net. With
     Output net ``cdc_<clk>_ack_sync``. Carries the acknowledge toggle
     ``cdc_<clk>_ack_tgl`` from ``<clk>`` to ``clk``. A ``--sync-cell`` instance
     in ``rst`` and ``rst_n`` takes ``cdc_<clk>_bus_rst_q`` as its reset, so it
-    leaves reset one ``clk`` cycle after the block.
+    leaves reset one ``clk`` cycle after the block. With ``--test-mode`` the
+    reset is ``cdc_<clk>_bus_rst`` (see `Scan test mode`_).
 
 A block with an asynchronous ``cpuif_reset`` signal has one more synchronizer,
 outside the three of each domain.

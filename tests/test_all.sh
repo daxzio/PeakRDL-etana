@@ -127,6 +127,7 @@ if [ "$REGBLOCK" -eq 1 ] || [ "$GHDL" -eq 1 ] || [ "$NVC" -eq 1 ] || [ "$XEZIM" 
     SKIP_TESTS+=("test_cdc_rst" "test_cdc_rst_n" "test_cdc_arst" "test_cdc_arst_n")
     SKIP_TESTS+=("test_wishbone_pipeline" "test_wishbone_stream")
     SKIP_TESTS+=("test_cdc_trigger" "test_cdc_rw_rtrig" "test_cdc_cpuif_reset")
+    SKIP_TESTS+=("test_cdc_test_mode")
 fi
 
 if [ "$CPUIF" != "wishbone-flat" ]; then

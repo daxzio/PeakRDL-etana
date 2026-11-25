@@ -1,0 +1,8 @@
+addrmap top {
+    signal {} sync_clk;
+
+    reg {
+        cdc_clk = sync_clk;
+        field { sw = rw; hw = r; } v[7:0] = 0x49;
+    } cfg @0x0;
+};

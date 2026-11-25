@@ -45,6 +45,8 @@ class CdcImplementationGenerator:
         """Reset net of the reset and acknowledge synchronizers (registered if synchronous)."""
         if self.exp.ds.default_reset_async:
             return self.exp.dereferencer.default_resetsignal_name
+        if self.exp.ds.test_mode:
+            return f"{pfx}_bus_rst"
         return f"{pfx}_bus_rst_q"
 
     def domain_reset_event(self, pfx: str, clk: str) -> str:
@@ -134,13 +136,19 @@ class CdcImplementationGenerator:
         sync_d = "1'b1" if active_low else "1'b0"
         sync_reset_val = "'0" if active_low else "'1"
         sync_rst_wire = self.bus_reset_net(pfx)
+        test_mode = self.exp.ds.test_mode
         if self.exp.ds.default_reset_async:
             sync_rst_asserted = bus_rst_ah
         else:
-            lines.append(f"    logic {sync_rst_wire};")
+            lines.append(f"    logic {pfx}_bus_rst_q;")
             lines.append(f"    always_ff @(posedge {bus_clk}) begin")
-            lines.append(f"        {sync_rst_wire} <= {rst_name};")
+            lines.append(f"        {pfx}_bus_rst_q <= {rst_name};")
             lines.append("    end")
+            if test_mode:
+                lines.append(f"    logic {sync_rst_wire};")
+                lines.append(
+                    f"    assign {sync_rst_wire} = {test_mode} ? {rst_name} : {pfx}_bus_rst_q;"
+                )
             sync_rst_asserted = f"~{sync_rst_wire}" if active_low else sync_rst_wire
         lines.append("    /* verilator lint_off SYNCASYNCNET */")
         lines.extend(
@@ -157,7 +165,12 @@ class CdcImplementationGenerator:
             )
         )
         lines.append("    /* verilator lint_on SYNCASYNCNET */")
-        lines.append(f"    assign {dst_rst} = {pfx}_rst_sync_q;")
+        if test_mode:
+            lines.append(
+                f"    assign {dst_rst} = {test_mode} ? {rst_name} : {pfx}_rst_sync_q;"
+            )
+        else:
+            lines.append(f"    assign {dst_rst} = {pfx}_rst_sync_q;")
 
         n_slots = domain.n_slots
         slot_msb = max(n_slots - 1, 0)

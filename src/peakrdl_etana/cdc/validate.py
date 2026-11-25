@@ -343,6 +343,28 @@ class CdcDesignValidator(RDLListener):
         for domain in ds.cdc_domains.values():
             ports[domain.inst_name] = f"signal '{domain.clk_signal.inst_name}'"
 
+        pin = ds.test_mode
+        if pin:
+            src_ref = self.top_node.inst.inst_src_ref
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", pin) or kwf(pin) != pin:
+                self.msg.error(
+                    f"--test-mode pin '{pin}' is not a valid port name", src_ref
+                )
+            elif pin in ports:
+                self.msg.error(
+                    f"--test-mode pin '{pin}' collides with {ports[pin]}", src_ref
+                )
+            elif pin.startswith((f"{ds.hwif_in_str}_", f"{ds.hwif_out_str}_")):
+                self.msg.error(
+                    f"--test-mode pin '{pin}' collides with the hwif ports", src_ref
+                )
+            ports[pin] = "the --test-mode port"
+            if not ds.cdc_domains:
+                self.msg.warning(
+                    "--test-mode has no effect: the design has no CDC register",
+                    src_ref,
+                )
+
         for domain in ds.cdc_domains.values():
             reserved = f"{domain.inst_name}_fast_mode_en"
             prefix = f"cdc_{domain.inst_name}_"

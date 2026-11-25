@@ -9,6 +9,9 @@ module {{ds.module_name}}
     ) {%- endif %} (
         input wire clk,
         input wire {{default_resetsignal_name}},
+        {%- if ds.test_mode %}
+        input wire {{ds.test_mode}},
+        {%- endif %}
 
         {%- for domain in ds.cdc_domains.values() %}
         input wire {{domain.inst_name}},
