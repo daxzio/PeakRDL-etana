@@ -40,7 +40,8 @@ See `docs/dev_notes/cdc_pr15_cherry_pick.md`. Fixes (commits 1–5), write-group
 cleanup (11), and `cpuif_reset` recovery (12) are merged. PR #15 commit 6 was
 **replaced** by a polarity-following domain reset (no inverter/OR on the
 synchronizer output; domain flops and ``--sync-cell`` follow ``--default-reset``).
-Firmware rules: `docs/dev_notes/cdc_cpuif_reset_firmware.md`.
+Firmware rules: `docs/dev_notes/cdc_cpuif_reset_firmware.md`. Full merge and
+reset-polarity narrative: `docs/dev_notes/cdc_reset_polarity_and_integration.md`.
 
 ## After merge to `develop`
 

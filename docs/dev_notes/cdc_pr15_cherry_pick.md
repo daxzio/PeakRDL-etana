@@ -20,9 +20,22 @@ Tracking integration of [PR #15](https://github.com/daxzio/PeakRDL-etana/pull/15
 |-----------|-----|--------|
 | 6 | `2576143` | Domain reset only through synchronizer — replaced on `dk_cdc` by a polarity-following path (`dst_rst` / `dst_rst_n` from synchronizer `q`; no `cdc_<clk>_arst`; ``--sync-cell`` gains `RESET_VAL` and reset port per ``--default-reset``). |
 
-## Follow-up (not in this batch)
+## PR #16
 
-- ``--test-mode <pin>`` scan bypass for synchronizers — opt-in, deferred (Stefanos PR #15 reply).
+Merged on `dk_cdc` as `7f17835`: `DEFINES` for Icarus/Verilator/Yosys,
+doc nits, ack `--sync-cell` uses registered bus reset in `rst`/`rst_n`. See
+[PR #16](https://github.com/daxzio/PeakRDL-etana/pull/16).
+
+## PR #17
+
+Merged on `dk_cdc` as `39e8784`: ``--test-mode``, scan bypass muxes,
+`tests/test_cdc_test_mode`, docs and pytest/Verilator lint coverage. See
+[PR #17](https://github.com/daxzio/PeakRDL-etana/pull/17).
+
+## Narrative (why + workflow)
+
+`docs/dev_notes/cdc_reset_polarity_and_integration.md` — commit 6 replacement,
+ASIC polarity rationale, merge order, verification, hulkv2 regression note.
 
 ## Verification
 

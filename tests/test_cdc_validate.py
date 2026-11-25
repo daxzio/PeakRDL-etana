@@ -530,7 +530,9 @@ def test_cdc_sync_cell_ack_uses_registered_reset(tmp_path, style):
     )
     sigs = "".join(f"signal {{}} {c};" for c in clks)
     sigs += "signal { cpuif_reset; async; activehigh; } cpu_rst;"
-    out = _export(_top(body, sigs), tmp_path, sync_cell="my_sync", **_RESET_STYLES[style])
+    out = _export(
+        _top(body, sigs), tmp_path, sync_cell="my_sync", **_RESET_STYLES[style]
+    )
     text = (out / "top.sv").read_text()
     ack_pin, cpurst_pin = _ACK_RESET_PINS[style]
     for clk in clks:
@@ -1272,6 +1274,20 @@ def test_ports(tmp_path):
 def test_lint(tmp_path, style):
     rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
     out = _export(rdl, tmp_path, **_STYLES[style])
+    assert _lint_cdc_section(out / "top.sv") == []
+
+
+@pytest.mark.parametrize("cell", [None, "my_sync"])
+@pytest.mark.parametrize("style", sorted(_STYLES))
+@pytest.mark.skipif(
+    not shutil.which("verilator"), reason="verilator not on PATH (Verilator CI only)"
+)
+def test_lint_test_mode(tmp_path, style, cell):
+    rdl = Path("tests/test_cdc_groups/regblock.rdl").read_text()
+    opts = dict(_STYLES[style], test_mode="tm")
+    if cell:
+        opts["sync_cell"] = cell
+    out = _export(rdl, tmp_path, **opts)
     assert _lint_cdc_section(out / "top.sv") == []
 
 
