@@ -18,6 +18,7 @@ The test suite validates:
 * External registers and memories
 * Counter fields, interrupts, and side effects
 * Multiple CPU interfaces and configurations
+* CDC registers (``tests/test_cdc*``; elaboration rules in ``tests/test_cdc_validate.py``)
 
 Test Modes
 ----------
@@ -366,7 +367,7 @@ Activate the virtual environment:
 
 .. code-block:: bash
 
-    source ../venv.2.0.0/bin/activate
+    source /path/to/venv/bin/activate
 
 **External data port names**
 
@@ -387,6 +388,4 @@ Use Cocotb 1.9.2 for AXI4-Lite testing:
 Further Documentation
 ---------------------
 
-For detailed test suite documentation, see ``tests/TEST_SUITE_README.md`` in the repository.
-
-For test migration guidelines, see ``cursor_help/COCOTB_MIGRATION_GUIDE.md``.
+CDC behavior and the ``tests/test_cdc*`` suites are described in :ref:`cdc`.

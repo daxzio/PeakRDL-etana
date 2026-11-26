@@ -20,6 +20,7 @@ description into synthesizable SystemVerilog RTL with individual signal ports in
 * **External component support** - Validated integration with external registers and memories
 * Configurable pipelining options for designs with fast clock rates
 * Broad support for SystemRDL 2.0 features
+* **CDC registers** — ``cdc_clk`` storage in another clock domain. See :ref:`cdc`.
 * Fully synthesizable SystemVerilog. Tested on Xilinx/AMD's Vivado & Intel Quartus
 * Enhanced safety checks: width validation, assertion guards, optimized field logic
 * **Comprehensive test suite** - Cocotb-based validation across multiple CPU interfaces
@@ -33,7 +34,8 @@ Upstream Sync Status
 --------------------
 
 This fork is based on **PeakRDL-regblock v0.22.0** (December 2024) and includes the applicable
-logic fixes through **v1.3.1** (``ed07496``). See ``cursor_help/UPSTREAM_SYNC_STATUS.md``.
+logic fixes through **v1.3.1** (``ed07496``). CDC registers are documented in :ref:`cdc`
+and listed under Unreleased in ``CHANGELOG.md``.
 
 Installing
 ----------

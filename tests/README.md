@@ -1,6 +1,6 @@
-# Test Simple - Cocotb Testing
+# tests/test_simple
 
-This directory contains tests for the `regblock` design using cocotb.
+Cocotb tests for a small register block. Etana is the default target. `REGBLOCK=1` builds the PeakRDL-regblock reference instead.
 
 ## Workflow
 
@@ -24,7 +24,7 @@ The standard cocotb Makefile approach provides the most reliable and consistent 
 
 ```bash
 # Activate virtual environment
-source ../../venv.2.0.0/bin/activate
+source /path/to/venv/bin/activate
 
 # Run with default simulator (Icarus)
 make
@@ -53,7 +53,7 @@ The modern Python approach uses cocotb's `runner` API directly from Python:
 
 ```bash
 # Activate virtual environment
-source ../../venv.2.0.0/bin/activate
+source /path/to/venv/bin/activate
 
 # Basic run with Icarus Verilog (default)
 python run.py

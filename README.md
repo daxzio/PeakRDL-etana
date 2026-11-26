@@ -47,7 +47,8 @@ This format is used instead of packed arrays (`[7:0][31:0]`) due to limitations 
 
 - **Flattened signal interface** - Individual ports for clean integration
 - **Full SystemRDL 2.0 support** - Complete standard compliance
-- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, OBI, Passthrough, and more
+- **Multiple CPU interfaces** - AMBA APB, AHB, AXI4-Lite, Avalon, OBI, Wishbone, Passthrough, and more
+- **CDC registers** - `cdc_clk` storage in another clock domain, with a toggle handshake in the generated module. See `docs/udps/cdc.rst`.
 - **Integration templates** - Auto-generated example modules for easy integration
 - **Signal documentation** - Comprehensive reports mapping RDL to signals
 - **Comprehensive testing** - Cocotb-based test suite with CPU interface error validation
@@ -71,7 +72,7 @@ cd PeakRDL-etana
 pip install -e .
 ```
 
-### From PyPI (when available)
+### From PyPI
 
 ```bash
 pip install peakrdl-etana
@@ -172,6 +173,10 @@ module my_block (
 ### Reset Configuration
 - `--default-reset <style>` - Set default reset style (rst, rst_n, arst, arst_n)
 
+### CDC
+- `--sync-cell <module>` - Instantiate `<module>` for each CDC synchronizer instead of inline flops. The cell has ports `q`, `d`, `clk`, and `rst` or `rst_n` (matching `--default-reset`), plus parameters `NSTAGES` and `RESET_VAL`.
+- `--test-mode <pin>` - Add an active-high input that, at 1, drives every generated CDC reset from the block reset (scan test). Hold the pin at 0 in functional mode.
+
 ### Pipeline Optimization
 - `--rt-read-response` - Enable additional retiming stage
 - `--rt-external <targets>` - Retime outputs to external components
@@ -195,6 +200,7 @@ Detailed documentation is available in the `docs/` directory, including:
 - Signal naming conventions
 - Integration guidelines
 - Advanced configuration options
+- CDC registers (`docs/udps/cdc.rst`)
 
 ## Testing
 
@@ -202,28 +208,26 @@ PeakRDL-etana includes comprehensive test frameworks:
 
 ### Test Framework
 
-- **tests/** - Modern Python-based testing framework using Cocotb
-  - ✅ CPU interface error response validation (NEW)
-  - ✅ External register and memory support
-  - ✅ Multiple CPU interfaces (APB4, AXI4-Lite, AHB, Passthrough)
-  - ✅ All SystemRDL field types and properties
+- **tests/** - Cocotb tests, one directory per case
+  - CPU interface error responses
+  - External registers and memories
+  - Multiple CPU interfaces (APB, AXI4-Lite, AHB, Avalon, OBI, Wishbone, Passthrough)
+  - CDC registers (`tests/test_cdc*`, plus `pytest tests/test_cdc_validate.py`)
 
 
 ### Quick Start (cocotb)
 
 ```bash
-# Activate virtual environment
-source venv.2.0.0/bin/activate
-cd tests-cocotb/test_simple
+cd tests/test_simple
 
-# Test with regblock reference (recommended)
+# Etana (default)
+make
+
+# Regblock reference
 make clean regblock sim SIM=verilator REGBLOCK=1
 
-# Test with etana
-make clean etana sim SIM=verilator REGBLOCK=0
-
-# Simple run (etana by default)
-make
+# CDC suite (etana only)
+cd ../test_cdc && make
 ```
 
 ## Contributing
@@ -238,12 +242,10 @@ This project is licensed under the LGPL-3.0 license. See the LICENSE file for de
 
 ## Project Origins
 
-PeakRDL-etana is derived from [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock) v0.22.0 (December 2024), with applicable logic fixes through v1.3.1 (`ed07496`). The key innovation is the replacement of SystemVerilog struct-based interfaces with individual flattened signals.
+PeakRDL-etana is derived from [PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock) v0.22.0 (December 2024), with applicable logic fixes through v1.3.1 (`ed07496`). The key innovation is the replacement of SystemVerilog struct-based interfaces with individual flattened signals. CDC registers (`cdc_clk`) are etana-only; see `docs/udps/cdc.rst` and the Unreleased section of `CHANGELOG.md`.
 
 **Why the flattened interface approach?**
 - **Broader tool support** - Some synthesis and simulation tools have limitations with complex structs
 - **Simplified integration** - Direct signal connections without struct knowledge
 - **Legacy compatibility** - Easier integration with existing designs expecting individual signals
 - **Debugging clarity** - Individual signals are easier to trace and debug
-
-For how to port later regblock changes, and for the etana-only work that stays here, see `cursor_help/UPSTREAM_SYNC_STATUS.md` and `cursor_help/COCOTB_MIGRATION_GUIDE.md`.

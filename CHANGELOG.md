@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ``tests/test_cdc*``; elaboration rules in ``tests/test_cdc_validate.py``. Documented
   in ``docs/udps/cdc.rst``. Expanded user guide and example RDL download in that page;
   alignment with community PR #14 tracked in ``docs/dev_notes/cdc_pr14_alignment.md``.
+- **CDC scan test (``--test-mode PIN``)**: Active-high input that, at 1, drives
+  every generated CDC reset from the block reset (muxes outside the
+  synchronizers). In ``rst`` / ``rst_n`` the muxed net is ``cdc_<clk>_bus_rst``.
+  Cocotb suite ``tests/test_cdc_test_mode``; Verilator lint
+  ``test_lint_test_mode``. Without the option the generated RTL is unchanged.
 - **CDC integration tests (PR #14 gap closure)**: ``tests/test_cdc_sync_cell`` for
   ``--sync-cell``; ``tests/test_cdc_example``; pr14-scale ``tests/test_cdc_groups``
   (multi-domain design, D4 snapshot RTL checks); full ``tests/test_cdc`` cocotb
@@ -47,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **CDC domain reset polarity**: Domain reset follows ``--default-reset`` (``cdc_<clk>_dst_rst``
-  or ``cdc_<clk>_dst_rst_n`` from the reset synchronizer, with no inverter or OR).
+  or ``cdc_<clk>_dst_rst_n`` from the reset synchronizer). No inverter or OR on
+  that assign, except the ``--test-mode`` mux, which keeps the same polarity.
   Domain flops and inline synchronizers use the same polarity; synchronous bus
   resets are registered on ``clk`` before the domain reset chain. Breaking change
   to the ``--sync-cell`` interface (``RESET_VAL``, reset port naming). Covered by
@@ -102,8 +108,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved maintainability
 
 ### Documentation
-- **CDC user guide**: ``docs/udps/cdc.rst`` brought in line with PR #14 (handshake,
-  groups, arrays, fast mode, reset, example design).
+- **CDC user guide**: ``docs/udps/cdc.rst`` covers the handshake, groups, arrays,
+  fast mode, reset polarity, ``--sync-cell``, ``--test-mode``, and the example
+  design. CLI options are also in ``docs/configuring.rst``.
 - **CDC PR #14 tracking**: ``docs/dev_notes/cdc_pr14_alignment.md`` lists merged
   items (including AHB HREADY high in reset, commit ``e4f718e``), prior ``dk_cdc`` work,
   and intentional exclusions (CI pins).
@@ -149,12 +156,12 @@ This release focuses on developer experience improvements:
 
 ### Unreleased Highlights
 
-This update significantly improves test infrastructure and compatibility:
+This update adds CDC registers and continues the test and compatibility work:
 
-1. **Enhanced Testing**: Comprehensive CPU interface error response validation
-2. **Better Compatibility**: Version-agnostic wrapper generator works with any peakrdl-regblock version
-3. **Passthrough Fixed**: External component support now works correctly
-4. **Code Quality**: 100% lint-clean, fully type-checked codebase
+1. **CDC registers**: ``cdc_clk`` storage, ``--sync-cell``, and ``--test-mode`` (see ``docs/udps/cdc.rst``)
+2. **Enhanced Testing**: Comprehensive CPU interface error response validation
+3. **Better Compatibility**: Version-agnostic wrapper generator works with any peakrdl-regblock version
+4. **Passthrough Fixed**: External component support now works correctly
 
 ---
 

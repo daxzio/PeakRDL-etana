@@ -112,6 +112,25 @@ Reset Configuration
     * ``arst`` - Asynchronous, active-high
     * ``arst_n`` - Asynchronous, active-low
 
+CDC
+---
+
+These options apply only when the design has registers with ``cdc_clk``.
+Behavior, the synchronizer cell ports, and scan-test rules are in :ref:`cdc`.
+
+.. option:: --sync-cell <module>
+
+    Instantiate ``<module>`` for each CDC synchronizer instead of inline flops.
+    Ports are ``q``, ``d``, ``clk``, and ``rst`` or ``rst_n`` (the one that matches
+    ``--default-reset``). Parameters are ``NSTAGES`` and ``RESET_VAL``.
+
+.. option:: --test-mode <pin>
+
+    Add an active-high input ``<pin>``. At 1, the block reset drives every
+    generated CDC reset, so a scan test can release domain flops without the
+    domain clock. Hold the pin at 0 in functional operation, and treat it as a
+    constant 0 in timing and CDC checks.
+
 Pipeline Optimization
 ---------------------
 

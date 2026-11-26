@@ -242,7 +242,7 @@ class Exporter(ExporterSubcommandPlugin):
         arg_group.add_argument(
             "--sync-cell",
             default=None,
-            help="""Module instantiated for each CDC synchronizer. Ports: q, d, clk, rst (active-high clear), parameter NSTAGES. Default is inline flops in the generated module.""",
+            help="""Module instantiated for each CDC synchronizer. Ports: q, d, clk, and rst or rst_n (matching --default-reset). Parameters: NSTAGES, RESET_VAL. Default is inline flops in the generated module.""",
         )
 
         arg_group.add_argument(
